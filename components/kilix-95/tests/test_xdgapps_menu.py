@@ -101,6 +101,24 @@ def main():
     assert seen["spec"]["Name"] == "Sample Browser", seen.get("spec")
     assert seen["spec"]["Exec"] == "/usr/bin/true", seen.get("spec")
     assert "argv" not in seen, "tab mode must not open an xpane"
+
+    # VirtualBox must stay in a kilix-run tab; its fullscreen option is tab
+    # fullscreen, not the desktop/XPane window path that can escape the desk.
+    vb = {"name": "Oracle VM VirtualBox", "exec": "VirtualBox",
+          "terminal": False, "workdir": ""}
+    vb_ctx = xdgapps.app_context(shell, vb)
+    assert _labels(vb_ctx) == ["Open in tab", "Open fullscreen"], \
+        _labels(vb_ctx)
+    vb_seen = {}
+    shell.open_x11_tab = lambda argv, title, **kw: vb_seen.update(
+        argv=argv, title=title, kw=kw)
+    shell.open_in_xpane = lambda *a, **kw: (_ for _ in ()).throw(
+        AssertionError("VirtualBox fullscreen must not use XPane"))
+    {it.label: it for it in vb_ctx}["Open fullscreen"].action()
+    assert vb_seen["argv"] == ["VirtualBox"], vb_seen
+    assert vb_seen["title"] == "Oracle VM VirtualBox", vb_seen
+    assert vb_seen["kw"]["fill"] is True, vb_seen
+    assert vb_seen["kw"]["size"] == desk.size(), vb_seen
     desk.menus.close_all()
 
     # with nothing discovered, the menu looks exactly as before

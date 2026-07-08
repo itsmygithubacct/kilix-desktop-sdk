@@ -13,6 +13,7 @@ import os
 import shlex
 import shutil
 
+import vbox
 import widgets as W
 import wm
 
@@ -303,6 +304,17 @@ def launch(shell, entry, mode="tab"):
     via XPane (the way the media player runs); "fullscreen" is the same, sized
     to the whole screen."""
     name = entry.get("name") or "app"
+    if vbox.is_virtualbox_entry(entry):
+        argv = vbox.entry_argv(entry, fullscreen=(mode == "fullscreen"))
+        if not argv:
+            wm.msgbox(shell.desk, name, "Launcher has no Exec line.",
+                      icon="error")
+            return
+        shell.open_x11_tab(argv, name, cwd=entry.get("workdir") or None,
+                           fill=(mode == "fullscreen"),
+                           size=shell.desk.size() if mode == "fullscreen"
+                           else None)
+        return
     if mode in ("window", "fullscreen"):
         try:                               # malformed Exec must not kill the desktop
             argv = shlex.split(entry.get("exec", ""))
@@ -329,6 +341,10 @@ def app_context(shell, entry):
     """Right-click menu: run the app in a kilix tab or a desktop window."""
     MI = W.MenuItem
     items = [MI("Open in tab", action=lambda: launch(shell, entry, "tab"))]
+    if vbox.is_virtualbox_entry(entry):
+        items.append(
+            MI("Open fullscreen", action=lambda: launch(shell, entry, "fullscreen")))
+        return items
     if not entry.get("terminal"):          # no tty on Xvfb → dead window
         items.append(
             MI("Open in window", action=lambda: launch(shell, entry, "window")))

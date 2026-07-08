@@ -13,6 +13,7 @@ import icons
 import recycle
 import shell as _shell
 import theme as T
+import vbox
 import widgets as W
 import wm
 
@@ -232,6 +233,11 @@ class FileWindow(wm.Window):
                                 action=lambda: self.desk.shell.open_terminal(
                                     item["data"])))
             else:
+                if vbox.is_vm_file(item["data"]):
+                    items.append(MI("Open fullscreen",
+                                    action=lambda p=item["data"]:
+                                    self.desk.shell.open_virtualbox_vm(
+                                        p, fullscreen=True)))
                 items.append(MI("Open with Notepad", icon="notepad",
                                 action=lambda: self.desk.shell.open_app(
                                     "notepad", item["data"])))

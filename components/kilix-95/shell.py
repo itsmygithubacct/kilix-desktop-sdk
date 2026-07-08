@@ -20,6 +20,7 @@ from PIL import Image
 import icons
 import recycle
 import theme as T
+import vbox
 import widgets as W
 import wm
 import host as kilix_host
@@ -262,6 +263,10 @@ class Shell:
         if item is not None:
             kind, arg = item["data"]
             items = [MI("Open", action=lambda: self._activate(item))]
+            if kind == "path" and vbox.is_vm_file(arg):
+                items.append(MI("Open fullscreen",
+                                action=lambda p=arg:
+                                self.open_virtualbox_vm(p, fullscreen=True)))
             if kind == "launcher":
                 items.append(MI("Edit Launcher…",
                                 action=lambda: self.create_launcher_dialog(
@@ -542,14 +547,18 @@ class Shell:
             return
         mode = spec.get("X-Kilix-Open", "tab")
         cwd = os.path.expanduser(spec.get("Path") or "~")
-        if mode == "run":
-            self._tab([os.path.join(KILIX_HOME, "kilix"), "run"]
-                      + split_cmd(cmd), name, cwd)
+        argv = split_cmd(cmd)
+        if vbox.is_virtualbox_argv(argv):
+            self.open_x11_tab(argv, name, cwd=cwd, fill=(mode == "fullscreen"),
+                              size=self.desk.size() if mode == "fullscreen"
+                              else None)
+        elif mode == "run":
+            self.open_x11_tab(argv, name, cwd=cwd)
         elif mode == "window":
             self._spawn_kitty_launch(["--type=os-window"], cmd, name, cwd)
         elif mode == "fullscreen":
             # X11 app filling the whole screen, on a private Xvfb (XPane)
-            self.open_in_xpane(split_cmd(cmd), name, cwd=cwd,
+            self.open_in_xpane(argv, name, cwd=cwd,
                                app_size=self.desk.size())
         else:
             self._spawn_kitty_launch(["--type=tab"], cmd, name, cwd)
@@ -594,6 +603,15 @@ class Shell:
         return self._popen([kitten, "@", "launch", "--type=tab", "--tab-title",
                             title, "--cwd", cwd or os.path.expanduser("~"), "--"]
                            + argv)
+
+    def open_x11_tab(self, argv, title, cwd=None, fill=False, size=None):
+        run = [os.path.join(KILIX_HOME, "kilix"), "run"]
+        if size:
+            w, h = size
+            run += ["--size", f"{int(w)}x{int(h)}"]
+        if fill:
+            run.append("--fill")
+        return self._tab(run + list(argv), title, cwd)
 
     def _popen(self, argv, cwd=None):
         try:
@@ -718,6 +736,10 @@ class Shell:
         if low.endswith(".desktop"):
             self.launch(parse_launcher(path), path)
             return
+        if vbox.is_vm_file(path):
+            self.open_virtualbox_vm(path)
+            self.add_recent(path)
+            return
         if low.endswith((".krt", ".rtf")):
             self.open_app("wordpad", path)
             self.add_recent(path)
@@ -757,6 +779,12 @@ class Shell:
             return b"\0" not in chunk
         except OSError:
             return False
+
+    def open_virtualbox_vm(self, path, fullscreen=False):
+        title = vbox.vm_title(path)
+        return self.open_x11_tab(vbox.vm_argv(path, fullscreen=fullscreen),
+                                 title, fill=fullscreen,
+                                 size=self.desk.size() if fullscreen else None)
 
     def game_menu_items(self):
         """Start ▸ Programs ▸ Games, built from the games.py registry."""

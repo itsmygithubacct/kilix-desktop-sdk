@@ -285,6 +285,43 @@ def launch_spec():
     assert sh.spec["Path"] == "/data"
 
 
+def virtualbox_launches_in_run_tab():
+    class _Desk:
+        def size(self):
+            return (1024, 768)
+
+    class _StubShell:
+        def __init__(self):
+            self.desk = _Desk()
+            self.seen = None
+
+        def open_x11_tab(self, argv, title, **kw):
+            self.seen = {"argv": argv, "title": title, "kw": kw}
+
+        def launch(self, spec, path=None):
+            raise AssertionError("VirtualBox must not use generic launch")
+
+        def open_in_xpane(self, *a, **kw):
+            raise AssertionError("VirtualBox must not open in XPane")
+
+    sh = _StubShell()
+    entry = {"name": "Oracle VM VirtualBox", "exec": "VirtualBox",
+             "terminal": False, "workdir": ""}
+    xdgapps.launch(sh, entry)
+    assert sh.seen == {"argv": ["VirtualBox"],
+                       "title": "Oracle VM VirtualBox",
+                       "kw": {"cwd": None, "fill": False, "size": None}}
+
+    vm = {"id": "virtualboxvm.desktop", "name": "VirtualBox VM",
+          "exec": "VirtualBoxVM --startvm sample", "terminal": False,
+          "workdir": "/vms"}
+    xdgapps.launch(sh, vm, "fullscreen")
+    assert sh.seen["argv"] == ["VirtualBoxVM", "--startvm", "sample",
+                               "--fullscreen"]
+    assert sh.seen["kw"] == {"cwd": "/vms", "fill": True,
+                             "size": (1024, 768)}
+
+
 normal_app_and_field_codes()
 percent_literal_kept()
 quoted_arg_spaces_kept()
@@ -302,4 +339,5 @@ cache_sees_inplace_and_subdir_edits()
 sorted_case_insensitive()
 localized_name()
 launch_spec()
+virtualbox_launches_in_run_tab()
 print("ok")
