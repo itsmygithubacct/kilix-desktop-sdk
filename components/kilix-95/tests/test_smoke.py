@@ -37,7 +37,8 @@ assert len(H.term_feed(data, chunks=range(len(data)))) == 2
 
 # every --scene choice renders offscreen without raising
 for scene in ["desktop", "start", "filemgr", "notepad", "settings",
-              "dialog", "launcher", "menu", "all"]:
+              "dialog", "launcher", "menu", "startup", "shutdown",
+              "bsod", "all"]:
     with H.desktop_dir():
         sd = H.make_desk()
         desk_main._scene(sd, scene)

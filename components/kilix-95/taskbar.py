@@ -534,6 +534,7 @@ class Taskbar:
             MI("Create Launcher…", icon="exe",
                action=lambda: shell.create_launcher_dialog()),
             MI("Run…", icon="run", action=shell.run_dialog),
+            MI("BSOD", icon="error", action=shell.show_bsod),
             sub(),
             MI("Shut Down…", icon="shutdown", action=shell.shutdown_dialog),
         ]

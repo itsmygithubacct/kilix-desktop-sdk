@@ -3,5 +3,9 @@ __pycache__/
 
 # User-supplied fonts/assets stay local.
 assets/*
+!assets/screens/
+assets/screens/*
+!assets/screens/startup.png
+!assets/screens/shutdown.png
 !assets/sounds/
 !assets/sounds/**

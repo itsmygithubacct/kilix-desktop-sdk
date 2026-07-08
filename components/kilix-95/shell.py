@@ -914,6 +914,9 @@ class Shell:
         win.add(W.Button(cw - 90, y + 6, 76, 24, "Cancel", cb=win.close))
         desk.wm.add(win)
 
+    def show_bsod(self):
+        self.desk.show_bsod()
+
     # ── shutdown actions ────────────────────────────────────────────────────
     def _power_off(self):
         # run in a tab so a permission error (rather than a silent no-op) shows

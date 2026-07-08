@@ -29,7 +29,7 @@ import host as kilix_host
 
 KILIX_HOME = kilix_host.add_kilix_config_path()   # browse (Term), gfx
 
-from PIL import Image
+from PIL import Image, ImageDraw, ImageOps
 
 import browse                        # Term: raw mode + kitty kbd/mouse parsing
 import gfx                           # inline t=d frames for streamed sessions
@@ -39,6 +39,13 @@ import taskbar as taskbar_mod
 import theme as T
 import widgets as W
 import wm as wm_mod
+
+try:
+    _RESAMPLE = Image.Resampling.BICUBIC
+except AttributeError:  # Pillow < 9.1
+    _RESAMPLE = Image.BICUBIC
+
+SCREEN_DIR = os.path.join(_here, "assets", "screens")
 
 # keys browse's parser doesn't map (it never needed F-keys): add them
 browse.SPECIAL_TILDE.update({
@@ -156,6 +163,7 @@ class Desk:
         self._hover_since = 0.0
         self.saver = None             # active screensaver instance or None
         self.saving = False
+        self.bsod = False             # code-rendered full-screen panic state
         self._saver_last = 0.0
         self._last_input = time.time()
         try:
@@ -222,6 +230,11 @@ class Desk:
     # ── rendering ───────────────────────────────────────────────────────────
     def render(self):
         if not self.dirty:
+            return
+        if self.bsod:
+            self.fb = self._bsod_image()
+            self.dirty = False
+            self.blit()
             return
         fb = self.fb
         d = W.drawer(fb)
@@ -361,10 +374,129 @@ class Desk:
         self.dirty = True
 
     # ── shutdown screen ──────────────────────────────────────────────────────
+    def _system_screen(self, name):
+        path = os.path.join(SCREEN_DIR, f"{name}.png")
+        try:
+            img = Image.open(path).convert("RGB")
+        except Exception:
+            img = self._fallback_system_screen(name)
+        if img.size != (self.w, self.h):
+            img = ImageOps.fit(img, (self.w, self.h), method=_RESAMPLE)
+        return img
+
+    def _fallback_system_screen(self, name):
+        color = (174, 232, 240) if name != "shutdown" else (150, 218, 230)
+        img = Image.new("RGB", (self.w, self.h), color)
+        d = ImageDraw.Draw(img)
+        margin = max(16, min(self.w, self.h) // 28)
+        d.rectangle([0, 0, self.w - 1, self.h - 1], outline=(0, 92, 128),
+                    width=2)
+        if name == "shutdown":
+            text = "Kilix 95 is shutting down.\nDo not turn off your pc"
+        else:
+            text = "Kilix 95"
+        try:
+            box = d.multiline_textbbox((0, 0), text, font=T.BOLD,
+                                       spacing=8, align="center")
+            tw, th = box[2] - box[0], box[3] - box[1]
+        except AttributeError:
+            lines = text.split("\n")
+            tw = max(T.text_w(T.BOLD, line) for line in lines)
+            th = len(lines) * 18
+        x = max(margin, (self.w - tw) // 2)
+        y = max(margin, (self.h - th) // 2)
+        d.multiline_text((x + 2, y + 2), text, font=T.BOLD,
+                         fill=(0, 70, 96), spacing=8, align="center")
+        d.multiline_text((x, y), text, font=T.BOLD, fill=(255, 255, 255),
+                         spacing=8, align="center")
+        return img
+
+    def _show_system_screen(self, name, seconds):
+        if self.term is None:
+            return
+        self.blit(self._system_screen(name))
+        if seconds > 0:
+            time.sleep(seconds)
+
+    def _bsod_image(self):
+        img = Image.new("RGB", (self.w, self.h), (0, 0, 170))
+        d = ImageDraw.Draw(img)
+        fg = (255, 255, 255)
+        y = max(18, self.h // 16)
+        title = "KILIX 95 PANIC"
+        title_w = T.text_w(T.BOLD, title)
+        d.rectangle([(self.w - title_w) // 2 - 12, y - 6,
+                     (self.w + title_w) // 2 + 12, y + 18], fill=fg)
+        d.text(((self.w - title_w) // 2, y - 2), title, font=T.BOLD,
+               fill=(0, 0, 170))
+        y += 52
+        lines = [
+            "A fatal desktop exception has occurred.",
+            "",
+            "OOM killer reported: no memory left for pretending everything is fine.",
+            "core dumped, but the dump buffer also dumped core.",
+            "panic: allocator failed while allocating failure metadata.",
+            "filesystem buffers, terminal panes, and background jobs are suspect.",
+            "",
+            "Technical information:",
+            "  STOP: 0x00000095  CORE_DUMP_OOM_STACK_FAIL",
+            "  module: kilix95.desktop.sys",
+            "  recovery: press any key or click to reboot the desktop illusion",
+        ]
+        left = max(24, self.w // 10)
+        max_w = self.w - left * 2
+        for line in lines:
+            if not line:
+                y += 18
+                continue
+            chunks = self._wrap_bsod_line(line, max_w)
+            for chunk in chunks:
+                d.text((left, y), chunk, font=T.FONT, fill=fg)
+                y += 18
+        return img
+
+    def _wrap_bsod_line(self, line, max_w):
+        if T.text_w(T.FONT, line) <= max_w:
+            return [line]
+        out, cur = [], ""
+        for word in line.split():
+            nxt = f"{cur} {word}".strip()
+            if cur and T.text_w(T.FONT, nxt) > max_w:
+                out.append(cur)
+                cur = word
+            else:
+                cur = nxt
+        if cur:
+            out.append(cur)
+        return out or [line]
+
+    def show_bsod(self):
+        self.saving = False
+        self.saver = None
+        self.bsod = True
+        self.switcher = None
+        self.mouse_owner = None
+        self.menus.close_all()
+        self.dirty = True
+
+    def _dismiss_bsod(self):
+        if not self.bsod:
+            return False
+        self.bsod = False
+        self.fb = Image.new("RGB", (self.w, self.h), T.DESKTOP)
+        self.dirty = True
+        return True
+
     def shutdown(self):
-        """Quit path. Plays the shutdown cue, then returns so the session just
-        ends — no 'It's now safe to turn off your computer' screen."""
+        """Quit path. Plays the shutdown cue and briefly shows the shutdown
+        screen before returning to the terminal."""
         self.play_sound("shutdown")
+        try:
+            seconds = float(os.environ.get("KILIX_SHUTDOWN_SCREEN_SECONDS")
+                            or "1.2")
+        except ValueError:
+            seconds = 1.2
+        self._show_system_screen("shutdown", seconds)
 
     def blit(self, img=None):
         if not self.term:
@@ -471,6 +603,9 @@ class Desk:
     # ── dispatch ────────────────────────────────────────────────────────────
     def dispatch_mouse(self, ev):
         self._last_input = time.time()
+        if self.bsod:
+            self._dismiss_bsod()
+            return
         if ev.press or ev.wheel:
             self._hover_since = self._last_input
             self._hide_tooltip()
@@ -543,6 +678,9 @@ class Desk:
         self._last_input = time.time()
         self._hover_since = self._last_input
         self._hide_tooltip()
+        if self.bsod:
+            self._dismiss_bsod()
+            return
         if self.menus.active:
             self.menus.on_key(ev)
             return
@@ -582,6 +720,8 @@ class Desk:
             self.shell.on_key(ev)
 
     def dispatch_paste(self, text):
+        if self.bsod:
+            return
         if self.menus.active:
             return
         win = self.wm.active
@@ -657,6 +797,12 @@ class Desk:
         except Exception:
             pass
         self.play_sound("startup")
+        try:
+            seconds = float(os.environ.get("KILIX_STARTUP_SCREEN_SECONDS")
+                            or "1.2")
+        except ValueError:
+            seconds = 1.2
+        self._show_system_screen("startup", seconds)
         self._first_run_help()
         last_blink = time.time()
         self._last_blit = 0.0
@@ -741,6 +887,13 @@ class Desk:
 
 def _scene(desk, name):
     import apps
+    if name in ("startup", "shutdown"):
+        desk.fb = desk._system_screen(name)
+        desk.dirty = False
+        return
+    if name == "bsod":
+        desk.show_bsod()
+        return
     if name in ("filemgr", "all"):
         apps.open(desk, "filemgr", KILIX_HOME)
     if name in ("notepad", "all"):
@@ -780,7 +933,8 @@ def main():
                     help="render offscreen to PNG and exit (no terminal)")
     ap.add_argument("--scene", default="desktop",
                     choices=["desktop", "start", "filemgr", "notepad",
-                             "settings", "dialog", "launcher", "menu", "all"])
+                             "settings", "dialog", "launcher", "menu",
+                             "startup", "shutdown", "bsod", "all"])
     ap.add_argument("--size", default="1024x768",
                     help="screenshot size WxH")
     a = ap.parse_args()
