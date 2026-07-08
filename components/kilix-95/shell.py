@@ -551,7 +551,7 @@ class Shell:
         if vbox.is_virtualbox_argv(argv):
             self.open_x11_tab(argv, name, cwd=cwd, fill=(mode == "fullscreen"),
                               size=self.desk.size() if mode == "fullscreen"
-                              else None)
+                              else None, refit_windows=True)
         elif mode == "run":
             self.open_x11_tab(argv, name, cwd=cwd)
         elif mode == "window":
@@ -604,13 +604,16 @@ class Shell:
                             title, "--cwd", cwd or os.path.expanduser("~"), "--"]
                            + argv)
 
-    def open_x11_tab(self, argv, title, cwd=None, fill=False, size=None):
+    def open_x11_tab(self, argv, title, cwd=None, fill=False, size=None,
+                     refit_windows=False):
         run = [os.path.join(KILIX_HOME, "kilix"), "run"]
         if size:
             w, h = size
             run += ["--size", f"{int(w)}x{int(h)}"]
         if fill:
             run.append("--fill")
+        if refit_windows:
+            run.append("--refit-windows")
         return self._tab(run + list(argv), title, cwd)
 
     def _popen(self, argv, cwd=None):
@@ -676,10 +679,10 @@ class Shell:
     def open_browser(self, which="firefox", mode=None, url=None):
         """Launch a web browser from the desktop.
 
-        Firefox opens in a desktop window by default — its GUI runs under
-        software rendering (e.g. in a VM). Chromium opens in a tab by default,
-        drawn by the headless `kilix browse` engine, because its GUI crashes
-        under software rendering. mode overrides: "window", "tab", "fullscreen".
+        Firefox opens in a filled kilix-run tab by default so it stays inside
+        the terminal pane. Chromium opens in a tab by default, drawn by the
+        headless `kilix browse` engine, because its GUI crashes under software
+        rendering. mode overrides: "window", "tab", "fullscreen".
         """
         url = url or self.BROWSER_HOME
         if which == "chromium":
@@ -702,11 +705,10 @@ class Shell:
             wm.msgbox(self.desk, "Firefox", "Firefox is not installed.",
                       icon="error")
             return
-        mode = mode or "window"
+        mode = mode or "tab"
         argv = [ff, "--no-remote", url]
         if mode == "tab":
-            self._tab([os.path.join(KILIX_HOME, "kilix"), "run"] + argv,
-                      "Firefox", None)
+            self.open_x11_tab(argv, "Firefox", fill=True)
         else:                               # window / fullscreen
             self._browser_window(argv, "Firefox", mode)
 
@@ -784,7 +786,8 @@ class Shell:
         title = vbox.vm_title(path)
         return self.open_x11_tab(vbox.vm_argv(path, fullscreen=fullscreen),
                                  title, fill=fullscreen,
-                                 size=self.desk.size() if fullscreen else None)
+                                 size=self.desk.size() if fullscreen else None,
+                                 refit_windows=True)
 
     def game_menu_items(self):
         """Start ▸ Programs ▸ Games, built from the games.py registry."""

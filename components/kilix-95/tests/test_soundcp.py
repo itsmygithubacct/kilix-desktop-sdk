@@ -70,7 +70,10 @@ assert sounds.play("startup", volume=90) is False
 win._scheme_changed(sounds.DEFAULT_SCHEME)
 win._apply()
 assert sounds.current_scheme() == {}
-assert all(it[0] == "soundcp" for it in win.events_lb.items)
+marks = {it[2]: it[0] for it in win.events_lb.items}
+assert marks["startup"] == "soundcp"
+assert marks["asterisk"] is None
+assert marks["minimize"] is None
 
 # ── the XP built-in scheme resolves default cues from the XP flavor cache ────
 win._scheme_changed(sounds.XP_SCHEME)

@@ -119,6 +119,7 @@ def main():
     assert vb_seen["title"] == "Oracle VM VirtualBox", vb_seen
     assert vb_seen["kw"]["fill"] is True, vb_seen
     assert vb_seen["kw"]["size"] == desk.size(), vb_seen
+    assert vb_seen["kw"]["refit_windows"] is True, vb_seen
     desk.menus.close_all()
 
     # with nothing discovered, the menu looks exactly as before

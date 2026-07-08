@@ -310,7 +310,8 @@ def virtualbox_launches_in_run_tab():
     xdgapps.launch(sh, entry)
     assert sh.seen == {"argv": ["VirtualBox"],
                        "title": "Oracle VM VirtualBox",
-                       "kw": {"cwd": None, "fill": False, "size": None}}
+                       "kw": {"cwd": None, "fill": False, "size": None,
+                              "refit_windows": True}}
 
     vm = {"id": "virtualboxvm.desktop", "name": "VirtualBox VM",
           "exec": "VirtualBoxVM --startvm sample", "terminal": False,
@@ -319,7 +320,8 @@ def virtualbox_launches_in_run_tab():
     assert sh.seen["argv"] == ["VirtualBoxVM", "--startvm", "sample",
                                "--fullscreen"]
     assert sh.seen["kw"] == {"cwd": "/vms", "fill": True,
-                             "size": (1024, 768)}
+                             "size": (1024, 768),
+                             "refit_windows": True}
 
 
 normal_app_and_field_codes()

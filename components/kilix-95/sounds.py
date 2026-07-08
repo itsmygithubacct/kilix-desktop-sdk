@@ -379,8 +379,9 @@ NO_SOUNDS = "No Sounds"                                  # all silent
 _BUILTIN_SCHEMES = {DEFAULT_SCHEME: "95", XP_SCHEME: "xp"}
 
 # Events with NO cue by default — silent unless the user assigns one in
-# Settings ▸ Sounds. (Minimize firing on every window minimize got noisy.)
-DEFAULT_SILENT = {"minimize"}
+# Settings > Sounds. Minimize fires often, and Default Beep is the generic
+# system bell path, so both should stay quiet out of the box.
+DEFAULT_SILENT = {"asterisk", "minimize"}
 
 _active = None                                           # dict: event_id -> path|None (overrides only)
 _active_name = DEFAULT_SCHEME
@@ -410,10 +411,16 @@ def scheme_default_path(event_id, scheme=None, generate=False):
     return ensure(event_id, fl) if generate else path_for(event_id, fl)
 
 
+def event_default_path(event_id, scheme=None, generate=False):
+    if event_id in DEFAULT_SILENT:
+        return None
+    return scheme_default_path(event_id, scheme, generate)
+
+
 def events(generate=True):
-    """[(event_id, human label, default built-in wav path)] in display order.
+    """[(event_id, human label, default sound path)] in display order.
     generate=False lists cue paths without synthesizing (for UI enumeration)."""
-    return [(eid, label, scheme_default_path(eid, generate=generate))
+    return [(eid, label, event_default_path(eid, generate=generate))
             for eid, label in _EVENTS]
 
 
@@ -662,9 +669,7 @@ def _resolve(event_id):
     _ensure_loaded()
     if event_id in _active:
         return _active[event_id]                         # path or None (silent)
-    if event_id in DEFAULT_SILENT:
-        return None                                      # off by default (assignable)
-    return ensure(event_id, _builtin_flavor())           # default built-in wav
+    return event_default_path(event_id, _builtin_flavor(), generate=True)
 
 
 def play(event_id, volume=100, muted=False):

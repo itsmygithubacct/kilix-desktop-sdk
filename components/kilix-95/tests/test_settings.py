@@ -130,6 +130,8 @@ with conf("# empty-ish\n") as path:
     import apps
     apps.open(d, "settings", None)
     win = H.find_window(d, "SettingsWin")
+    kind, audio = win.fields["enable_audio_bell"]
+    assert not audio.checked, "Audio bell should default off"
     kind, wd = win.fields["font_size"]
 
     win._font_size_adjust(settings.FONT_SIZE_STEP)

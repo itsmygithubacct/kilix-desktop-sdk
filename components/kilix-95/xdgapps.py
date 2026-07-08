@@ -313,7 +313,8 @@ def launch(shell, entry, mode="tab"):
         shell.open_x11_tab(argv, name, cwd=entry.get("workdir") or None,
                            fill=(mode == "fullscreen"),
                            size=shell.desk.size() if mode == "fullscreen"
-                           else None)
+                           else None,
+                           refit_windows=True)
         return
     if mode in ("window", "fullscreen"):
         try:                               # malformed Exec must not kill the desktop

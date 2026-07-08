@@ -98,8 +98,11 @@ labels = {eid: label for eid, label, _ in evs}
 assert labels["error"] == "Critical Stop"
 assert labels["asterisk"] == "Default Beep"
 assert labels["recycle_empty"] == "Empty Recycle Bin"
-for eid, _label, dwav in evs:                             # every default resolves
-    assert dwav and os.path.isfile(dwav), eid
+for eid, _label, dwav in evs:
+    if eid in sounds.DEFAULT_SILENT:
+        assert dwav is None, eid
+    else:
+        assert dwav and os.path.isfile(dwav), eid
 
 
 # ── built-in schemes resolve to their matching flavor cache ─────────────────
@@ -112,13 +115,17 @@ assert sounds.scheme_default_path("startup", sounds.DEFAULT_SCHEME) == \
     sounds.path_for("startup", "95")
 assert sounds.scheme_default_path("startup", sounds.XP_SCHEME) == \
     sounds.path_for("startup", "xp")
+assert sounds.event_default_path("asterisk", sounds.DEFAULT_SCHEME) is None
 legacy = os.path.join(sounds._data_dir(), "startup.wav")
 assert sounds._sanitize({"error": legacy})["error"] == \
     sounds.path_for("startup", "95")
 sounds.load_scheme(sounds.XP_SCHEME)
 assert sounds.current_scheme() == {}
 for eid, _label, dwav in sounds.events(generate=False):
-    assert dwav == sounds.path_for(eid, "xp"), eid
+    if eid in sounds.DEFAULT_SILENT:
+        assert dwav is None, eid
+    else:
+        assert dwav == sounds.path_for(eid, "xp"), eid
 sounds.load_scheme(sounds.DEFAULT_SCHEME)
 
 
@@ -156,6 +163,10 @@ t0 = time.time()
 assert sounds.play("startup", volume=90) is False        # bound to silence
 assert sounds.play("error", volume=90) is False
 assert time.time() - t0 < 0.5                            # never spawned/blocked
+
+# Default Beep is the system bell path, and is silent in built-in schemes.
+sounds.load_scheme(sounds.DEFAULT_SCHEME)
+assert sounds.play("asterisk", volume=90) is False
 
 
 # ── preview() honors mute / missing file / KILIX_NO_SOUND, never raises ──────

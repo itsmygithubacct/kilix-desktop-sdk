@@ -81,7 +81,7 @@ class SoundCP(wm.Window):
         Never synthesizes — warm() fills the cue file off-thread."""
         if eid in self.work:
             return self.work[eid]
-        return sounds.scheme_default_path(eid, self.scheme)
+        return sounds.event_default_path(eid, self.scheme)
 
     def _current_path(self):
         i = self.snd_dd.index

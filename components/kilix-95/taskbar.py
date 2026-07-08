@@ -43,7 +43,7 @@ class Taskbar:
         return [
             ("show_desktop", "Show Desktop", self._show_desktop),
             ("browser", "Web Browser",
-             lambda: shell.open_browser("firefox", "window")),
+             lambda: shell.open_browser("firefox")),
             ("folder_open", "File Manager",
              lambda: shell.open_app("filemgr")),
         ]
@@ -465,12 +465,12 @@ class Taskbar:
                 MI("Terminal", icon="terminal", action=shell.open_terminal),
                 MI("Mux Terminal", icon="mux", action=shell.open_mux_terminal),
                 MI("Web Browser", icon="browser",
-                   action=lambda: shell.open_browser("firefox", "window"),
+                   action=lambda: shell.open_browser("firefox"),
                    context=[
-                       MI("Open in Window",
-                          action=lambda: shell.open_browser("firefox", "window")),
                        MI("Open in Tab",
                           action=lambda: shell.open_browser("firefox", "tab")),
+                       MI("Open in Window",
+                          action=lambda: shell.open_browser("firefox", "window")),
                        MI("Open Fullscreen",
                           action=lambda: shell.open_browser("firefox", "fullscreen")),
                    ]),

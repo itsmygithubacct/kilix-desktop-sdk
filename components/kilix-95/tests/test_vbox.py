@@ -49,7 +49,7 @@ def shell_opens_vbox_file_in_kilix_run_tab():
     d.shell.open_path(path)
     assert os.path.basename(seen["argv"][0]) == "kilix", seen
     assert seen["argv"][1:] == [
-        "run", "VirtualBoxVM", "--startvm",
+        "run", "--refit-windows", "VirtualBoxVM", "--startvm",
         "{12345678-1234-1234-1234-123456789abc}",
     ], seen
     assert seen["title"] == "sample vm"
@@ -58,7 +58,7 @@ def shell_opens_vbox_file_in_kilix_run_tab():
     seen.clear()
     d.shell.open_virtualbox_vm(path, fullscreen=True)
     assert seen["argv"][1:] == [
-        "run", "--size", "1280x720", "--fill",
+        "run", "--size", "1280x720", "--fill", "--refit-windows",
         "VirtualBoxVM", "--startvm",
         "{12345678-1234-1234-1234-123456789abc}",
         "--fullscreen",

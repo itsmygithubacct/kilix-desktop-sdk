@@ -1,5 +1,7 @@
 """Shell.open_in_xpane: an app opens as a desktop window via XPane, and an
 XPane/Xvfb failure shows an error dialog instead of crashing the desktop."""
+import os
+
 import harness as H
 import wm
 from apps import xpane
@@ -61,6 +63,24 @@ def failure_shows_msgbox():
     assert not any(type(w).__name__ == "XPane" for w in d.wm.windows)
 
 
+def firefox_defaults_to_filled_run_tab():
+    d = H.make_desk()
+    seen = {}
+    d.shell._first_on_path = lambda cands: "/usr/bin/firefox-esr"
+    d.shell._tab = lambda argv, title, cwd=None: seen.update(
+        argv=argv, title=title, cwd=cwd) or True
+
+    d.shell.open_browser("firefox")
+
+    assert os.path.basename(seen["argv"][0]) == "kilix", seen
+    assert seen["argv"][1:] == [
+        "run", "--fill", "/usr/bin/firefox-esr", "--no-remote",
+        d.shell.BROWSER_HOME,
+    ], seen
+    assert seen["title"] == "Firefox"
+
+
 opens_window()
 failure_shows_msgbox()
+firefox_defaults_to_filled_run_tab()
 print("ok")
