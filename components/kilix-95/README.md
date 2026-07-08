@@ -75,9 +75,10 @@ set `KILIX_DESKTOP_FLAVOR=xp` or `KILIX_DESKTOP_FLAVOR=95`.
 
 Edits `$KITTY_CONFIG_DIRECTORY/kitty.conf` (i.e. `config/kitty.conf`).
 Form tabs rewrite only the managed keys (last occurrence, preserving the
-rest of the file); the `kitty.conf` tab is the raw file. Apply reloads the
-running kilix live via `kitten @ action load_config_file`, falling back to
-`SIGUSR1` at `$KITTY_PID`.
+rest of the file); the `kitty.conf` tab is the raw file. The Appearance tab
+includes `Font size` controls for the same terminal scale changed by
+`kilix screen-size`. Apply reloads the running kilix live via
+`kitten @ action load_config_file`, falling back to `SIGUSR1` at `$KITTY_PID`.
 
 ## Testing without a terminal
 

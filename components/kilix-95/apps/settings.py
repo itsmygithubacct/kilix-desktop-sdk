@@ -19,6 +19,10 @@ import widgets as W
 import wm
 
 MARKER = "# ── kilix desktop settings ──"
+FONT_SIZE_DEFAULT = 11.0
+FONT_SIZE_STEP = 2.0
+FONT_SIZE_MIN = 4.0
+FONT_SIZE_MAX = 110.0
 
 # (key, label, kind, extra) — kind: text | choice | bool
 APPEARANCE = [
@@ -70,6 +74,13 @@ def set_key(text, key, value):
     return text.rstrip("\n") + "\n" + line + "\n"
 
 
+def _fmt_font_size(value):
+    value = max(FONT_SIZE_MIN, min(FONT_SIZE_MAX, float(value)))
+    if value == int(value):
+        return str(int(value))
+    return f"{value:.2f}".rstrip("0").rstrip(".")
+
+
 class _Swatch(W.Widget):
     """Live color preview next to a #rrggbb text field."""
 
@@ -114,7 +125,16 @@ class SettingsWin(wm.Window):
                     wd = self.add(W.Checkbox(200, y + 3, "enabled"))
                     wd.default_val = extra
                 else:
-                    wd = self.add(W.TextField(200, y, 180))
+                    field_w = 80 if key == "font_size" else 180
+                    wd = self.add(W.TextField(200, y, field_w))
+                    if key == "font_size":
+                        for bx, bw, txt, cb in (
+                            (288, 28, "-", lambda: self._font_size_adjust(-FONT_SIZE_STEP)),
+                            (322, 28, "+", lambda: self._font_size_adjust(FONT_SIZE_STEP)),
+                            (356, 54, "Reset", self._font_size_reset),
+                        ):
+                            btn = self.add(W.Button(bx, y, bw, 21, txt, cb=cb))
+                            self.panels[tab_i].append(btn)
                     if kind == "color":
                         sw = self.add(_Swatch(388, y, wd))
                         self.panels[tab_i].append(sw)
@@ -213,6 +233,27 @@ class SettingsWin(wm.Window):
                 if not v or v == (cur or ""):
                     continue
             self.buffer = set_key(self.buffer, key, v)
+
+    # font size controls ---------------------------------------------------
+    def _font_size_field(self):
+        return self.fields["font_size"][1]
+
+    def _font_size_current(self):
+        raw = self._font_size_field().text.strip()
+        try:
+            return float(raw) if raw else FONT_SIZE_DEFAULT
+        except ValueError:
+            return FONT_SIZE_DEFAULT
+
+    def _font_size_apply_value(self, value):
+        self._font_size_field().set(_fmt_font_size(value))
+        self._apply()
+
+    def _font_size_adjust(self, delta):
+        self._font_size_apply_value(self._font_size_current() + delta)
+
+    def _font_size_reset(self):
+        self._font_size_apply_value(FONT_SIZE_DEFAULT)
 
     # apply ----------------------------------------------------------------
     def _apply(self, close=False):

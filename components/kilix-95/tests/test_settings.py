@@ -124,4 +124,29 @@ with conf(b"# note: caf\xe9 sync\nfont_size 13\n", binary=True) as path:
     assert wd.text == "13", "F52: config was not parsed after tolerant decode"
 
 
+# ── font-size buttons: same setting as the CLI / kitty shortcut path ───────
+with conf("# empty-ish\n") as path:
+    d = H.make_desk()
+    import apps
+    apps.open(d, "settings", None)
+    win = H.find_window(d, "SettingsWin")
+    kind, wd = win.fields["font_size"]
+
+    win._font_size_adjust(settings.FONT_SIZE_STEP)
+    assert wd.text == "13", "font size + button did not start from default 11"
+    after = read(path)
+    assert settings.get_key(after, "font_size") == "13"
+    assert "# empty-ish" in after
+
+    win._font_size_adjust(-settings.FONT_SIZE_STEP)
+    assert settings.get_key(read(path), "font_size") == "11"
+
+    wd.set("not-a-number")
+    win._font_size_adjust(settings.FONT_SIZE_STEP)
+    assert wd.text == "13", "invalid font size should fall back to default"
+
+    win._font_size_reset()
+    assert settings.get_key(read(path), "font_size") == "11"
+
+
 print("ok")
