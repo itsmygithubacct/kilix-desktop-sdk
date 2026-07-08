@@ -148,7 +148,8 @@ class Notepad(wm.Window):
             "About Notepad…", icon="notepad",
             action=lambda: wm.msgbox(
                 self.desk, "About Notepad",
-                "kilix 95 Notepad\nCtrl+S save · Ctrl+O open · Ctrl+N new\n"
+                f"{T.PRODUCT_NAME} Notepad\n"
+                "Ctrl+S save · Ctrl+O open · Ctrl+N new\n"
                 "Copy lands on the system clipboard via OSC 52;\n"
                 "paste with kilix's paste (Ctrl+Shift+V).",
                 icon="notepad"))]

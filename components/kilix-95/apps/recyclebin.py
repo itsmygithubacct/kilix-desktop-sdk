@@ -98,7 +98,7 @@ class RecycleBin(wm.Window):
         return [W.MenuItem("About the Recycle Bin…", icon="recyclebin_full",
                            action=lambda: wm.msgbox(
                                self.desk, "About the Recycle Bin",
-                               "kilix 95 Recycle Bin\n"
+                               f"{T.PRODUCT_NAME} Recycle Bin\n"
                                "Restore deleted files to where they came\n"
                                "from, or empty the bin to reclaim space.",
                                icon="recyclebin_full"))]

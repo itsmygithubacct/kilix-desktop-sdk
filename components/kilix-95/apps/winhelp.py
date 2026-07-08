@@ -13,85 +13,89 @@ LIST_W = 158
 
 # ── the book: key -> (title, [blocks]); block = (kind, text) ─────────────────
 # kind: "h" heading (bold), "p" paragraph (wrapped), "b" bullet item.
-BOOK = [
-    ("welcome", "Welcome to kilix 95", [
-        ("h", "Welcome to kilix 95"),
-        ("p", "kilix 95 is a pixel desktop in the classic style: a teal "
-              "wallpaper, icons you double-click, draggable windows with "
-              "raised bevels, and a Start button in the corner."),
-        ("p", "Pick a topic on the left to learn your way around. Use Back "
-              "and Forward to retrace the topics you have read."),
-        ("b", "Desktop basics — icons, selection, the taskbar."),
-        ("b", "Using the Start menu — launch programs and games."),
-        ("b", "Managing windows — move, size, minimize, close."),
-        ("b", "Keyboard shortcuts — do it all from the keys."),
-    ]),
-    ("desktop", "Desktop basics", [
-        ("h", "Desktop basics"),
-        ("p", "The desktop is the teal surface behind every window. It holds "
-              "shortcut icons; double-click one to open it."),
-        ("b", "Single-click selects an icon; double-click opens it."),
-        ("b", "Right-click the desktop for New, Refresh and other commands."),
-        ("b", "Drag a rubber-band box to select several icons at once."),
-        ("p", "The taskbar along the bottom shows a button for every open "
-              "window. Click a button to raise that window or to restore it "
-              "if it has been minimized."),
-    ]),
-    ("startmenu", "Using the Start menu", [
-        ("h", "Using the Start menu"),
-        ("p", "Click Start, or press Ctrl+Esc, to open the Start menu — the "
-              "one place that reaches everything on the system."),
-        ("b", "Programs holds the accessories and a Games submenu."),
-        ("b", "Documents lists files you opened recently."),
-        ("b", "Settings adjusts the desktop's look and behaviour."),
-        ("b", "Run launches a command; Shut Down ends the session."),
-    ]),
-    ("windows", "Managing windows", [
-        ("h", "Managing windows"),
-        ("p", "Every program runs in a window framed by a title bar and a "
-              "raised border."),
-        ("b", "Drag the title bar to move a window."),
-        ("b", "Drag an edge or corner to resize it."),
-        ("b", "The title-bar buttons minimize, maximize and close."),
-        ("b", "Double-click the title bar to maximize or restore."),
-        ("p", "The active window has a navy title bar; click any window to "
-              "bring it to the front and make it active."),
-    ]),
-    ("keys", "Keyboard shortcuts", [
-        ("h", "Keyboard shortcuts"),
-        ("p", "These work anywhere on the desktop:"),
-        ("b", "Ctrl+Esc — open the Start menu."),
-        ("b", "Alt+Tab — switch between open windows."),
-        ("b", "Alt+F4 — close the active window."),
-        ("b", "Ctrl+Alt+Q — quit the kilix 95 desktop."),
-        ("p", "Inside a window:"),
-        ("b", "Tab and Shift+Tab — move between controls."),
-        ("b", "Enter — activate the default button or selected item."),
-        ("b", "Escape — cancel a dialog or close a menu."),
-    ]),
-    ("accessories", "The accessories", [
-        ("h", "The accessories"),
-        ("p", "kilix 95 ships a set of small programs, found under Start, "
-              "then Programs, then Accessories."),
-        ("b", "Calculator — a standard arithmetic calculator with memory."),
-        ("b", "Paint — a bitmap editor for original pixel art."),
-        ("b", "Minesweeper — clear the field without hitting a mine."),
-        ("b", "Solitaire — the classic patience card game."),
-        ("b", "Character Map — browse and copy special characters."),
-        ("p", "Open any of them and press F1, or read this Help book, to "
-              "learn more."),
-    ]),
-    ("tips", "Tips", [
-        ("h", "Tips of the day"),
-        ("b", "Right-click almost anything for a menu of what you can do."),
-        ("b", "You can drag files onto the desktop to make shortcuts."),
-        ("b", "Minimized windows are not closed — their taskbar button "
-              "brings them right back."),
-        ("b", "Hold Ctrl while clicking icons to select several at once."),
-        ("b", "The address bar in the File Manager accepts a typed path."),
-    ]),
-]
-_BLOCKS = {k: b for k, _, b in BOOK}
+def build_book():
+    product = T.PRODUCT_NAME
+    return [
+        ("welcome", f"Welcome to {product}", [
+            ("h", f"Welcome to {product}"),
+            ("p", f"{product} is a pixel desktop in the {T.STYLE_NAME} classic: "
+                  "wallpaper, icons you double-click, draggable windows, and a "
+                  "Start button in the corner."),
+            ("p", "Pick a topic on the left to learn your way around. Use Back "
+                  "and Forward to retrace the topics you have read."),
+            ("b", "Desktop basics — icons, selection, the taskbar."),
+            ("b", "Using the Start menu — launch programs and games."),
+            ("b", "Managing windows — move, size, minimize, close."),
+            ("b", "Keyboard shortcuts — do it all from the keys."),
+        ]),
+        ("desktop", "Desktop basics", [
+            ("h", "Desktop basics"),
+            ("p", "The desktop is the surface behind every window. It holds "
+                  "shortcut icons; double-click one to open it."),
+            ("b", "Single-click selects an icon; double-click opens it."),
+            ("b", "Right-click the desktop for New, Refresh and other commands."),
+            ("b", "Drag a rubber-band box to select several icons at once."),
+            ("p", "The taskbar along the bottom shows a button for every open "
+                  "window. Click a button to raise that window or to restore it "
+                  "if it has been minimized."),
+        ]),
+        ("startmenu", "Using the Start menu", [
+            ("h", "Using the Start menu"),
+            ("p", "Click Start, or press Ctrl+Esc, to open the Start menu — the "
+                  "one place that reaches everything on the system."),
+            ("b", "Programs holds the accessories and a Games submenu."),
+            ("b", "Documents lists files you opened recently."),
+            ("b", "Settings adjusts the desktop's look and behaviour."),
+            ("b", "Run launches a command; Shut Down ends the session."),
+        ]),
+        ("windows", "Managing windows", [
+            ("h", "Managing windows"),
+            ("p", "Every program runs in a window framed by a title bar and a "
+                  "raised border."),
+            ("b", "Drag the title bar to move a window."),
+            ("b", "Drag an edge or corner to resize it."),
+            ("b", "The title-bar buttons minimize, maximize and close."),
+            ("b", "Double-click the title bar to maximize or restore."),
+            ("p", "The active window has a highlighted title bar; click any "
+                  "window to bring it to the front and make it active."),
+        ]),
+        ("keys", "Keyboard shortcuts", [
+            ("h", "Keyboard shortcuts"),
+            ("p", "These work anywhere on the desktop:"),
+            ("b", "Ctrl+Esc — open the Start menu."),
+            ("b", "Alt+Tab — switch between open windows."),
+            ("b", "Alt+F4 — close the active window."),
+            ("b", f"Ctrl+Alt+Q — quit the {product} desktop."),
+            ("p", "Inside a window:"),
+            ("b", "Tab and Shift+Tab — move between controls."),
+            ("b", "Enter — activate the default button or selected item."),
+            ("b", "Escape — cancel a dialog or close a menu."),
+        ]),
+        ("accessories", "The accessories", [
+            ("h", "The accessories"),
+            ("p", f"{product} ships a set of small programs, found under Start, "
+                  "then Programs, then Accessories."),
+            ("b", "Calculator — a standard arithmetic calculator with memory."),
+            ("b", "Paint — a bitmap editor for original pixel art."),
+            ("b", "Minesweeper — clear the field without hitting a mine."),
+            ("b", "Solitaire — the classic patience card game."),
+            ("b", "Character Map — browse and copy special characters."),
+            ("p", "Open any of them and press F1, or read this Help book, to "
+                  "learn more."),
+        ]),
+        ("tips", "Tips", [
+            ("h", "Tips of the day"),
+            ("b", "Right-click almost anything for a menu of what you can do."),
+            ("b", "You can drag files onto the desktop to make shortcuts."),
+            ("b", "Minimized windows are not closed — their taskbar button "
+                  "brings them right back."),
+            ("b", "Hold Ctrl while clicking icons to select several at once."),
+            ("b", "The address bar in the File Manager accepts a typed path."),
+        ]),
+    ]
+
+
+BOOK = build_book()
 
 
 class _RichText(W.Widget):
@@ -210,7 +214,10 @@ class _RichText(W.Widget):
 
 class Help(wm.Window):
     def __init__(self, desk, arg=None):
-        super().__init__(desk, "Help Topics - kilix 95", 560, 400, icon="help")
+        self.book = build_book()
+        self.blocks = {k: b for k, _, b in self.book}
+        super().__init__(desk, f"Help Topics - {T.PRODUCT_NAME}", 560, 400,
+                         icon="help")
         self.min_w, self.min_h = 380, 240
         self.hist, self.hist_i = [], -1
         cw, ch = self.client_size()
@@ -224,9 +231,10 @@ class Help(wm.Window):
                                          on_select=self._pick,
                                          on_activate=self._pick))
         self.body = self.add(_RichText(LIST_W + 6, gy, cw - LIST_W - 8, gh))
-        self.topics.set_items([(None, title, key) for key, title, _ in BOOK])
+        self.topics.set_items([(None, title, key)
+                               for key, title, _ in self.book])
         self.set_focus(self.topics)
-        self._navigate(BOOK[0][0])
+        self._navigate(self.book[0][0])
 
     def on_resize(self):
         cw, ch = self.client_size()
@@ -258,7 +266,7 @@ class Help(wm.Window):
 
     def _show(self, key):
         self.topic = key
-        self.body.set_blocks(_BLOCKS[key])
+        self.body.set_blocks(self.blocks[key])
         for i, it in enumerate(self.topics.items):
             if it[2] == key:
                 self.topics.sel = i

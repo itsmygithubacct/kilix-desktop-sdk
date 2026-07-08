@@ -497,6 +497,6 @@ class Solitaire(wm.Window):
             "About Solitaire…", icon="cards",
             action=lambda: wm.msgbox(
                 self.desk, "About Solitaire",
-                "kilix 95 Solitaire\nKlondike, deal one.\n"
+                f"{T.PRODUCT_NAME} Solitaire\nKlondike, deal one.\n"
                 "Click the stock to deal; drag runs between piles;\n"
                 "double-click to send a card home.", icon="cards"))]

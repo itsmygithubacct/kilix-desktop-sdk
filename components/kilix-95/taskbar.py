@@ -2,7 +2,7 @@
 
 Start button + menu, one button per open window (stable launch order), and
 a sunken clock well. The Start menu is a MenuHost popup with the classic
-vertical "kilix 95" sidebar; its content is assembled from the shell's
+vertical flavor sidebar; its content is assembled from the shell's
 built-in apps and the user's launchers.
 """
 import calendar
@@ -34,6 +34,9 @@ class Taskbar:
         sw, sh = self.desk.size()
         return 0, sh - T.TASKBAR_H, sw, sh - 1
 
+    def _start_w(self):
+        return getattr(T, "START_W", START_W)
+
     # quick-launch toolbar (right of Start) --------------------------------
     def _ql_defs(self):
         shell = self.desk.shell
@@ -47,7 +50,7 @@ class Taskbar:
 
     def _ql_rect(self):
         x0, y0, x1, y1 = self.rect()
-        lx = x0 + 2 + START_W + 6
+        lx = x0 + 2 + self._start_w() + 6
         return lx, y0 + 4, lx + len(self._ql_defs()) * QL_BTN + 3, y1 - 3
 
     def _ql_buttons(self):
@@ -118,19 +121,13 @@ class Taskbar:
     # drawing --------------------------------------------------------------
     def draw(self, fb, d):
         x0, y0, x1, y1 = self.rect()
-        d.rectangle([x0, y0, x1, y1], fill=T.FACE)
-        d.line([(x0, y0), (x1, y0)], fill=T.LIGHT)   # raised top edge
+        T.taskbar(d, x0, y0, x1, y1)
         # Start
-        sb = (x0 + 2, y0 + 4, x0 + 2 + START_W - 1, y1 - 3)
-        if self.menu_open >= 0:
-            T.pressed(d, *sb)
-            off = 1
-        else:
-            T.raised(d, *sb)
-            off = 0
-        icons.paint(fb, "flame", sb[0] + 4 + off, sb[1] + 2 + off, 16)
-        d.text((sb[0] + 24 + off, sb[1] + 3 + off), "Start", font=T.BOLD,
-               fill=T.TEXT)
+        sb = (x0 + 2, y0 + 4, x0 + 2 + self._start_w() - 1, y1 - 3)
+        off, fg = T.start_button(d, *sb, is_pressed=self.menu_open >= 0)
+        icons.paint(fb, T.START_ICON, sb[0] + 4 + off, sb[1] + 2 + off, 16)
+        d.text((sb[0] + 24 + off, sb[1] + 3 + off), T.START_LABEL,
+               font=T.BOLD, fill=fg)
         # quick launch
         self._draw_quicklaunch(fb, d)
         # task buttons
@@ -210,7 +207,7 @@ class Taskbar:
         if not gev.press:
             return True
         modal = self.desk.wm.modal_top()
-        if gev.btn == 1 and x0 + 2 <= gev.x < x0 + 2 + START_W:
+        if gev.btn == 1 and x0 + 2 <= gev.x < x0 + 2 + self._start_w():
             if modal:
                 self.desk.wm.activate(modal)
             else:
@@ -514,6 +511,9 @@ class Taskbar:
             MI("Display…", icon="display", action=shell.display_properties),
             MI("Sounds…", icon="soundcp",
                action=lambda: shell.open_app("soundcp")),
+            sub(),
+            MI("Desktop Flavor", icon="display",
+               submenu=shell.flavor_menu_items()),
         ]
         find_sub = [
             MI("Files or Folders…", icon="find",
@@ -538,7 +538,7 @@ class Taskbar:
         ]
         x0, y0, x1, y1 = self.rect()
         self.desk.menus.open(items, x0 + 2, y0, item_h=24,
-                             sidebar="kilix 95", bar=self, min_w=150)
+                             sidebar=T.START_SIDEBAR, bar=self, min_w=150)
         self.menu_open = 1
         self.invalidate()
 

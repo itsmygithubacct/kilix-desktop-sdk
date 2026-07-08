@@ -79,7 +79,7 @@ class DeskTerm(browse.Term):
         # every key event with its type; _norm_key drops the releases).
         self.write("\x1b[?1049h\x1b[2J\x1b[?25l\x1b[?7l\x1b[>15u"
                    "\x1b[?1003h\x1b[?1006h\x1b[?1016h\x1b[?2004h"
-                   "\x1b]2;kilix 95\x07")
+                   f"\x1b]2;{T.PRODUCT_NAME}\x07")
 
     def _parse_csi(self, params, final):
         # tag key events with the kitty event type (1 press, 2 repeat,
@@ -395,7 +395,7 @@ class Desk:
             root = "/dev/shm" if os.path.isdir("/dev/shm") \
                 and os.access("/dev/shm", os.W_OK) else None
             self._frame_dir = tempfile.mkdtemp(
-                prefix=f"tty-graphics-protocol-kilix95-{self.wid}-",
+                prefix=f"tty-graphics-protocol-{T.RUNTIME_ID}-{self.wid}-",
                 dir=root)
             os.chmod(self._frame_dir, 0o700)
         return os.path.join(self._frame_dir, f"{self.seq}.rgb")
@@ -407,7 +407,7 @@ class Desk:
         else:
             for i in range(8):
                 try:
-                    os.unlink(f"/dev/shm/tty-graphics-protocol-kilix95-"
+                    os.unlink(f"/dev/shm/tty-graphics-protocol-{T.RUNTIME_ID}-"
                               f"{self.wid}-{i}.rgb")
                 except OSError:
                     pass
@@ -619,7 +619,7 @@ class Desk:
 
     def _first_run_help(self):
         """First launch: open the Help book so a new user (e.g. a fresh
-        Plebian-OS boot into the kilix 95 desktop) gets oriented. A marker in
+        Plebian-OS boot into the pixel desktop) gets oriented. A marker in
         the persisted desktop state makes it pop exactly once."""
         if self.shell.state.get("help_shown"):
             return
@@ -746,7 +746,8 @@ def _scene(desk, name):
     if name in ("notepad", "all"):
         apps.open(desk, "notepad", None)
         np = desk.wm.windows[-1]
-        np.ta.set_text("kilix 95 — notepad self-test\n\nThe quick brown fox "
+        np.ta.set_text(f"{T.PRODUCT_NAME} — notepad self-test\n\n"
+                       "The quick brown fox "
                        "jumps over the lazy dog.\n0123456789\n")
         np.x, np.y = 90, 60
     if name in ("settings", "all"):

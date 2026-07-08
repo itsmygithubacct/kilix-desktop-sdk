@@ -191,7 +191,8 @@ class Paint(wm.Window):
             "About Paint…", icon="paint",
             action=lambda: wm.msgbox(
                 self.desk, "About Paint",
-                "kilix 95 Paint\nLeft-click draws with the foreground color,\n"
+                f"{T.PRODUCT_NAME} Paint\n"
+                "Left-click draws with the foreground color,\n"
                 "right-click with the background color.",
                 icon="paint"))]
 

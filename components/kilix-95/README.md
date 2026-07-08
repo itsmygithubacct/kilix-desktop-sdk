@@ -1,6 +1,7 @@
 # Kilix 95
 
-A Windows 95-style desktop rendered as **pixels** inside a Kilix pane.
+A Windows 95-style desktop rendered as **pixels** inside a Kilix pane, with an
+optional Windows XP-style flavor.
 
 The normal entry point is still:
 
@@ -35,7 +36,7 @@ apps, games registry, and tests live in this repository.
 | file | what |
 |---|---|
 | `main.py` | entry point: `Desk` (event loop, dispatch, blit), `--screenshot` test mode |
-| `theme.py` | Win95 palette, metrics, fonts, bevel primitives |
+| `theme.py` | flavor identity, Win95/XP palettes, metrics, fonts, bevel primitives |
 | `icons.py` | the icon set, drawn in code on a 16×16 grid (crisp at 16/32 px) |
 | `widgets.py` | toolkit: Button, TextField, TextArea, ListBox, IconGrid, Menu/MenuHost, TabBar, Dropdown, Scrollbar… |
 | `wm.py` | `Window` (chrome, sysbuttons) + `WM` (z-order, drags, modality) + `msgbox`/`inputbox` |
@@ -63,6 +64,12 @@ Path=~/                   ; optional working dir
 Icon=terminal             ; a name from icons.py
 X-Kilix-Open=tab          ; tab | window | run (X11 via kilix run) | browse
 ```
+
+## Desktop flavor
+
+Switch at runtime from Start -> Settings -> Desktop Flavor. The choice is saved
+in the desktop state file. For screenshots or first launch before state exists,
+set `KILIX_DESKTOP_FLAVOR=xp` or `KILIX_DESKTOP_FLAVOR=95`.
 
 ## Settings app
 

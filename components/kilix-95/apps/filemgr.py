@@ -195,7 +195,7 @@ class FileWindow(wm.Window):
         return [W.MenuItem("About File Manager…", icon="folder_open",
                            action=lambda: wm.msgbox(
                                self.desk, "About File Manager",
-                               "kilix 95 File Manager\n"
+                               f"{T.PRODUCT_NAME} File Manager\n"
                                "Browse, open, rename, delete —\n"
                                "and make desktop launchers from files.",
                                icon="folder_open"))]

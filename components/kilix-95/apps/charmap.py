@@ -134,7 +134,7 @@ class CharMap(wm.Window):
 
     def draw_client(self, d, img):
         cw, ch = self.client_size()
-        d.text((8, 6), "Font: DejaVu Sans (kilix 95)", font=T.FONT,
+        d.text((8, 6), f"Font: DejaVu Sans ({T.PRODUCT_NAME})", font=T.FONT,
                fill=T.TEXT)
         # magnified preview of the active glyph
         px = self.px

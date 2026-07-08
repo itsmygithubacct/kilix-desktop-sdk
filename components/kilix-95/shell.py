@@ -59,7 +59,8 @@ AUDIO_EXT = (".mp3", ".flac", ".ogg", ".oga", ".opus", ".wav", ".aiff",
              ".aif", ".aifc", ".m4a", ".aac", ".wma", ".m3u", ".m3u8",
              ".pls")
 
-WALL_COLORS = [("Teal (classic)", (0, 128, 128)), ("Navy", (0, 0, 128)),
+WALL_COLORS = [("Teal (classic)", (0, 128, 128)),
+               ("XP Blue", (58, 110, 165)), ("Navy", (0, 0, 128)),
                ("Black", (0, 0, 0)), ("Gray", (128, 128, 128)),
                ("Green", (0, 128, 0)), ("Plum", (128, 0, 128)),
                ("Maroon", (128, 0, 0)), ("Steel", (60, 90, 120))]
@@ -82,7 +83,8 @@ class Shell:
         self.dir = os.path.expanduser(self.dir)
         os.makedirs(self.dir, exist_ok=True)
         self.state_path = os.path.join(self.dir, ".state.json")
-        self.state = {"wall_color": list(T.DESKTOP), "wall_image": None,
+        self.state = {"flavor": T.flavor_name(),
+                      "wall_color": list(T.DESKTOP), "wall_image": None,
                       "wall_mode": "stretch", "recent": []}
         try:
             with open(self.state_path) as f:
@@ -91,6 +93,7 @@ class Shell:
                 self.state.update(loaded)
         except (OSError, ValueError):
             pass
+        self._load_flavor()
         self._wall = None             # cached composited wallpaper
         sw, sh = desk.size()
         self.grid = W.IconGrid(0, 0, sw, sh - T.TASKBAR_H,
@@ -100,6 +103,18 @@ class Shell:
         self.focus = None             # part of the window duck-type
         self.caret_on = False
         self.refresh()
+
+    def _load_flavor(self):
+        old_wall = tuple(T.DESKTOP)
+        requested = self.state.get("flavor", T.flavor_name())
+        T.apply_flavor(requested)
+        self.state["flavor"] = T.flavor_name()
+        wall = self.state.get("wall_color")
+        if not (isinstance(wall, list) and len(wall) == 3):
+            self.state["wall_color"] = list(T.DESKTOP)
+        elif tuple(wall) == old_wall and old_wall != T.DESKTOP:
+            self.state["wall_color"] = list(T.DESKTOP)
+        self.desk.fb = Image.new("RGB", self.desk.size(), T.DESKTOP)
 
     # window duck-type used by IconGrid
     def invalidate(self):
@@ -265,7 +280,8 @@ class Shell:
                 MI("Display…", icon="display", action=self.display_properties),
                 MI("Sounds…", icon="soundcp",
                    action=lambda: self.open_app("soundcp")),
-                MI("About kilix 95…", icon="flame", action=self.about_dialog),
+                MI(f"About {T.PRODUCT_NAME}…", icon="flame",
+                   action=self.about_dialog),
             ]
         self.desk.menus.open(items, ev.x, ev.y)
 
@@ -374,10 +390,37 @@ class Shell:
                 continue
             p = os.path.join(self.dir, n)
             spec = parse_launcher(p)
-            out.append(W.MenuItem(_menu_label(spec.get("Name") or n[:-8]),
-                                  icon=spec.get("Icon") or "exe",
-                                  action=lambda s=spec, p=p: self.launch(s, p)))
+            out.append(W.MenuItem(
+                _menu_label(spec.get("Name") or n[:-8]),
+                icon=spec.get("Icon") or "exe",
+                action=lambda s=spec, p=p: self.launch(s, p)))
         return out
+
+    def flavor_menu_items(self):
+        cur = T.flavor_name()
+        return [W.MenuItem(label, checked=(key == cur),
+                           action=lambda key=key: self.set_flavor(key))
+                for key, label in T.flavor_options()]
+
+    def set_flavor(self, flavor):
+        old = T.flavor_name()
+        old_wall = tuple(T.DESKTOP)
+        new = T.apply_flavor(flavor)
+        self.state["flavor"] = new
+        wall = self.state.get("wall_color")
+        if not (isinstance(wall, list) and len(wall) == 3) \
+                or tuple(wall) == old_wall:
+            self.state["wall_color"] = list(T.DESKTOP)
+        self._save_state()
+        self._wall = None
+        self.on_resize()
+        for win in self.desk.wm.windows:
+            win.surface = None
+            win.dirty = True
+        self.desk.fb = Image.new("RGB", self.desk.size(), T.DESKTOP)
+        self.desk.dirty = True
+        if old != new:
+            self.desk.play_sound("open")
 
     def create_launcher_dialog(self, prefill_cmd=None, edit_path=None):
         """The Create Launcher wizard (also edits existing launchers)."""
@@ -596,7 +639,7 @@ class Shell:
     def open_browser(self, which="firefox", mode=None, url=None):
         """Launch a web browser from the desktop.
 
-        Firefox opens in a Win95 desktop window by default — its GUI runs under
+        Firefox opens in a desktop window by default — its GUI runs under
         software rendering (e.g. in a VM). Chromium opens in a tab by default,
         drawn by the headless `kilix browse` engine, because its GUI crashes
         under software rendering. mode overrides: "window", "tab", "fullscreen".
@@ -786,7 +829,7 @@ class Shell:
         try:
             apps.open(self.desk, app, arg)
         except Exception as e:            # an app must never take the desk down
-            wm.msgbox(self.desk, "kilix 95", f"{app}: {e}", icon="error")
+            wm.msgbox(self.desk, T.PRODUCT_NAME, f"{app}: {e}", icon="error")
 
     def open_in_xpane(self, argv, title, icon="exe", cwd=None, app_size=None):
         """Open an X11 command (already-split argv) as a window ON the desktop,
@@ -827,7 +870,7 @@ class Shell:
 
     def shutdown_dialog(self):
         desk = self.desk
-        win = wm.Window(desk, "Shut Down kilix 95", 300, 250,
+        win = wm.Window(desk, f"Shut Down {T.PRODUCT_NAME}", 300, 250,
                         icon="shutdown", resizable=False, modal=True)
         cw, ch = win.client_size()
         win.add(W.Label(14, 12, "What do you want to do?"))
@@ -859,11 +902,11 @@ class Shell:
                                  "Shut Down")
 
     def _restart_desktop(self):
-        """Relaunch the kilix 95 desktop on a fresh process (loads updated
+        """Relaunch the desktop on a fresh process (loads updated
         code), then quit this one — the new tab takes over."""
         kilix = os.path.join(KILIX_HOME, "kilix")
         if self._tab(["env", "KILIX_IN_OVERLAY=1", kilix, "desktop"],
-                     "kilix 95"):
+                     T.PRODUCT_NAME):
             self.desk.quit()
 
     def _update_and_restart(self):
@@ -886,8 +929,8 @@ class Shell:
         return f'"{os.path.join(KILIX_HOME, "kilix")}" update'
 
     def about_dialog(self):
-        wm.msgbox(self.desk, "About kilix 95",
-                  "kilix 95\nA Windows 95-style desktop for kilix.\n\n"
+        wm.msgbox(self.desk, f"About {T.PRODUCT_NAME}",
+                  f"{T.PRODUCT_NAME}\nA {T.STYLE_NAME} desktop for kilix.\n\n"
                   "Rendered as pixels over the kitty graphics protocol.\n"
                   "All artwork drawn in-house — no Redmond bits inside.",
                   icon="flame")

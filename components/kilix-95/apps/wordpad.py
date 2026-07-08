@@ -948,7 +948,7 @@ class WordPad(wm.Window):
             "About WordPad…", icon="wordpad",
             action=lambda: wm.msgbox(
                 self.desk, "About WordPad",
-                "kilix 95 WordPad\nRich text · Bold/Italic/Underline\n"
+                f"{T.PRODUCT_NAME} WordPad\nRich text · Bold/Italic/Underline\n"
                 "Colour · sizes · .krt rich format · .txt export.",
                 icon="wordpad"))]
 

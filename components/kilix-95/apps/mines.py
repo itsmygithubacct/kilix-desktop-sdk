@@ -209,7 +209,7 @@ class Mines(wm.Window):
             "About Minesweeper…", icon="mines",
             action=lambda: wm.msgbox(
                 self.desk, "About Minesweeper",
-                "kilix 95 Minesweeper\n"
+                f"{T.PRODUCT_NAME} Minesweeper\n"
                 "Left-click clears a square, right-click flags a mine.\n"
                 "Middle-click a number to clear around it.\n"
                 "Clear every safe square to win.",

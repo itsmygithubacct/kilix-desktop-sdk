@@ -112,6 +112,6 @@ class MyComputer(wm.Window):
         return [W.MenuItem("About My Computer…", icon="computer",
                            action=lambda: wm.msgbox(
                                self.desk, "About My Computer",
-                               "kilix 95 — My Computer\n"
+                               f"{T.PRODUCT_NAME} — My Computer\n"
                                "Your drives, folders and the Recycle Bin,\n"
                                "all in one place.", icon="computer"))]
