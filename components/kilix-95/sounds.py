@@ -1,13 +1,13 @@
-"""kilix 95 — UI sound engine + scheme model.
+"""kilix desktop — UI sound engine + scheme model.
 
-Original synthesized Win95-style cues; NO external assets. Short mono .wav
-files generated in pure Python (wave + math + struct), cached under
-~/.local/share/kilix/sounds and regenerated when missing. A *scheme* maps each
-system event to a sound file (any format) or silence, defaulting to the
-built-in cue; the active scheme persists to sounds/scheme.json, named schemes
-to sounds/schemes/<name>.json. Playback is fire-and-forget through a detached
-CLI player (WAV via paplay/aplay, other formats via ffplay/mpv/cvlc), so it
-never blocks the event loop and never raises when no player exists.
+Original Strudel-rendered built-in cues are cached under ~/.local/share/kilix/
+sounds by flavor. A pure-Python synth remains as a fallback if a bundled asset
+is missing. A *scheme* maps each system event to a sound file (any format) or
+silence, defaulting to the active built-in flavor; the active scheme persists to
+sounds/scheme.json, named schemes to sounds/schemes/<name>.json. Playback is
+fire-and-forget through a detached CLI player (WAV via paplay/aplay, other
+formats via ffplay/mpv/cvlc), so it never blocks the event loop and never raises
+when no player exists.
 """
 import json
 import math
@@ -21,11 +21,14 @@ import threading
 import wave
 
 RATE = 44100
-SYNTH_VERSION = 2          # bump when a synth changes so cached wavs regenerate
+SYNTH_VERSION = 3          # bump when bundled/synth cues change so caches refresh
 _PLAYERS = ("paplay", "aplay", "ffplay", "play")     # WAV players
 _MEDIA_PLAYERS = ("ffplay", "mpv", "cvlc")           # non-WAV (kilix-amp formats)
 _AUDIO_EXT = (".wav", ".mp3", ".flac", ".ogg", ".oga", ".opus", ".m4a",
               ".aac", ".aiff", ".aif", ".aifc", ".wma")
+_HERE = os.path.dirname(os.path.abspath(__file__))
+_ASSET_ROOT = os.path.join(_HERE, "assets", "sounds")
+_ASSET_FLAVORS = ("95", "xp")
 
 # equal-temperament reference pitches (Hz)
 C5, D5, E5, F5, G5, A5, B5 = 523.25, 587.33, 659.25, 698.46, 784.0, 880.0, 987.77
@@ -37,6 +40,31 @@ def _data_dir():
     base = os.environ.get("XDG_DATA_HOME") or os.path.join(
         os.path.expanduser("~"), ".local", "share")
     return os.path.join(base, "kilix", "sounds")
+
+
+def _theme_flavor():
+    try:
+        import theme as T
+        return T.normalize_flavor(T.flavor_name())
+    except Exception:
+        return "95"
+
+
+def _flavor_key(flavor=None):
+    if flavor in _ASSET_FLAVORS:
+        return flavor
+    if flavor:
+        try:
+            import theme as T
+            return T.normalize_flavor(flavor)
+        except Exception:
+            return "xp" if str(flavor).lower() == "xp" else "95"
+    return _theme_flavor()
+
+
+def _asset_path(name, flavor=None):
+    fl = _flavor_key(flavor)
+    return os.path.join(_ASSET_ROOT, fl, name + ".wav")
 
 
 # ── synthesis primitives ────────────────────────────────────────────────────
@@ -227,8 +255,8 @@ def names():
 
 
 # ── cache (generate .wav files, regenerate if missing) ───────────────────────
-def path_for(name):
-    return os.path.join(_data_dir(), name + ".wav")
+def path_for(name, flavor=None):
+    return os.path.join(_data_dir(), _flavor_key(flavor), name + ".wav")
 
 
 def _valid(path):
@@ -272,9 +300,15 @@ def _reconcile_version():
                 return
     except OSError:
         pass
-    for n in _GEN:                                       # stale/absent stamp: wipe
+    for fl in _ASSET_FLAVORS:                           # stale/absent stamp: wipe
+        for n in _GEN:
+            try:
+                os.unlink(path_for(n, fl))
+            except OSError:
+                pass
+    for n in _GEN:                                      # old pre-flavor cache
         try:
-            os.unlink(path_for(n))
+            os.unlink(os.path.join(_data_dir(), n + ".wav"))
         except OSError:
             pass
     try:
@@ -285,26 +319,34 @@ def _reconcile_version():
         pass
 
 
-def ensure(name):
+def ensure(name, flavor=None):
     """Return the cached wav path for name, generating it if missing/invalid;
     None if name is unknown or generation fails."""
     if name not in _GEN:
         return None
     _reconcile_version()
-    p = path_for(name)
+    fl = _flavor_key(flavor)
+    p = path_for(name, fl)
     if _valid(p):
         return p
     try:
-        os.makedirs(_data_dir(), exist_ok=True)
-        _write(p, _GEN[name]())
+        os.makedirs(os.path.dirname(p), exist_ok=True)
+        asset = _asset_path(name, fl)
+        if _valid(asset):
+            tmp = p + ".tmp"
+            shutil.copyfile(asset, tmp)
+            os.replace(tmp, p)
+        else:
+            _write(p, _GEN[name]())
     except OSError:
         return None
     return p
 
 
-def ensure_all():
+def ensure_all(flavor=None):
     """Generate every sound; return {name: path or None}."""
-    return {n: ensure(n) for n in _GEN}
+    fl = _flavor_key(flavor)
+    return {n: ensure(n, fl) for n in _GEN}
 
 
 _warmed = False
@@ -332,7 +374,9 @@ _EVENTS = [
 _EVENT_IDS = {eid for eid, _ in _EVENTS}
 
 DEFAULT_SCHEME = "kilix 95"                              # built-in cue per event
+XP_SCHEME = "kilix XP"
 NO_SOUNDS = "No Sounds"                                  # all silent
+_BUILTIN_SCHEMES = {DEFAULT_SCHEME: "95", XP_SCHEME: "xp"}
 
 # Events with NO cue by default — silent unless the user assigns one in
 # Settings ▸ Sounds. (Minimize firing on every window minimize got noisy.)
@@ -342,10 +386,34 @@ _active = None                                           # dict: event_id -> pat
 _active_name = DEFAULT_SCHEME
 
 
+def _default_scheme_for_flavor(flavor=None):
+    return XP_SCHEME if _flavor_key(flavor) == "xp" else DEFAULT_SCHEME
+
+
+def _builtin_flavor():
+    return builtin_flavor()
+
+
+def is_builtin_scheme(name):
+    return name in _BUILTIN_SCHEMES
+
+
+def builtin_flavor(name=None):
+    if name is None:
+        _ensure_loaded()
+        name = _active_name
+    return _BUILTIN_SCHEMES.get(name, _theme_flavor())
+
+
+def scheme_default_path(event_id, scheme=None, generate=False):
+    fl = builtin_flavor(scheme)
+    return ensure(event_id, fl) if generate else path_for(event_id, fl)
+
+
 def events(generate=True):
     """[(event_id, human label, default built-in wav path)] in display order.
     generate=False lists cue paths without synthesizing (for UI enumeration)."""
-    return [(eid, label, ensure(eid) if generate else path_for(eid))
+    return [(eid, label, scheme_default_path(eid, generate=generate))
             for eid, label in _EVENTS]
 
 
@@ -362,6 +430,15 @@ def _named_path(name):
     return os.path.join(_schemes_dir(), safe + ".json")
 
 
+def _migrate_path(path):
+    old_dir, old_fn = os.path.split(path)
+    old_name, old_ext = os.path.splitext(old_fn)
+    if (old_dir == _data_dir() and old_ext.lower() == ".wav"
+            and old_name in _GEN):
+        return path_for(old_name, "95")
+    return path
+
+
 def _sanitize(mapping):
     """Keep only known event ids mapped to a str path or None."""
     out = {}
@@ -369,7 +446,10 @@ def _sanitize(mapping):
         for eid in _EVENT_IDS:
             if eid in mapping:
                 v = mapping[eid]
-                out[eid] = v if (v is None or isinstance(v, str)) else None
+                if isinstance(v, str):
+                    out[eid] = _migrate_path(v)
+                else:
+                    out[eid] = v if v is None else None
     return out
 
 
@@ -390,9 +470,9 @@ def _ensure_loaded():
         with open(_scheme_path()) as f:
             data = json.load(f)
         _active = _sanitize(data.get("sounds", {}))
-        _active_name = data.get("name") or DEFAULT_SCHEME
+        _active_name = data.get("name") or _default_scheme_for_flavor()
     except Exception:
-        _active, _active_name = {}, DEFAULT_SCHEME       # regenerate default
+        _active, _active_name = {}, _default_scheme_for_flavor()
 
 
 def _save_active():
@@ -418,7 +498,7 @@ def set_sound(event_id, path_or_None):
 
 def scheme_names():
     """Built-in schemes plus every saved named scheme."""
-    out = [DEFAULT_SCHEME, NO_SOUNDS]
+    out = [DEFAULT_SCHEME, XP_SCHEME, NO_SOUNDS]
     try:
         for fn in sorted(os.listdir(_schemes_dir())):
             if fn.endswith(".json"):
@@ -433,7 +513,7 @@ def scheme_names():
 def scheme_overrides(name):
     """The overrides {event_id: path|None} a scheme defines, WITHOUT making it
     active or persisting anything (for deferred/working-copy editing)."""
-    if name == DEFAULT_SCHEME:
+    if name in _BUILTIN_SCHEMES:
         return {}
     if name == NO_SOUNDS:
         return {eid: None for eid in _EVENT_IDS}
@@ -469,8 +549,25 @@ def save_scheme_as(name):
 
 
 def reset():
-    """Restore the built-in 'kilix 95' default scheme."""
-    return load_scheme(DEFAULT_SCHEME)
+    """Restore the built-in default scheme for the active desktop flavor."""
+    return load_scheme(_default_scheme_for_flavor())
+
+
+def use_flavor(flavor):
+    """Switch built-in sound schemes with the desktop flavor.
+
+    Custom schemes are left untouched; only an active built-in scheme follows the
+    desktop flavor.
+    """
+    global _active, _active_name
+    had_scheme = os.path.exists(_scheme_path())
+    _ensure_loaded()
+    if _active_name in _BUILTIN_SCHEMES:
+        target = _default_scheme_for_flavor(flavor)
+        if had_scheme:
+            return load_scheme(target)
+        _active, _active_name = {}, target
+    return dict(_active)
 
 
 def library_sounds(generate=True):
@@ -478,11 +575,12 @@ def library_sounds(generate=True):
     the shared library dir and the user's ~/audio_clips. generate=False lists
     the cue paths without synthesizing them on the calling thread."""
     seen, out = set(), []
-    cues = ensure_all() if generate else {n: path_for(n) for n in _GEN}
-    for _, p in sorted(cues.items()):                    # synthesized cues first
-        if p and p not in seen:
-            seen.add(p)
-            out.append(p)
+    for fl in _ASSET_FLAVORS:
+        cues = ensure_all(fl) if generate else {n: path_for(n, fl) for n in _GEN}
+        for _, p in sorted(cues.items()):                # built-in cues first
+            if p and p not in seen:
+                seen.add(p)
+                out.append(p)
     for d in (_data_dir(), os.path.join(os.path.expanduser("~"), "audio_clips")):
         try:
             entries = sorted(os.listdir(d))
@@ -566,7 +664,7 @@ def _resolve(event_id):
         return _active[event_id]                         # path or None (silent)
     if event_id in DEFAULT_SILENT:
         return None                                      # off by default (assignable)
-    return ensure(event_id)                              # default built-in wav
+    return ensure(event_id, _builtin_flavor())           # default built-in wav
 
 
 def play(event_id, volume=100, muted=False):

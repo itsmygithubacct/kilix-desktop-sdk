@@ -81,7 +81,7 @@ class SoundCP(wm.Window):
         Never synthesizes — warm() fills the cue file off-thread."""
         if eid in self.work:
             return self.work[eid]
-        return sounds.path_for(eid)
+        return sounds.scheme_default_path(eid, self.scheme)
 
     def _current_path(self):
         i = self.snd_dd.index
@@ -162,7 +162,7 @@ class SoundCP(wm.Window):
             name = (name or "").strip()
             if not name:
                 return
-            if name in (sounds.DEFAULT_SCHEME, sounds.NO_SOUNDS):
+            if sounds.is_builtin_scheme(name) or name == sounds.NO_SOUNDS:
                 wm.msgbox(self.desk, "Sounds",
                           f"'{name}' is a built-in scheme name.\n"
                           "Please choose a different name.", icon="warn")
@@ -179,7 +179,7 @@ class SoundCP(wm.Window):
 
     def _delete(self):
         name = self.scheme_dd.value
-        if name in (sounds.DEFAULT_SCHEME, sounds.NO_SOUNDS):
+        if sounds.is_builtin_scheme(name) or name == sounds.NO_SOUNDS:
             wm.msgbox(self.desk, "Sounds",
                       "Built-in schemes cannot be deleted.", icon="warn")
             return

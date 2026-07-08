@@ -108,6 +108,7 @@ class Shell:
         old_wall = tuple(T.DESKTOP)
         requested = self.state.get("flavor", T.flavor_name())
         T.apply_flavor(requested)
+        self._sync_sound_flavor()
         self.state["flavor"] = T.flavor_name()
         wall = self.state.get("wall_color")
         if not (isinstance(wall, list) and len(wall) == 3):
@@ -174,6 +175,13 @@ class Shell:
             if getattr(win, "is_file_window", False) and \
                     os.path.abspath(win.path) == path:
                 win.refresh()
+
+    def _sync_sound_flavor(self):
+        try:
+            import sounds
+            sounds.use_flavor(T.flavor_name())
+        except Exception:
+            pass
 
     def on_resize(self):
         sw, sh = self.desk.size()
@@ -406,6 +414,7 @@ class Shell:
         old = T.flavor_name()
         old_wall = tuple(T.DESKTOP)
         new = T.apply_flavor(flavor)
+        self._sync_sound_flavor()
         self.state["flavor"] = new
         wall = self.state.get("wall_color")
         if not (isinstance(wall, list) and len(wall) == 3) \

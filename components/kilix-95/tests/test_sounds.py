@@ -12,17 +12,20 @@ import harness as H
 import sounds
 
 
-# ── every synthesized wav generates and is a valid readable wave ────────────
-made = sounds.ensure_all()
-assert set(made) == set(sounds.names())
-for name, path in made.items():
-    assert path and os.path.isfile(path), name
-    assert path == os.path.join(_cache, "kilix", "sounds", name + ".wav")
-    with wave.open(path, "rb") as w:                     # readable + non-empty
-        assert w.getnchannels() == 1
-        assert w.getsampwidth() == 2
-        assert w.getframerate() == sounds.RATE
-        assert w.getnframes() > 0
+# ── every built-in wav generates and is a valid readable wave by flavor ─────
+made = sounds.ensure_all("95")
+made_xp = sounds.ensure_all("xp")
+for flavor, batch in (("95", made), ("xp", made_xp)):
+    assert set(batch) == set(sounds.names())
+    for name, path in batch.items():
+        assert path and os.path.isfile(path), (flavor, name)
+        assert path == os.path.join(_cache, "kilix", "sounds",
+                                    flavor, name + ".wav")
+        with wave.open(path, "rb") as w:                 # readable + non-empty
+            assert w.getnchannels() == 1
+            assert w.getsampwidth() == 2
+            assert w.getframerate() == sounds.RATE
+            assert w.getnframes() > 0
 assert {"startup", "shutdown", "error", "exclamation", "asterisk",
         "question", "minimize", "maximize", "restore",
         "recycle_empty"} <= set(sounds.names())
@@ -30,7 +33,7 @@ assert {"startup", "shutdown", "error", "exclamation", "asterisk",
 # regenerates when the cached file is missing
 os.remove(made["startup"])
 assert not os.path.exists(made["startup"])
-assert sounds.ensure("startup") == made["startup"]
+assert sounds.ensure("startup", "95") == made["startup"]
 assert os.path.isfile(made["startup"])
 assert sounds.ensure("nope") is None                     # unknown name
 
@@ -99,6 +102,26 @@ for eid, _label, dwav in evs:                             # every default resolv
     assert dwav and os.path.isfile(dwav), eid
 
 
+# ── built-in schemes resolve to their matching flavor cache ─────────────────
+assert sounds.scheme_names()[:3] == [sounds.DEFAULT_SCHEME, sounds.XP_SCHEME,
+                                     sounds.NO_SOUNDS]
+assert sounds.is_builtin_scheme(sounds.DEFAULT_SCHEME)
+assert sounds.is_builtin_scheme(sounds.XP_SCHEME)
+assert not sounds.is_builtin_scheme(sounds.NO_SOUNDS)
+assert sounds.scheme_default_path("startup", sounds.DEFAULT_SCHEME) == \
+    sounds.path_for("startup", "95")
+assert sounds.scheme_default_path("startup", sounds.XP_SCHEME) == \
+    sounds.path_for("startup", "xp")
+legacy = os.path.join(sounds._data_dir(), "startup.wav")
+assert sounds._sanitize({"error": legacy})["error"] == \
+    sounds.path_for("startup", "95")
+sounds.load_scheme(sounds.XP_SCHEME)
+assert sounds.current_scheme() == {}
+for eid, _label, dwav in sounds.events(generate=False):
+    assert dwav == sounds.path_for(eid, "xp"), eid
+sounds.load_scheme(sounds.DEFAULT_SCHEME)
+
+
 # ── set_sound + save/load round-trips a scheme (incl. a non-WAV path) ─────────
 os.environ.pop("KILIX_NO_SOUND", None)
 sounds.load_scheme(sounds.DEFAULT_SCHEME)
@@ -163,13 +186,15 @@ sounds.reset()
 
 
 # ── character: open/close are short clicks; startup/shutdown are warm chimes ──
-def _dur(name):
-    with wave.open(sounds.ensure(name), "rb") as w:
+def _dur(name, flavor):
+    with wave.open(sounds.ensure(name, flavor), "rb") as w:
         return w.getnframes() / w.getframerate()
 
-assert _dur("open") < 0.06 and _dur("close") < 0.06, "open/close must be clicks"
-assert 1.4 < _dur("startup") < 2.1, "startup should be a warm chime"
-assert 1.3 < _dur("shutdown") < 2.0, "shutdown should be a warm chime"
+for flavor in ("95", "xp"):
+    assert _dur("open", flavor) < 0.45, "open must be a short UI cue"
+    assert _dur("close", flavor) < 0.45, "close must be a short UI cue"
+    assert 1.8 < _dur("startup", flavor) < 2.7, "startup should be a warm chime"
+    assert 1.6 < _dur("shutdown", flavor) < 2.4, "shutdown should be a warm chime"
 
 
 # ── a stale synth-version stamp wipes + regenerates the cached wavs ──────────

@@ -1,8 +1,13 @@
 """Desktop flavor switching: Start -> Settings -> Desktop Flavor."""
 import json
 import os
+import tempfile
+
+_cache = tempfile.mkdtemp(prefix="kilix95-flavor-xdg-")
+os.environ["XDG_DATA_HOME"] = _cache
 
 import harness as H
+import sounds
 import theme as T
 from apps.winhelp import Help
 
@@ -34,6 +39,9 @@ with H.desktop_dir() as desktop:
     assert T.PRODUCT_NAME == "kilix XP"
     assert d.shell.state["flavor"] == "xp"
     assert d.shell.state["wall_color"] == list(T.DESKTOP)
+    assert sounds._active_name == sounds.XP_SCHEME
+    assert sounds.events(generate=False)[0][2] == \
+        sounds.path_for("startup", "xp")
     with open(os.path.join(desktop, ".state.json")) as f:
         assert json.load(f)["flavor"] == "xp"
 
@@ -56,5 +64,6 @@ with H.desktop_dir() as desktop:
     assert T.flavor_name() == "xp"
     d2.shell.set_flavor("95")
     assert T.flavor_name() == "95"
+    assert sounds._active_name == sounds.DEFAULT_SCHEME
 
 print("ok")

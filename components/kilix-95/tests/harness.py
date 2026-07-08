@@ -27,6 +27,11 @@ import widgets as W
 _dirs = []                 # temp desktop dirs owned by this process
 atexit.register(lambda: [shutil.rmtree(d, ignore_errors=True) for d in _dirs])
 
+if "XDG_DATA_HOME" not in os.environ:
+    _xdg = tempfile.mkdtemp(prefix="kilix95-xdg-")
+    _dirs.append(_xdg)
+    os.environ["XDG_DATA_HOME"] = _xdg
+
 
 @contextlib.contextmanager
 def desktop_dir():

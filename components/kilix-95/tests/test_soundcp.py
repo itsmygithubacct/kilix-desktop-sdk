@@ -72,6 +72,14 @@ win._apply()
 assert sounds.current_scheme() == {}
 assert all(it[0] == "soundcp" for it in win.events_lb.items)
 
+# ── the XP built-in scheme resolves default cues from the XP flavor cache ────
+win._scheme_changed(sounds.XP_SCHEME)
+assert win._resolved("startup") == sounds.path_for("startup", "xp")
+win._apply()
+assert sounds.current_scheme() == {}
+win._scheme_changed(sounds.DEFAULT_SCHEME)
+win._apply()
+
 # ── Save As commits the working edits into a named scheme ────────────────────
 win._select_event(win.events_lb.items[eids.index("close")])
 win._set_sound_path("/clips/thud.ogg")
@@ -83,11 +91,12 @@ sounds.load_scheme("My Scheme")
 assert sounds.current_scheme().get("close") == "/clips/thud.ogg"
 
 # ── Save As rejects the reserved built-in names (would be unloadable) ────────
-before_names = set(sounds.scheme_names())
-win._save_as()
-_submit_inputbox(d.wm.modal_top(), sounds.DEFAULT_SCHEME)
-assert set(sounds.scheme_names()) == before_names        # nothing new written
-d.wm.modal_top().close()                                 # dismiss the warning
+for reserved in (sounds.DEFAULT_SCHEME, sounds.XP_SCHEME):
+    before_names = set(sounds.scheme_names())
+    win._save_as()
+    _submit_inputbox(d.wm.modal_top(), reserved)
+    assert set(sounds.scheme_names()) == before_names    # nothing new written
+    d.wm.modal_top().close()                             # dismiss the warning
 
 # ── Preview never raises headless (KILIX_NO_SOUND makes it a no-op) ──────────
 win._select_event(win.events_lb.items[eids.index("error")])
