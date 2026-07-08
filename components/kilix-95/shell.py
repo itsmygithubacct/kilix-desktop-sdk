@@ -32,7 +32,7 @@ OPEN_MODES = ["kilix tab", "kilix os-window", "kilix fullscreen",
 MODE_KEYS = {"kilix tab": "tab", "kilix os-window": "window",
              "kilix fullscreen": "fullscreen",
              "kilix run (X11 app)": "run", "web browser": "browse"}
-ICON_CHOICES = ["exe", "terminal", "doc", "doc_text", "doc_image", "folder",
+ICON_CHOICES = ["exe", "terminal", "mux", "doc", "doc_text", "doc_image", "folder",
                 "computer", "browser", "notepad", "settings", "display",
                 "drive", "home", "run", "flame"]
 NAME_ERROR = "Use a plain name, not a path."
@@ -143,6 +143,8 @@ class Shell:
              "data": ("builtin", ("settings", None))},
             {"label": "Terminal", "icon": "terminal",
              "data": ("builtin", ("terminal", None))},
+            {"label": "Mux Terminal", "icon": "mux",
+             "data": ("builtin", ("mux", None))},
         ]
         try:
             names = sorted(os.listdir(self.dir), key=str.lower)
@@ -246,6 +248,8 @@ class Shell:
             app, param = arg
             if app == "terminal":
                 self.open_terminal()
+            elif app == "mux":
+                self.open_mux_terminal()
             else:
                 self.open_app(app, param)
         elif kind == "launcher":
@@ -611,6 +615,12 @@ class Shell:
             return False
         return self._popen([kitten, "@", "launch", "--type=tab", "--tab-title",
                             "Terminal", "--cwd", cwd or os.path.expanduser("~")])
+
+    def open_mux_terminal(self, session="main", cwd=None):
+        session = session or "main"
+        kilix = os.path.join(KILIX_HOME, "kilix")
+        return self._tab([kilix, "serve", session],
+                         f"Mux: {session}", cwd or os.path.expanduser("~"))
 
     def run_maintenance(self, cmd, title):
         """Run an update/maintenance command in a new kilix tab, pausing at the

@@ -463,6 +463,7 @@ class Taskbar:
                 MI("File Manager", icon="folder_open",
                    action=lambda: shell.open_app("filemgr")),
                 MI("Terminal", icon="terminal", action=shell.open_terminal),
+                MI("Mux Terminal", icon="mux", action=shell.open_mux_terminal),
                 MI("Web Browser", icon="browser",
                    action=lambda: shell.open_browser("firefox", "window"),
                    context=[
