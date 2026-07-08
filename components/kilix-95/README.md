@@ -10,9 +10,9 @@ kilix desktop
 ```
 
 When this repository is checked out separately, the Kilix launcher passes
-`KILIX_HOME` so Kilix 95 can use the host's Kitty graphics helpers, `kilix run`,
-`kilix browse`, and remote-control launcher. If `KILIX_HOME` is unset, Kilix 95
-looks for the host checkout at `~/kilix`.
+`KILIX_HOME` so Kilix 95 can use the host SDK, `kilix run`, `kilix browse`, and
+remote-control launcher. If `KILIX_HOME` is unset, Kilix 95 looks for the host
+checkout at `~/kilix`.
 
 Quit via Start ▸ Shut Down…, or `Ctrl+Alt+Q`.
 
@@ -26,10 +26,10 @@ SGR-pixel mouse reporting (`?1003h`/`?1016h`), so mouse coordinates map
 1:1 onto framebuffer pixels. Rendering is damage-driven: the loop only
 repaints when something is dirty (input, clock tick, caret blink).
 
-Reuses from the Kilix host checkout: `config/browse.py` (`Term`, raw mode and
-input parsing), `config/gfx.py` (inline graphics for streamed sessions), and
-the XPane helpers used by embedded X11 apps. The window manager, shell, widgets,
-apps, games registry, and tests live in this repository.
+Reuses the Kilix host through `config/kilix_sdk`: `kilix_sdk.term` provides raw
+mode and input parsing, `kilix_sdk.graphics` provides inline graphics for
+streamed sessions, and host launchers provide XPane/browser commands. The window
+manager, shell, widgets, apps, games registry, and tests live in this repository.
 
 ## Modules
 

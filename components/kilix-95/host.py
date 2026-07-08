@@ -1,10 +1,9 @@
-"""Kilix host discovery for the external Kilix 95 checkout."""
+"""Kilix host bootstrap for the external Kilix 95 checkout."""
 import os
 import sys
 
 
-def find_kilix_home():
-    """Return the Kilix host checkout used for launch/config helpers."""
+def _discover_kilix_home():
     env = os.environ.get("KILIX_HOME")
     if env:
         return os.path.abspath(os.path.expanduser(env))
@@ -20,10 +19,24 @@ def find_kilix_home():
     return os.path.join(home, "kilix")
 
 
-def add_kilix_config_path():
-    """Put Kilix host config helpers on sys.path and return KILIX_HOME."""
-    kilix_home = find_kilix_home()
+def _add_host_config_path():
+    kilix_home = _discover_kilix_home()
     config = os.path.join(kilix_home, "config")
     if config not in sys.path:
         sys.path.insert(0, config)
     return kilix_home
+
+
+def find_kilix_home():
+    """Return the Kilix host checkout used for launch/config helpers."""
+    fallback = _add_host_config_path()
+    try:
+        from kilix_sdk import paths
+    except ImportError:
+        return fallback
+    return paths.kilix_home()
+
+
+def add_kilix_config_path():
+    """Put the Kilix host SDK on sys.path and return KILIX_HOME."""
+    return find_kilix_home()
