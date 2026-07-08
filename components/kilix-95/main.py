@@ -29,7 +29,7 @@ import host as kilix_host
 
 KILIX_HOME = kilix_host.add_kilix_config_path()   # kilix_sdk
 
-from PIL import Image, ImageDraw, ImageOps
+from PIL import Image, ImageDraw
 
 from kilix_sdk import graphics as kilix_graphics
 from kilix_sdk import term as kilix_term
@@ -46,6 +46,9 @@ except AttributeError:  # Pillow < 9.1
     _RESAMPLE = Image.BICUBIC
 
 SCREEN_DIR = os.path.join(_here, "assets", "screens")
+SYSTEM_SCREEN_SECONDS = 1.2
+SYSTEM_SCREEN_MIN_SECONDS = 1.0
+SYSTEM_SCREEN_MAX_SECONDS = 2.0
 
 # keys the host terminal parser doesn't map (it never needed F-keys): add them
 kilix_term.SPECIAL_TILDE.update({
@@ -381,7 +384,10 @@ class Desk:
         except Exception:
             img = self._fallback_system_screen(name)
         if img.size != (self.w, self.h):
-            img = ImageOps.fit(img, (self.w, self.h), method=_RESAMPLE)
+            # These are full-screen splash screens. Preserve the whole artwork
+            # instead of cropping to aspect, so centered title/progress art is
+            # still visible on wide VM displays.
+            img = img.resize((self.w, self.h), _RESAMPLE)
         return img
 
     def _fallback_system_screen(self, name):
@@ -417,6 +423,16 @@ class Desk:
         self.blit(self._system_screen(name))
         if seconds > 0:
             time.sleep(seconds)
+
+    def _system_screen_seconds(self, name):
+        env = ("KILIX_SHUTDOWN_SCREEN_SECONDS" if name == "shutdown"
+               else "KILIX_STARTUP_SCREEN_SECONDS")
+        try:
+            seconds = float(os.environ.get(env) or SYSTEM_SCREEN_SECONDS)
+        except ValueError:
+            seconds = SYSTEM_SCREEN_SECONDS
+        return max(SYSTEM_SCREEN_MIN_SECONDS,
+                   min(SYSTEM_SCREEN_MAX_SECONDS, seconds))
 
     def _bsod_image(self):
         img = Image.new("RGB", (self.w, self.h), (0, 0, 170))
@@ -491,12 +507,8 @@ class Desk:
         """Quit path. Plays the shutdown cue and briefly shows the shutdown
         screen before returning to the terminal."""
         self.play_sound("shutdown")
-        try:
-            seconds = float(os.environ.get("KILIX_SHUTDOWN_SCREEN_SECONDS")
-                            or "1.2")
-        except ValueError:
-            seconds = 1.2
-        self._show_system_screen("shutdown", seconds)
+        self._show_system_screen("shutdown",
+                                 self._system_screen_seconds("shutdown"))
 
     def blit(self, img=None):
         if not self.term:
@@ -797,12 +809,8 @@ class Desk:
         except Exception:
             pass
         self.play_sound("startup")
-        try:
-            seconds = float(os.environ.get("KILIX_STARTUP_SCREEN_SECONDS")
-                            or "1.2")
-        except ValueError:
-            seconds = 1.2
-        self._show_system_screen("startup", seconds)
+        self._show_system_screen("startup",
+                                 self._system_screen_seconds("startup"))
         self._first_run_help()
         last_blink = time.time()
         self._last_blit = 0.0
