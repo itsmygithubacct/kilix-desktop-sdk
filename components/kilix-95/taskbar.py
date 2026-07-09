@@ -149,7 +149,7 @@ class Taskbar:
         # system tray + clock well
         self._draw_tray(fb, d)
         cx0, cy0, cx1, cy1 = self._clock_rect()
-        T.sunken(d, cx0, cy0, cx1, cy1, fill=T.FACE)
+        T.sunken(d, cx0, cy0, cx1, cy1, fill=getattr(T, "TRAY_BG", T.FACE))
         clock = self._minute or time.strftime("%H:%M")
         d.text((cx1 - 7 - T.text_w(T.FONT, clock), cy0 + 3), clock,
                font=T.FONT, fill=T.TEXT)
@@ -167,7 +167,7 @@ class Taskbar:
 
     def _draw_tray(self, fb, d):
         tx0, ty0, tx1, ty1 = self._tray_rect()
-        T.sunken(d, tx0, ty0, tx1, ty1, fill=T.FACE)
+        T.sunken(d, tx0, ty0, tx1, ty1, fill=getattr(T, "TRAY_BG", T.FACE))
         cy = (ty0 + ty1) // 2
         for name, tip, ix0, ix1 in self._tray_icons():
             if name == "speaker":

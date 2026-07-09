@@ -3,6 +3,7 @@ quick launch (Show Desktop), and the empty-space context menu (Cascade)."""
 import harness as H
 import apps
 import taskbar as TB
+import theme as T
 
 
 def _mid(rect):
@@ -78,4 +79,15 @@ assert order[0].x != order[1].x and order[0].y != order[1].y, \
 assert not any(w.maximized for w in order)
 
 d.render()                                           # everything still paints
+
+# ── XP flavor: tray and clock wells use the light-blue tray background ─────
+T.apply_flavor("xp")
+d = H.make_desk()
+tb = d.taskbar
+d.render()
+tx0, ty0, tx1, ty1 = tb._tray_rect()
+cx0, cy0, cx1, cy1 = tb._clock_rect()
+assert d.fb.getpixel((tx1 - 2, (ty0 + ty1) // 2)) == T.TRAY_BG
+assert d.fb.getpixel((cx0 + 2, (cy0 + cy1) // 2)) == T.TRAY_BG
+T.apply_flavor("95")
 print("ok")

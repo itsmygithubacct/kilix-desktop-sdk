@@ -87,12 +87,15 @@ class Shell:
         self.state_path = os.path.join(self.dir, ".state.json")
         self.state = {"flavor": T.flavor_name(),
                       "wall_color": list(T.DESKTOP), "wall_image": None,
-                      "wall_mode": "stretch", "recent": []}
+                      "wall_mode": "stretch", "wall_custom": False,
+                      "recent": []}
         try:
             with open(self.state_path) as f:
                 loaded = json.load(f)
             if isinstance(loaded, dict):
                 self.state.update(loaded)
+                if "wall_custom" not in loaded and loaded.get("wall_image"):
+                    self.state["wall_custom"] = True
         except (OSError, ValueError):
             pass
         self._load_flavor()
@@ -117,7 +120,22 @@ class Shell:
             self.state["wall_color"] = list(T.DESKTOP)
         elif tuple(wall) == old_wall and old_wall != T.DESKTOP:
             self.state["wall_color"] = list(T.DESKTOP)
+        self._sync_default_wall()
         self.desk.fb = Image.new("RGB", self.desk.size(), T.DESKTOP)
+
+    def _default_wall_image(self):
+        path = getattr(T, "WALL_IMAGE", None)
+        if not path:
+            return None
+        if not os.path.isabs(path):
+            path = os.path.join(_here, path)
+        return path if os.path.exists(path) else None
+
+    def _sync_default_wall(self):
+        if self.state.get("wall_custom"):
+            return
+        self.state["wall_image"] = self._default_wall_image()
+        self.state["wall_mode"] = "stretch"
 
     # window duck-type used by IconGrid
     def invalidate(self):
@@ -430,6 +448,7 @@ class Shell:
         if not (isinstance(wall, list) and len(wall) == 3) \
                 or tuple(wall) == old_wall:
             self.state["wall_color"] = list(T.DESKTOP)
+        self._sync_default_wall()
         self._save_state()
         self._wall = None
         self.on_resize()
@@ -1068,6 +1087,7 @@ class Shell:
             self.state["wall_color"] = cur
             self.state["wall_image"] = f_img.text.strip() or None
             self.state["wall_mode"] = d_mode.value
+            self.state["wall_custom"] = True
             self._save_state()
             self._wall = None
             self.invalidate()

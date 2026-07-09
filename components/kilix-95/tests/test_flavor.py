@@ -39,6 +39,11 @@ with H.desktop_dir() as desktop:
     assert T.PRODUCT_NAME == "kilix XP"
     assert d.shell.state["flavor"] == "xp"
     assert d.shell.state["wall_color"] == list(T.DESKTOP)
+    assert d.shell.state["wall_custom"] is False
+    assert d.shell.state["wall_mode"] == "stretch"
+    assert d.shell.state["wall_image"].endswith(
+        "assets/wallpapers/kilix-xp-kittens-fire.png")
+    assert os.path.exists(d.shell.state["wall_image"])
     assert sounds._active_name == sounds.XP_SCHEME
     assert sounds.events(generate=False)[0][2] == \
         sounds.path_for("startup", "xp")
@@ -64,6 +69,12 @@ with H.desktop_dir() as desktop:
     assert T.flavor_name() == "xp"
     d2.shell.set_flavor("95")
     assert T.flavor_name() == "95"
+    assert d2.shell.state["wall_image"] is None
     assert sounds._active_name == sounds.DEFAULT_SCHEME
+    custom = "/tmp/custom-wallpaper.png"
+    d2.shell.state["wall_image"] = custom
+    d2.shell.state["wall_custom"] = True
+    d2.shell.set_flavor("xp")
+    assert d2.shell.state["wall_image"] == custom
 
 print("ok")
