@@ -434,7 +434,13 @@ class Desk:
         self.dirty = False
         self.blit(img)
         if seconds > 0:
-            time.sleep(seconds)
+            end = time.time() + seconds
+            while True:
+                remaining = end - time.time()
+                if remaining <= 0:
+                    break
+                time.sleep(min(0.2, remaining))
+                self.blit(img)
         self.dirty = True
 
     def _system_screen_seconds(self, name):
