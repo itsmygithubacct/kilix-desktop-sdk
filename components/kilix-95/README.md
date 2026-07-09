@@ -17,9 +17,9 @@ checkout at `~/kilix`.
 Quit via Start ▸ Shut Down…, or `Ctrl+Alt+Q`.
 
 Open Start ▸ Help for the built-in guide, project how-tos, and the local System
-Manual browser. Help-topic links use the system default browser through
-`xdg-open`, `sensible-browser`, or `gio open` in a new Kilix tab; launcher URL
-files still use the Kilix browser path.
+Manual browser. Help-topic links use the system default browser opener
+(`xdg-open`, `sensible-browser`, or `gio open`) inside a filled Kilix tab;
+launcher URL files still use the Kilix browser path.
 
 ## How it works
 
@@ -69,10 +69,10 @@ Start ▸ Help contains:
   relevant project/manual pages.
 - **Help Topics**: the general two-pane desktop guide.
 
-Blue underlined Help links call `Shell.open_default_browser_tab()`, which tries
-`xdg-open`, then `sensible-browser`, then `gio open`. This is intentionally
-separate from launcher URL handling and Start ▸ Programs ▸ Web Browser, which
-continue to use the Kilix browser flow.
+Blue underlined Help links call `Shell.open_default_browser_tab()`, which wraps
+`xdg-open`, then `sensible-browser`, then `gio open` with Kilix's in-tab X11
+transport. This is intentionally separate from launcher URL handling and Start
+-> Programs -> Web Browser, which continue to use the Kilix browser flow.
 
 ## The desktop folder
 

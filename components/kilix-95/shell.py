@@ -595,14 +595,18 @@ class Shell:
                 "bash", "-lc", script]
         return self._popen(argv)
 
-    def _tab(self, argv, title, cwd=None):
+    def _tab(self, argv, title, cwd=None, env=None):
         kitten = self._kitten()
         if not kitten or not os.environ.get("KITTY_LISTEN_ON"):
             wm.msgbox(self.desk, "kilix", "Cannot reach kilix remote control\n"
                       "(KITTY_LISTEN_ON is not set).", icon="error")
             return False
+        env_args = []
+        for k, v in (env or {}).items():
+            env_args.extend(["--env", f"{k}={v}"])
         return self._popen([kitten, "@", "launch", "--type=tab", "--tab-title",
-                            title, "--cwd", cwd or os.path.expanduser("~"), "--"]
+                            title, "--cwd", cwd or os.path.expanduser("~"),
+                            *env_args, "--"]
                            + argv)
 
     def open_x11_tab(self, argv, title, cwd=None, fill=False, size=None,
@@ -615,7 +619,10 @@ class Shell:
             run.append("--fill")
         if refit_windows:
             run.append("--refit-windows")
-        return self._tab(run + list(argv), title, cwd)
+        return self._tab(run + list(argv), title, cwd, env={
+            "KILIX_IN_OVERLAY": "1",
+            "KILIX_STREAM": os.environ.get("KILIX_STREAM", ""),
+        })
 
     def _popen(self, argv, cwd=None):
         try:
@@ -665,21 +672,18 @@ class Shell:
                   "browse", None)
 
     def open_default_browser_tab(self, url, title="Browser"):
-        """Open a URL with the system default browser, not `kilix browse`.
-
-        xdg-open/sensible-browser are expected to hand the URL to the default
-        browser, which normally opens it as a browser tab when a browser is
-        already running.
-        """
+        """Open a URL with the system default opener inside a filled Kilix tab."""
         if not url:
             return False
         for cand in ("xdg-open", "sensible-browser"):
             exe = shutil.which(cand)
             if exe:
-                return self._tab([exe, url], title or "Browser", None)
+                return self.open_x11_tab([exe, url], title or "Browser",
+                                         fill=True)
         gio = shutil.which("gio")
         if gio:
-            return self._tab([gio, "open", url], title or "Browser", None)
+            return self.open_x11_tab([gio, "open", url], title or "Browser",
+                                     fill=True)
         wm.msgbox(self.desk, "Web Browser",
                   "No default browser opener was found.", icon="error")
         return False

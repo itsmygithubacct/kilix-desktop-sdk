@@ -68,8 +68,8 @@ def firefox_defaults_to_filled_run_tab():
     d = H.make_desk()
     seen = {}
     d.shell._first_on_path = lambda cands: "/usr/bin/firefox-esr"
-    d.shell._tab = lambda argv, title, cwd=None: seen.update(
-        argv=argv, title=title, cwd=cwd) or True
+    d.shell._tab = lambda argv, title, cwd=None, **kw: seen.update(
+        argv=argv, title=title, cwd=cwd, kw=kw) or True
 
     d.shell.open_browser("firefox")
 
@@ -79,30 +79,34 @@ def firefox_defaults_to_filled_run_tab():
         d.shell.BROWSER_HOME,
     ], seen
     assert seen["title"] == "Firefox"
+    assert seen["kw"]["env"]["KILIX_IN_OVERLAY"] == "1"
 
 
-def default_browser_links_use_system_opener_tab():
+def default_browser_links_use_filled_system_opener_tab():
     d = H.make_desk()
     seen = {}
     real_which = shell_mod.shutil.which
     shell_mod.shutil.which = lambda name: "/usr/bin/xdg-open" \
         if name == "xdg-open" else None
-    d.shell._tab = lambda argv, title, cwd=None: seen.update(
-        argv=argv, title=title, cwd=cwd) or True
+    d.shell._tab = lambda argv, title, cwd=None, **kw: seen.update(
+        argv=argv, title=title, cwd=cwd, kw=kw) or True
     try:
         assert d.shell.open_default_browser_tab(
             "https://example.invalid/manual", "Manual") is True
     finally:
         shell_mod.shutil.which = real_which
 
-    assert seen["argv"] == [
-        "/usr/bin/xdg-open", "https://example.invalid/manual"], seen
+    assert os.path.basename(seen["argv"][0]) == "kilix", seen
+    assert seen["argv"][1:] == [
+        "run", "--fill", "/usr/bin/xdg-open",
+        "https://example.invalid/manual"], seen
     assert seen["title"] == "Manual"
+    assert seen["kw"]["env"]["KILIX_IN_OVERLAY"] == "1"
     assert "browse" not in seen["argv"], seen
 
 
 opens_window()
 failure_shows_msgbox()
 firefox_defaults_to_filled_run_tab()
-default_browser_links_use_system_opener_tab()
+default_browser_links_use_filled_system_opener_tab()
 print("ok")

@@ -43,8 +43,8 @@ def shell_opens_vbox_file_in_kilix_run_tab():
     _write_vm(path)
 
     seen = {}
-    d.shell._tab = lambda argv, title, cwd=None: seen.update(
-        argv=argv, title=title, cwd=cwd) or True
+    d.shell._tab = lambda argv, title, cwd=None, **kw: seen.update(
+        argv=argv, title=title, cwd=cwd, kw=kw) or True
 
     d.shell.open_path(path)
     assert os.path.basename(seen["argv"][0]) == "kilix", seen
@@ -53,6 +53,7 @@ def shell_opens_vbox_file_in_kilix_run_tab():
         "{12345678-1234-1234-1234-123456789abc}",
     ], seen
     assert seen["title"] == "sample vm"
+    assert seen["kw"]["env"]["KILIX_IN_OVERLAY"] == "1"
     assert path in d.shell.state["recent"]
 
     seen.clear()
@@ -63,6 +64,7 @@ def shell_opens_vbox_file_in_kilix_run_tab():
         "{12345678-1234-1234-1234-123456789abc}",
         "--fullscreen",
     ], seen
+    assert seen["kw"]["env"]["KILIX_IN_OVERLAY"] == "1"
 
 
 def vbox_file_contexts_offer_fullscreen():
@@ -71,8 +73,8 @@ def vbox_file_contexts_offer_fullscreen():
     _write_vm(path)
     d.shell.refresh()
     seen = {}
-    d.shell._tab = lambda argv, title, cwd=None: seen.update(
-        argv=argv, title=title, cwd=cwd) or True
+    d.shell._tab = lambda argv, title, cwd=None, **kw: seen.update(
+        argv=argv, title=title, cwd=cwd, kw=kw) or True
 
     desktop_item = next(i for i in d.shell.grid.items
                         if i["label"] == "sample.vbox")
@@ -80,6 +82,7 @@ def vbox_file_contexts_offer_fullscreen():
     _menu_item(d, "Open fullscreen").action()
     assert "--fill" in seen["argv"], seen
     assert "--fullscreen" in seen["argv"], seen
+    assert seen["kw"]["env"]["KILIX_IN_OVERLAY"] == "1"
 
     d.menus.close_all()
     win = filemgr.FileWindow(d, d.shell.dir)
