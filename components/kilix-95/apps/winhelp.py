@@ -10,9 +10,20 @@ import wm
 TB_Y = 2                             # toolbar row
 TB_H = 26
 LIST_W = 158
+LINK = (0, 0, 170)
+
+KILIX_REPO = "https://github.com/itsmygithubacct/kilix"
+KILIX95_REPO = "https://github.com/itsmygithubacct/kilix-95"
+PLEB_REPO = "https://github.com/itsmygithubacct/pleb"
+PLEBIAN_OS_REPO = "https://github.com/itsmygithubacct/plebian-os"
+BASH_MANUAL = "https://www.gnu.org/software/bash/manual/bash.html"
+BASH_REPO = "https://git.savannah.gnu.org/cgit/bash.git"
+TMUX_REPO = "https://github.com/tmux/tmux"
+TMUX_MANUAL = "https://man.openbsd.org/tmux.1"
+LINUX_MANPAGES = "https://www.kernel.org/doc/man-pages/"
 
 # ── the book: key -> (title, [blocks]); block = (kind, text) ─────────────────
-# kind: "h" heading (bold), "p" paragraph (wrapped), "b" bullet item.
+# kind: "h" heading, "p" paragraph, "b" bullet item, "l" live link.
 def build_book():
     product = T.PRODUCT_NAME
     return [
@@ -46,6 +57,10 @@ def build_book():
             ("b", "Programs holds the accessories and a Games submenu."),
             ("b", "Documents lists files you opened recently."),
             ("b", "Settings adjusts the desktop's look and behaviour."),
+            ("b", "Help opens this guide, project how-tos, and the System "
+                  "Manual browser for installed man pages."),
+            ("b", "Live links in Help open with the system default browser in a "
+                  "new tab, not with the Kilix browser renderer."),
             ("b", "Run launches a command; Shut Down ends the session."),
         ]),
         ("windows", "Managing windows", [
@@ -83,6 +98,149 @@ def build_book():
             ("p", "Open any of them and press F1, or read this Help book, to "
                   "learn more."),
         ]),
+        ("systemmanual", "Using System Manual", [
+            ("h", "Using System Manual"),
+            ("p", "System Manual searches the man pages installed on this "
+                  "machine. It is the quickest way to read command, library, "
+                  "configuration-file, and administrator references without "
+                  "leaving the desktop."),
+            ("b", "Start > Help > System Manual opens a searchable manual-page "
+                  "browser."),
+            ("b", "Start > Help > List opens the same browser with the full "
+                  "installed page list visible."),
+            ("b", "Type part of a command name, such as `bash`, `ssh`, or "
+                  "`tmux`, then press Enter or click Search."),
+            ("b", "Select a result and click Open, or double-click the result, "
+                  "to render the page in the text pane."),
+            ("b", "Use the mouse wheel, Page Up, Page Down, Home, and End to "
+                  "read long pages."),
+            ("l", "Linux man-pages project", LINUX_MANPAGES),
+        ]),
+        ("kilix", "Using Kilix", [
+            ("h", "Using Kilix"),
+            ("p", "Kilix is the host terminal and app runner behind this "
+                  "desktop. It opens terminal tabs, runs graphical programs "
+                  "inside terminal panes, and provides desktop services."),
+            ("b", "Use Start > Programs > Terminal for a normal shell tab."),
+            ("b", "Use Start > Programs > Mux Terminal for a persistent mux "
+                  "session."),
+            ("b", "Use Start > Programs > Web Browser for the Kilix browser "
+                  "path."),
+            ("b", "`kilix run COMMAND` runs an X11 program in a contained "
+                  "pane."),
+            ("b", "`kilix browse URL` opens a URL through Kilix's browser "
+                  "launcher."),
+            ("b", "`kilix serve` starts the mux terminal service used by Mux "
+                  "Terminal."),
+            ("b", "Help-topic links use the system default browser through "
+                  "`xdg-open`/`sensible-browser`, so repository links open like "
+                  "normal web links."),
+            ("l", "Kilix repository", KILIX_REPO),
+        ]),
+        ("kilix95", f"Using {product}", [
+            ("h", f"Using {product}"),
+            ("p", f"{product} is the desktop shell running inside Kilix. It "
+                  "draws windows, menus, icons, and built-in apps as pixels in "
+                  "the terminal."),
+            ("b", "Start launches programs, settings, help, and shutdown "
+                  "actions."),
+            ("b", "Desktop icons are real files and launchers in the desktop "
+                  "folder."),
+            ("b", "Settings changes Kilix/Kitty appearance and desktop flavor."),
+            ("b", "System Manual searches installed man pages."),
+            ("b", "Help Topics is a two-pane guide: choose topics on the left "
+                  "and follow blue underlined links from the right pane."),
+            ("b", "Use Shut Down to leave the desktop cleanly."),
+            ("l", f"{product} repository", KILIX95_REPO),
+        ]),
+        ("pleb", "Using Pleb", [
+            ("h", "Using Pleb"),
+            ("p", "Pleb owns the installed user session around Kilix: display "
+                  "manager wiring, session startup, autologin/kiosk behavior, "
+                  "and updates of the user-facing Kilix stack."),
+            ("b", "`pleb install` installs or refreshes the session pieces."),
+            ("b", "`pleb update` updates the session stack when available."),
+            ("b", "On a Plebian-OS system, Start > System exposes Pleb update "
+                  "actions when the helper is installed."),
+            ("b", "If a session change does not appear immediately, restart "
+                  "the desktop or session."),
+            ("b", "Use Pleb when the login/session wiring is wrong; use Kilix "
+                  "when the terminal/app runtime itself needs attention."),
+            ("l", "Pleb repository", PLEB_REPO),
+        ]),
+        ("plebianos", "Using Plebian-OS", [
+            ("h", "Using Plebian-OS"),
+            ("p", "Plebian-OS is the Debian-based system image and installer "
+                  "layer that provisions Kilix, Pleb, and this desktop."),
+            ("b", "Use the system update entry under Start > System when it is "
+                  "present."),
+            ("b", "Use Reinstall dependencies only when the installed desktop "
+                  "stack is missing required system packages."),
+            ("b", "Use the shutdown/restart entries from Start so the desktop "
+                  "can play its shutdown flow and restore the terminal."),
+            ("b", "For disk, USB, dependency, or update work, verify the target "
+                  "device or command before running it."),
+            ("b", "If the desktop opens but external apps fail, check the "
+                  "system dependencies for Xvfb, ffmpeg, browser packages, "
+                  "audio, and Python modules."),
+            ("l", "Plebian-OS repository", PLEBIAN_OS_REPO),
+        ]),
+        ("terminal", "Terminal basics", [
+            ("h", "Terminal basics"),
+            ("p", "A terminal runs command-line programs in a shell. Commands "
+                  "usually read from standard input, write to standard output, "
+                  "and report errors on standard error."),
+            ("b", "`pwd` prints the current directory."),
+            ("b", "`ls` lists files; `ls -la` includes hidden files and "
+                  "details."),
+            ("b", "`cd DIR` changes directory."),
+            ("b", "Tab completes file and command names in many shells."),
+            ("b", "Ctrl+C interrupts the foreground program; Ctrl+D sends end "
+                  "of input."),
+            ("b", "`command --help` often prints a quick usage summary."),
+            ("b", "`man COMMAND` opens the terminal manual page; Start > Help "
+                  "> System Manual opens the same kind of reference in a "
+                  "desktop window."),
+            ("b", "Use pipes like `producer | consumer` to send output from "
+                  "one command into another."),
+            ("l", "Linux man-pages project", LINUX_MANPAGES),
+        ]),
+        ("tmux", "Using tmux", [
+            ("h", "Using tmux"),
+            ("p", "tmux keeps terminal sessions alive and lets one terminal "
+                  "hold multiple windows and panes."),
+            ("b", "`tmux new -s NAME` starts a named session."),
+            ("b", "`tmux attach -t NAME` reconnects to a session."),
+            ("b", "`tmux ls` lists sessions; `tmux kill-session -t NAME` stops "
+                  "one."),
+            ("b", "The default prefix is Ctrl+B."),
+            ("b", "Ctrl+B then C creates a window; Ctrl+B then N moves to the "
+                  "next one."),
+            ("b", "Ctrl+B then % splits vertically; Ctrl+B then \" splits "
+                  "horizontally."),
+            ("b", "Ctrl+B then D detaches without stopping the session."),
+            ("l", "tmux project", TMUX_REPO),
+            ("l", "tmux manual", TMUX_MANUAL),
+        ]),
+        ("bash", "Using bash", [
+            ("h", "Using bash"),
+            ("p", "bash is the default command shell on many Linux systems. It "
+                  "runs commands, expands variables, keeps history, and "
+                  "combines commands with pipes and redirection."),
+            ("b", "`echo $NAME` prints an environment or shell variable."),
+            ("b", "`export NAME=value` makes a variable available to child "
+                  "processes."),
+            ("b", "`history` shows recent commands; Ctrl+R searches them."),
+            ("b", "`alias ll='ls -la'` creates a shortcut for the current "
+                  "shell; put lasting aliases in `~/.bashrc`."),
+            ("b", "`>` writes output to a file; `>>` appends."),
+            ("b", "`2>` redirects error output."),
+            ("b", "`set -euo pipefail` is useful in scripts when failures "
+                  "should stop the script early."),
+            ("b", "Quote paths with spaces, for example `cd \"My Folder\"`."),
+            ("l", "GNU Bash manual", BASH_MANUAL),
+            ("l", "Bash source repository", BASH_REPO),
+        ]),
         ("tips", "Tips", [
             ("h", "Tips of the day"),
             ("b", "Right-click almost anything for a menu of what you can do."),
@@ -100,7 +258,8 @@ BOOK = build_book()
 
 class _RichText(W.Widget):
     """Scrollable formatted-text pane: bold headings, wrapped paragraphs,
-    bullets with a hanging indent. Content set as (kind, text) blocks."""
+    bullets and live links with a hanging indent. Content blocks are
+    (kind, text) or (kind, text, url) for links."""
     focusable = True
     LH = 15
     PAD = 6
@@ -109,7 +268,7 @@ class _RichText(W.Widget):
         super().__init__(x, y, w, h)
         self.blocks = []
         self.sb = W.VScroll()
-        self._lines = []              # (font, x_indent, text, bullet)
+        self._lines = []              # (font, x_indent, text, bullet, url)
         self._key = None              # (id(blocks), width) cache guard
 
     def set_blocks(self, blocks):
@@ -120,7 +279,7 @@ class _RichText(W.Widget):
 
     def plain(self):
         """The rendered text as one string (for tests / simple search)."""
-        return "\n".join(t for _, t in self.blocks)
+        return "\n".join(b[1] for b in self.blocks)
 
     def _avail(self):
         return self.w - 2 * self.PAD - T.SCROLL_W - 2
@@ -142,20 +301,27 @@ class _RichText(W.Widget):
     def _relayout(self):
         avail = self._avail()
         lines = []
-        for kind, text in self.blocks:
+        for block in self.blocks:
+            kind, text = block[0], block[1]
+            url = block[2] if kind == "l" and len(block) > 2 else None
             if kind == "h":
                 for ln in self._wrap(T.BOLD, text, avail):
-                    lines.append((T.BOLD, self.PAD, ln, False))
-                lines.append((T.FONT, self.PAD, "", False))
+                    lines.append((T.BOLD, self.PAD, ln, False, None))
+                lines.append((T.FONT, self.PAD, "", False, None))
             elif kind == "b":
                 wrapped = self._wrap(T.FONT, text, avail - 14)
                 for i, ln in enumerate(wrapped):
-                    lines.append((T.FONT, self.PAD + 14, ln, i == 0))
-                lines.append((T.FONT, self.PAD, "", False))
+                    lines.append((T.FONT, self.PAD + 14, ln, i == 0, None))
+                lines.append((T.FONT, self.PAD, "", False, None))
+            elif kind == "l":
+                wrapped = self._wrap(T.FONT, text, avail - 14)
+                for ln in wrapped:
+                    lines.append((T.FONT, self.PAD + 14, ln, False, url))
+                lines.append((T.FONT, self.PAD, "", False, None))
             else:
                 for ln in self._wrap(T.FONT, text, avail):
-                    lines.append((T.FONT, self.PAD, ln, False))
-                lines.append((T.FONT, self.PAD, "", False))
+                    lines.append((T.FONT, self.PAD, ln, False, None))
+                lines.append((T.FONT, self.PAD, "", False, None))
         self._lines = lines
 
     def _rows(self):
@@ -177,16 +343,44 @@ class _RichText(W.Widget):
             idx = self.sb.pos + i
             if idx >= len(self._lines):
                 break
-            font, xoff, text, bullet = self._lines[idx]
+            font, xoff, text, bullet, url = self._lines[idx]
             yy = y0 + self.PAD + i * self.LH
             if bullet:
                 d.rectangle([x0 + self.PAD + 3, yy + 4,
                              x0 + self.PAD + 7, yy + 8], fill=T.TEXT)
+            if url:
+                d.text((x0 + self.PAD + 3, yy), ">", font=T.FONT, fill=LINK)
             if text:
-                d.text((x0 + xoff, yy), T.ellipsize(font, text, avail),
-                       font=font, fill=T.TEXT)
+                shown = T.ellipsize(font, text, avail)
+                fill = LINK if url else T.TEXT
+                d.text((x0 + xoff, yy), shown, font=font, fill=fill)
+                if url:
+                    tw = min(T.text_w(font, shown), avail)
+                    d.line([(x0 + xoff, yy + 13), (x0 + xoff + tw, yy + 13)],
+                           fill=fill)
         if self.sb.total > self.sb.page:
             self.sb.draw(d)
+
+    def _link_at(self, px, py):
+        if not self._lines:
+            self._relayout()
+        rel_y = py - self.y - self.PAD
+        if rel_y < 0:
+            return None
+        row = rel_y // self.LH
+        if not (0 <= row < self._rows()):
+            return None
+        idx = self.sb.pos + row
+        if not (0 <= idx < len(self._lines)):
+            return None
+        font, xoff, text, _bullet, url = self._lines[idx]
+        if not url:
+            return None
+        x0 = self.x + xoff
+        x1 = x0 + min(T.text_w(font, text), self._avail())
+        if x0 <= px <= x1:
+            return text, url
+        return None
 
     def on_mouse(self, ev):
         if (self.sb.total > self.sb.page
@@ -199,6 +393,12 @@ class _RichText(W.Widget):
             self.sb.clamp()
             self.invalidate()
             return True
+        if ev.press and ev.btn == 1:
+            hit = self._link_at(ev.x, ev.y)
+            if hit and self.desk:
+                label, url = hit
+                self.desk.shell.open_default_browser_tab(url, label)
+                return True
         return True
 
     def on_key(self, ev):
@@ -234,7 +434,8 @@ class Help(wm.Window):
         self.topics.set_items([(None, title, key)
                                for key, title, _ in self.book])
         self.set_focus(self.topics)
-        self._navigate(self.book[0][0])
+        start = arg if arg in self.blocks else self.book[0][0]
+        self._navigate(start)
 
     def on_resize(self):
         cw, ch = self.client_size()

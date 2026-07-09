@@ -520,10 +520,39 @@ class Taskbar:
             MI("Files or Folders…", icon="find",
                action=lambda: shell.open_app("findfiles")),
         ]
+        help_sub = [
+            MI("System Manual", icon="help",
+               action=lambda: shell.open_app("manual", "search")),
+            MI("List", icon="doc_text",
+               action=lambda: shell.open_app("manual", "list")),
+            sub(),
+            MI("Kilix", icon="folder", submenu=[
+                MI("Kilix", icon="terminal",
+                   action=lambda: shell.open_app("winhelp", "kilix")),
+                MI(T.PRODUCT_NAME, icon="help",
+                   action=lambda: shell.open_app("winhelp", "kilix95")),
+                MI("Pleb", icon="computer",
+                   action=lambda: shell.open_app("winhelp", "pleb")),
+                MI("Plebian-OS", icon="computer",
+                   action=lambda: shell.open_app("winhelp", "plebianos")),
+            ]),
+            MI("Terminal", icon="terminal", submenu=[
+                MI("Terminal", icon="terminal",
+                   action=lambda: shell.open_app("winhelp", "terminal")),
+                MI("tmux", icon="mux",
+                   action=lambda: shell.open_app("winhelp", "tmux")),
+                MI("bash", icon="run",
+                   action=lambda: shell.open_app("winhelp", "bash")),
+            ]),
+            sub(),
+            MI("Help Topics", icon="help",
+               action=lambda: shell.open_app("winhelp")),
+        ]
         items = [
             MI("Programs", icon="folder", submenu=programs()),
             MI("Documents", icon="doc_text", submenu=documents()),
             MI("Settings", icon="settings", submenu=settings_sub),
+            MI("Help", icon="help", submenu=help_sub),
         ]
         sys_items = shell.system_menu_items()      # update/maintenance launchers
         if sys_items:

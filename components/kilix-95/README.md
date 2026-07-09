@@ -16,6 +16,11 @@ checkout at `~/kilix`.
 
 Quit via Start ▸ Shut Down…, or `Ctrl+Alt+Q`.
 
+Open Start ▸ Help for the built-in guide, project how-tos, and the local System
+Manual browser. Help-topic links use the system default browser through
+`xdg-open`, `sensible-browser`, or `gio open` in a new Kilix tab; launcher URL
+files still use the Kilix browser path.
+
 ## How it works
 
 The whole desktop is a PIL RGB framebuffer blitted through the kitty
@@ -40,14 +45,34 @@ manager, shell, widgets, apps, games registry, and tests live in this repository
 | `icons.py` | the icon set, drawn in code on a 16×16 grid (crisp at 16/32 px) |
 | `widgets.py` | toolkit: Button, TextField, TextArea, ListBox, IconGrid, Menu/MenuHost, TabBar, Dropdown, Scrollbar… |
 | `wm.py` | `Window` (chrome, sysbuttons) + `WM` (z-order, drags, modality) + `msgbox`/`inputbox` |
-| `taskbar.py` | start bar: Start button/menu, task buttons, clock |
-| `shell.py` | desktop surface: wallpaper, icon grid, launcher files, spawn verbs |
+| `taskbar.py` | start bar: Start button/menu, Help/System/Find menus, task buttons, quick launch, tray, clock |
+| `shell.py` | desktop surface: wallpaper, icon grid, launcher files, spawn verbs, browser/default-browser launch paths |
 | `games.py` | Games/app registry + on-demand installers (Doom, Bashed Earth, kilix-amp) + CLI launcher |
-| `apps/` | `filemgr` `notepad` `settings` `viewer` `amp`; `xpane` (X11-app-in-a-window) — each a `Window` subclass |
+| `apps/` | built-ins such as `filemgr`, `notepad`, `settings`, `viewer`, `amp`, `manual`, `winhelp`; `xpane` embeds X11 apps in desktop windows |
 
 Input events flow Desk → (MenuHost | dragged owner | window | taskbar |
 shell); windows capture the pressed widget until release, which is what
 gives every widget drag behavior for free.
+
+## Help and manuals
+
+Start ▸ Help contains:
+
+- **System Manual**: a searchable browser for installed man pages. It scans the
+  active manpath, lists pages as `name (section)`, and renders a selected page in
+  a read-only text pane.
+- **List**: opens the same System Manual browser with the full installed page
+  list visible.
+- **Kilix**: how-tos for Kilix, Kilix 95, Pleb, and Plebian-OS, each with a live
+  repository link.
+- **Terminal**: how-tos for terminal basics, tmux, and bash, with links to the
+  relevant project/manual pages.
+- **Help Topics**: the general two-pane desktop guide.
+
+Blue underlined Help links call `Shell.open_default_browser_tab()`, which tries
+`xdg-open`, then `sensible-browser`, then `gio open`. This is intentionally
+separate from launcher URL handling and Start ▸ Programs ▸ Web Browser, which
+continue to use the Kilix browser flow.
 
 ## The desktop folder
 

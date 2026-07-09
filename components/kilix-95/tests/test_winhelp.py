@@ -1,6 +1,6 @@
-"""Help viewer: selecting a topic swaps the content pane; Back returns."""
+"""Help viewer: selecting topics, direct topics and live links."""
 import harness as H
-from apps.winhelp import Help, BOOK
+from apps.winhelp import Help, BOOK, BASH_MANUAL, TMUX_MANUAL, TMUX_REPO
 
 
 def _row_y(win, i):
@@ -42,5 +42,51 @@ assert win.topic == "keys", win.topic
 H.wheel(d, gx + win.body.x + 20, gy + win.body.y + 20, dz=1)
 d.dirty = True
 d.render()
+
+# Start-menu how-to entries can open directly to a specific topic.
+bash = Help(d, "bash")
+assert bash.topic == "bash", bash.topic
+assert "history" in bash.body.plain()
+
+manual = Help(d, "systemmanual")
+assert manual.topic == "systemmanual", manual.topic
+assert "Start > Help > System Manual" in manual.body.plain()
+
+fallback = Help(d, "nonesuch")
+assert fallback.topic == BOOK[0][0], fallback.topic
+
+
+def _click_body_link(win, label):
+    win.body._relayout()
+    for i, line in enumerate(win.body._lines):
+        font, xoff, text, _bullet, url = line
+        if url and label in text:
+            rows = win.body._rows()
+            if i < win.body.sb.pos:
+                win.body.sb.pos = i
+            elif i >= win.body.sb.pos + rows:
+                win.body.sb.pos = i - rows + 1
+            gx, gy = win.client_origin()
+            y = gy + win.body.y + win.body.PAD + (
+                i - win.body.sb.pos) * win.body.LH + 4
+            H.click(d, gx + win.body.x + xoff + 2, y)
+            return
+    raise AssertionError(f"no link {label!r}")
+
+
+# Live links in authored how-to pages open through the default browser helper.
+seen = []
+d.shell.open_default_browser_tab = lambda url, title=None: seen.append(
+    (url, title))
+tmux = Help(d, "tmux")
+d.wm.add(tmux)
+_click_body_link(tmux, "tmux project")
+_click_body_link(tmux, "tmux manual")
+assert seen == [(TMUX_REPO, "tmux project"), (TMUX_MANUAL, "tmux manual")], seen
+
+bash = Help(d, "bash")
+d.wm.add(bash)
+_click_body_link(bash, "GNU Bash manual")
+assert seen[-1] == (BASH_MANUAL, "GNU Bash manual"), seen
 
 print("ok")

@@ -50,6 +50,9 @@ def open(desk, name, arg=None):
     elif name == "winhelp":
         from . import winhelp
         desk.wm.add(winhelp.Help(desk, arg))
+    elif name == "manual":
+        from . import manual
+        desk.wm.add(manual.ManualBrowser(desk, arg))
     elif name == "mycomp":
         from . import mycomp
         desk.wm.add(mycomp.MyComputer(desk, arg))

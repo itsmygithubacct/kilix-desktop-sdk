@@ -6,7 +6,8 @@ something" verb. The desktop folder is a real directory
 plain files and directories dropped there appear as icons, and "Create
 Launcher…" writes freedesktop-style .desktop files there. Programs launch
 into new kilix tabs/windows over kitty remote control; X11 apps go through
-`kilix run`; URLs through `kilix browse`.
+`kilix run`; launcher URLs go through `kilix browse`; Help links can open the
+system default browser.
 """
 import configparser
 import json
@@ -662,6 +663,26 @@ class Shell:
             return
         self._tab([os.path.join(KILIX_HOME, "kilix"), "browse", url],
                   "browse", None)
+
+    def open_default_browser_tab(self, url, title="Browser"):
+        """Open a URL with the system default browser, not `kilix browse`.
+
+        xdg-open/sensible-browser are expected to hand the URL to the default
+        browser, which normally opens it as a browser tab when a browser is
+        already running.
+        """
+        if not url:
+            return False
+        for cand in ("xdg-open", "sensible-browser"):
+            exe = shutil.which(cand)
+            if exe:
+                return self._tab([exe, url], title or "Browser", None)
+        gio = shutil.which("gio")
+        if gio:
+            return self._tab([gio, "open", url], title or "Browser", None)
+        wm.msgbox(self.desk, "Web Browser",
+                  "No default browser opener was found.", icon="error")
+        return False
 
     FIREFOX_CANDS = ("firefox-esr", "firefox")
     CHROME_CANDS = ("google-chrome", "google-chrome-stable", "chromium",

@@ -3,6 +3,7 @@ XPane/Xvfb failure shows an error dialog instead of crashing the desktop."""
 import os
 
 import harness as H
+import shell as shell_mod
 import wm
 from apps import xpane
 
@@ -80,7 +81,28 @@ def firefox_defaults_to_filled_run_tab():
     assert seen["title"] == "Firefox"
 
 
+def default_browser_links_use_system_opener_tab():
+    d = H.make_desk()
+    seen = {}
+    real_which = shell_mod.shutil.which
+    shell_mod.shutil.which = lambda name: "/usr/bin/xdg-open" \
+        if name == "xdg-open" else None
+    d.shell._tab = lambda argv, title, cwd=None: seen.update(
+        argv=argv, title=title, cwd=cwd) or True
+    try:
+        assert d.shell.open_default_browser_tab(
+            "https://example.invalid/manual", "Manual") is True
+    finally:
+        shell_mod.shutil.which = real_which
+
+    assert seen["argv"] == [
+        "/usr/bin/xdg-open", "https://example.invalid/manual"], seen
+    assert seen["title"] == "Manual"
+    assert "browse" not in seen["argv"], seen
+
+
 opens_window()
 failure_shows_msgbox()
 firefox_defaults_to_filled_run_tab()
+default_browser_links_use_system_opener_tab()
 print("ok")
