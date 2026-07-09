@@ -114,8 +114,20 @@ class SettingsWin(wm.Window):
                                       cb=self._switch_tab))
         self.fields = {}              # key -> (kind, widget)
         self.panels = [[], [], []]
+        opts = list(T.flavor_options())
+        self._flavor_keys = [key for key, label in opts]
+        self._flavor_labels = [label for key, label in opts]
+        self.flavor_dd = None
         for tab_i, spec in ((0, APPEARANCE), (1, BEHAVIOR)):
             y = 44
+            if tab_i == 0:
+                lw = self.add(W.Label(18, y + 4, "Desktop flavor:"))
+                self.panels[tab_i].append(lw)
+                self.flavor_dd = self.add(W.Dropdown(
+                    200, y, 180, self._flavor_labels,
+                    cb=self._pick_flavor))
+                self.panels[tab_i].append(self.flavor_dd)
+                y += 30
             for key, label, kind, extra in spec:
                 lw = self.add(W.Label(18, y + 4, label + ":"))
                 self.panels[tab_i].append(lw)
@@ -142,7 +154,7 @@ class SettingsWin(wm.Window):
                 self.fields[key] = (kind, wd)
                 self.panels[tab_i].append(wd)
                 y += 30
-        note_y = 44 + 30 * max(len(APPEARANCE), len(BEHAVIOR)) + 6
+        note_y = 44 + 30 * max(len(APPEARANCE) + 1, len(BEHAVIOR)) + 6
         note = self.add(W.Label(
             18, note_y, "Applied live to this kilix — no restart needed.",
             font=T.SMALL, color=T.SHADOW))
@@ -200,7 +212,31 @@ class SettingsWin(wm.Window):
         self.invalidate()
 
     # form <-> buffer -----------------------------------------------------
+    def _sync_flavor_widget(self):
+        if self.flavor_dd is None:
+            return
+        cur = T.flavor_name()
+        if cur in self._flavor_keys:
+            self.flavor_dd.index = self._flavor_keys.index(cur)
+
+    def _pick_flavor(self, label):
+        if self.flavor_dd is None:
+            return
+        try:
+            key = self._flavor_keys[self.flavor_dd.index]
+        except IndexError:
+            return
+        old = T.flavor_name()
+        self.desk.shell.set_flavor(key)
+        self._sync_flavor_widget()
+        if old != T.flavor_name():
+            self.status.set("Desktop flavor saved.")
+        else:
+            self.status.set("Desktop flavor already active.")
+        self.invalidate()
+
     def _populate(self):
+        self._sync_flavor_widget()
         for key, (kind, wd) in self.fields.items():
             val = get_key(self.buffer, key)
             if kind == "bool":

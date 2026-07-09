@@ -311,6 +311,8 @@ Switch at runtime from:
 Start -> Settings -> Desktop Flavor
 ```
 
+The same selector is available in kilix Settings on the Appearance tab.
+
 The choice is saved in desktop state. For screenshots or first launch before
 state exists:
 

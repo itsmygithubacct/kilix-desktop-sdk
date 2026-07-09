@@ -385,10 +385,21 @@ class Desk:
             img = self._fallback_system_screen(name)
         if img.size != (self.w, self.h):
             # These are full-screen splash screens. Preserve the whole artwork
-            # instead of cropping to aspect, so centered title/progress art is
-            # still visible on wide VM displays.
-            img = img.resize((self.w, self.h), _RESAMPLE)
+            # and center it instead of stretching it out of proportion, so the
+            # title/progress art stays readable on wide VM displays.
+            img = self._fit_system_screen(img)
         return img
+
+    def _fit_system_screen(self, img):
+        sw, sh = img.size
+        scale = min(self.w / max(1, sw), self.h / max(1, sh))
+        nw = max(1, int(round(sw * scale)))
+        nh = max(1, int(round(sh * scale)))
+        bg = img.getpixel((0, 0))
+        out = Image.new("RGB", (self.w, self.h), bg)
+        resized = img.resize((nw, nh), _RESAMPLE)
+        out.paste(resized, ((self.w - nw) // 2, (self.h - nh) // 2))
+        return out
 
     def _fallback_system_screen(self, name):
         color = (174, 232, 240) if name != "shutdown" else (150, 218, 230)
@@ -418,11 +429,13 @@ class Desk:
         return img
 
     def _show_system_screen(self, name, seconds):
-        if self.term is None:
-            return
-        self.blit(self._system_screen(name))
+        img = self._system_screen(name)
+        self.fb = img.copy()
+        self.dirty = False
+        self.blit(img)
         if seconds > 0:
             time.sleep(seconds)
+        self.dirty = True
 
     def _system_screen_seconds(self, name):
         env = ("KILIX_SHUTDOWN_SCREEN_SECONDS" if name == "shutdown"

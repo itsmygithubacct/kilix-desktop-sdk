@@ -9,6 +9,7 @@ import os
 import tempfile
 
 import harness as H
+import theme as T
 from apps import settings
 
 # _apply live-reloads the running kilix; make that a no-op under test so we
@@ -149,6 +150,23 @@ with conf("# empty-ish\n") as path:
 
     win._font_size_reset()
     assert settings.get_key(read(path), "font_size") == "11"
+
+
+# ── desktop flavor is visible in kilix Settings, not only the Start menu ────
+with conf("# empty-ish\n") as path, H.desktop_dir():
+    T.apply_flavor("95")
+    d = H.make_desk()
+    import apps
+    apps.open(d, "settings", None)
+    win = H.find_window(d, "SettingsWin")
+
+    assert win.flavor_dd is not None, "Settings is missing Desktop flavor"
+    assert win.flavor_dd.value == "kilix 95"
+    win.flavor_dd._pick(win._flavor_keys.index("xp"))
+
+    assert T.flavor_name() == "xp"
+    assert d.shell.state["flavor"] == "xp"
+    assert win.flavor_dd.value == "kilix XP"
 
 
 print("ok")
