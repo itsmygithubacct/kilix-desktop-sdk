@@ -949,8 +949,18 @@ def _scene(desk, name):
                 break
 
 
+def _version():
+    try:
+        with open(os.path.join(os.path.dirname(__file__), "VERSION")) as fh:
+            return fh.read().strip()
+    except OSError:
+        return "0.1.0"
+
+
 def main():
     ap = argparse.ArgumentParser(prog="kilix desktop")
+    ap.add_argument("--version", action="version",
+                    version="kilix-95 " + _version())
     ap.add_argument("--cursor", dest="cursor", action="store_true",
                     default=True, help=argparse.SUPPRESS)   # legacy (now default)
     ap.add_argument("--no-cursor", dest="cursor", action="store_false",
