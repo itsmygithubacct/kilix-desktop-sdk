@@ -323,6 +323,10 @@ KILIX_DESKTOP_FLAVOR=95 kilix desktop
 
 `KILIX_FLAVOR` is also accepted as a fallback.
 
+XP flavor reference:
+
+![Kilix 95 XP flavor desktop](docs/kilix-xp.png)
+
 ## Settings App
 
 The Settings app edits the active `kitty.conf`.
