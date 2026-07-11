@@ -962,6 +962,50 @@ class Shell:
                     "Type the name of a program to open it in a kilix tab:",
                     "", cb=do, icon="run", width=320)
 
+    def change_password_dialog(self):
+        """Modal change-password dialog (masked fields), backed by the
+        plebian-os-passwd helper. On success the default-password tray nag
+        clears; on failure the helper's reason is shown inline."""
+        import security
+        desk = self.desk
+        win = wm.Window(desk, "Change Password", 322, 210,
+                        icon="warn", resizable=False, modal=True)
+        cw = win.client_size()[0]
+        win.add(W.Label(12, 12, "Set a new login password for this account."))
+        win.add(W.Label(12, 42, "New password:"))
+        new = win.add(W.TextField(122, 40, cw - 134, "", mask=True))
+        win.add(W.Label(12, 70, "Confirm:"))
+        conf = win.add(W.TextField(122, 68, cw - 134, "", mask=True))
+        status = win.add(W.Label(12, 96, "", color=T.SHADOW))
+
+        def fail(msg):
+            status.set(msg)
+            win.invalidate()
+
+        def ok(*_):
+            p1, p2 = new.text, conf.text
+            if not p1:
+                return fail("Enter a new password.")
+            if p1 != p2:
+                return fail("The passwords do not match.")
+            if p1 == "plebian":
+                return fail("Choose something other than the default.")
+            okr, msg = security.change_password(p1)
+            if okr:
+                win.close()
+                desk._refresh_password_nag()          # clears the tray icon
+                wm.msgbox(desk, "Password Changed", msg, icon="info")
+            else:
+                fail(msg[:46])
+
+        new.on_enter = lambda *_: win.set_focus(conf)
+        conf.on_enter = ok
+        win.add(W.Button(cw - 168, 130, 76, 24, "OK", cb=ok, default=True))
+        win.add(W.Button(cw - 84, 130, 76, 24, "Cancel", cb=win.close))
+        win.set_focus(new)
+        desk.wm.add(win)
+        return win
+
     def shutdown_dialog(self):
         desk = self.desk
         win = wm.Window(desk, f"Shut Down {T.PRODUCT_NAME}", 300, 250,
