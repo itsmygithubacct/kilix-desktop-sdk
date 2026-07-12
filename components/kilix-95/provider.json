@@ -1,0 +1,10 @@
+{
+  "name": "kilix-95",
+  "version": "0.1.1",
+  "provider_api": 1,
+  "requires_kilix_sdk": "1.0",
+  "security_features": [
+    "default-password-nag",
+    "masked-secret-clipboard"
+  ]
+}

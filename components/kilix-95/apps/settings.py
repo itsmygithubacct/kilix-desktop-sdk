@@ -1,7 +1,9 @@
 """kilix desktop — kilix Settings (the control panel).
 
-Edits the kilix configuration (config/kitty.conf, i.e. whatever
-$KITTY_CONFIG_DIRECTORY points at). Two form tabs cover the common knobs;
+Edits the writable per-user Kilix configuration (normally
+``$XDG_CONFIG_HOME/kilix``; ``$KITTY_CONFIG_DIRECTORY`` overrides it). The
+tracked Kilix ``config/`` tree contains defaults and is never rewritten. Two
+form tabs cover the common knobs;
 the third tab is the raw file in a text editor. Apply writes the file and
 live-reloads the running kilix via `kitten @ action load_config_file`,
 falling back to SIGUSR1 at $KITTY_PID. Only the managed lines are rewritten
@@ -12,6 +14,7 @@ import os
 import re
 import signal
 import subprocess
+import tempfile
 
 import shell as _shell
 import theme as T
@@ -48,7 +51,8 @@ BEHAVIOR = [
 
 def config_path():
     d = os.environ.get("KITTY_CONFIG_DIRECTORY") or os.path.join(
-        _shell.KILIX_HOME, "config")
+        os.environ.get("XDG_CONFIG_HOME") or os.path.join(
+            os.path.expanduser("~"), ".config"), "kilix")
     return os.path.join(d, "kitty.conf")
 
 
@@ -107,7 +111,12 @@ class SettingsWin(wm.Window):
             with open(self.path, encoding="utf-8", errors="replace") as f:
                 self.buffer = f.read()
         except OSError:
-            self.buffer = ""
+            defaults = os.path.join(_shell.KILIX_HOME, "config", "kitty.conf")
+            self.buffer = (
+                f"# Kilix user overrides. Tracked defaults are loaded first.\n"
+                "include .kilix-defaults.conf\n"
+                if os.path.isfile(defaults) else ""
+            )
         cw, ch = self.client_size()
         self.tabs = self.add(W.TabBar(6, 6, cw - 12,
                                       ["Appearance", "Behavior", "kitty.conf"],
@@ -297,13 +306,28 @@ class SettingsWin(wm.Window):
             self.buffer = self.ta.text()
         else:
             self._form_to_buffer()
+        tmp = None
         try:
-            with open(self.path, "w", encoding="utf-8") as f:
+            directory = os.path.dirname(self.path)
+            os.makedirs(directory, exist_ok=True)
+            fd, tmp = tempfile.mkstemp(prefix=".kitty.conf.", dir=directory)
+            os.fchmod(fd, 0o600)
+            with os.fdopen(fd, "w", encoding="utf-8") as f:
                 f.write(self.buffer)
+                f.flush()
+                os.fsync(f.fileno())
+            os.replace(tmp, self.path)
+            tmp = None
         except OSError as e:
             wm.msgbox(self.desk, "kilix Settings", f"Cannot write config:\n{e}",
                       icon="error")
             return
+        finally:
+            if tmp is not None:
+                try:
+                    os.unlink(tmp)
+                except OSError:
+                    pass
         msg = self._reload_live()
         self.status.set(msg)
         self.invalidate()

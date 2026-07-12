@@ -6,6 +6,7 @@ defaults), and F52 (non-UTF-8 kitty.conf makes Settings unopenable).
 """
 import contextlib
 import os
+import stat
 import tempfile
 
 import harness as H
@@ -39,6 +40,26 @@ def conf(text, binary=False):
 def read(path):
     with open(path, encoding="utf-8") as f:
         return f.read()
+
+
+@contextlib.contextmanager
+def xdg_conf():
+    """Use the default XDG path with no KITTY_CONFIG_DIRECTORY override."""
+    old_kitty = os.environ.pop("KITTY_CONFIG_DIRECTORY", None)
+    old_xdg = os.environ.get("XDG_CONFIG_HOME")
+    root = tempfile.mkdtemp(prefix="kilix95-xdg-")
+    os.environ["XDG_CONFIG_HOME"] = root
+    try:
+        yield root
+    finally:
+        if old_kitty is not None:
+            os.environ["KITTY_CONFIG_DIRECTORY"] = old_kitty
+        else:
+            os.environ.pop("KITTY_CONFIG_DIRECTORY", None)
+        if old_xdg is None:
+            os.environ.pop("XDG_CONFIG_HOME", None)
+        else:
+            os.environ["XDG_CONFIG_HOME"] = old_xdg
 
 
 # ── F06: raw editor edits survive a tab roundtrip and reach disk ────────────
@@ -167,6 +188,48 @@ with conf("# empty-ish\n") as path, H.desktop_dir():
     assert T.flavor_name() == "xp"
     assert d.shell.state["flavor"] == "xp"
     assert win.flavor_dd.value == "kilix XP"
+
+
+# The no-override path creates a private XDG config and leaves tracked host
+# defaults untouched. This is the normal launcher path, not only a fallback.
+defaults = os.path.join(settings._shell.KILIX_HOME, "config", "kitty.conf")
+with open(defaults, "rb") as f:
+    defaults_before = f.read()
+with xdg_conf() as xdg:
+    d = H.make_desk()
+    import apps
+    apps.open(d, "settings", None)
+    win = H.find_window(d, "SettingsWin")
+    expected = os.path.join(xdg, "kilix", "kitty.conf")
+    assert win.path == expected
+    assert not os.path.exists(expected)
+    win._apply()
+    assert os.path.isfile(expected)
+    assert stat.S_IMODE(os.stat(expected).st_mode) == 0o600
+    assert "include .kilix-defaults.conf" in read(expected)
+with open(defaults, "rb") as f:
+    assert f.read() == defaults_before, "Settings modified tracked defaults"
+
+
+# Atomic replacement must replace a stale link rather than following it and
+# rewriting an unrelated file.
+with xdg_conf() as xdg:
+    directory = os.path.join(xdg, "kilix")
+    os.makedirs(directory)
+    unrelated = os.path.join(xdg, "unrelated.conf")
+    with open(unrelated, "w", encoding="utf-8") as f:
+        f.write("keep me\n")
+    target = os.path.join(directory, "kitty.conf")
+    os.symlink(unrelated, target)
+    d = H.make_desk()
+    import apps
+    apps.open(d, "settings", None)
+    win = H.find_window(d, "SettingsWin")
+    win.buffer = "font_size 14\n"
+    win._apply()
+    assert not os.path.islink(target)
+    assert read(target) == "font_size 14\n"
+    assert read(unrelated) == "keep me\n"
 
 
 print("ok")

@@ -7,8 +7,10 @@ import security
 import widgets as W
 
 
-# ── security module: no helper on the test box → never nags spuriously ──────
-assert not security.available(), "test box unexpectedly has the passwd helper"
+# ── security module: no helper → never nags spuriously ────────────────
+# Stub capability discovery so this remains valid on an installed Plebian-OS
+# machine where the real helper may intentionally be present.
+security.available = lambda: False
 assert security.is_default_password() is False
 ok, msg = security.change_password("whatever")
 assert ok is False and "not available" in msg
