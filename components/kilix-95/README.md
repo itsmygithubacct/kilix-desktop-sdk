@@ -16,6 +16,13 @@ kilix desktop
 
 Quit through Start -> Shut Down..., or press `Ctrl+Alt+Q`.
 
+## Release 0.1.1
+
+Version 0.1.1 declares the provider/SDK contract, preserves the default-password
+security baseline across provider choices, writes settings only to XDG user
+configuration, and pins optional downloaded game/app sources to immutable
+commits with safe archive extraction.
+
 ## Quick Start
 
 From a normal Kilix session:
@@ -45,7 +52,9 @@ desktop start filemgr notepad settings dialog launcher menu startup shutdown bso
 
 ## Relationship To Kilix
 
-Kilix 95 is a separate checkout, but it is intentionally hosted by Kilix.
+Kilix 95 is the authoritative desktop-provider checkout, intentionally hosted
+by Kilix. The copy bundled in Kilix is a compatibility fallback; the launcher
+reports which one it selected instead of silently preferring a divergent tree.
 The Kilix launcher passes `KILIX_HOME` so this repo can use the host SDK and
 launch helpers. If `KILIX_HOME` is unset, `host.py` falls back to `~/kilix`,
 then a sibling `../kilix`, then `~/kilix` again.
@@ -56,6 +65,13 @@ The boundary is:
 - `kilix_sdk.graphics`: inline Kitty graphics for streamed sessions.
 - Kilix CLI helpers: `kilix run`, `kilix browse`, `kilix serve`.
 - Kitty remote control: `kitten @ launch` for new tabs and windows.
+
+`provider.json` declares provider API 1, the required `kilix_sdk` 1.0 contract,
+and the security behaviors the provider implements. Kilix validates that
+data-only manifest and its implementation markers before executing the
+provider. `main.py` also calls `kilix_sdk.require_compatible("1.0")` as a
+defense-in-depth runtime check. Incompatible hosts fail early with a clear
+version error.
 
 Everything specific to the desktop lives here: the shell, taskbar, window
 manager, widgets, built-in apps, Help, System Manual browser, games registry,
@@ -281,7 +297,7 @@ Runtime state is intentionally outside the repo.
 | generated/bundled sound cache | `~/.local/share/kilix/sounds` |
 | games config | `~/.config/kilix/games.conf` |
 | game/app downloads | `~/.local/share/kilix/games`, `~/.local/share/kilix/apps` |
-| Kitty/Kilix settings | `$KITTY_CONFIG_DIRECTORY/kitty.conf`, else `${KILIX_HOME}/config/kitty.conf` |
+| Kitty/Kilix settings | `$KITTY_CONFIG_DIRECTORY/kitty.conf`, else `${XDG_CONFIG_HOME:-~/.config}/kilix/kitty.conf` |
 
 Settings is the most important host mutation: it edits the active Kitty/Kilix
 configuration, not only desktop-local state.
@@ -340,8 +356,13 @@ $KITTY_CONFIG_DIRECTORY/kitty.conf
 or, when that variable is absent:
 
 ```text
-${KILIX_HOME}/config/kitty.conf
+${XDG_CONFIG_HOME:-~/.config}/kilix/kitty.conf
 ```
+
+The Kilix launcher creates that user file with a relative include of its
+managed `.kilix-defaults.conf` link. The launcher refreshes the link after a
+checkout move. Settings atomically writes only the user file and never dirties
+the host checkout.
 
 Form tabs rewrite only managed keys and preserve the rest of the file,
 including comments. The raw `kitty.conf` tab exposes the whole file. Apply
@@ -445,9 +466,12 @@ The installer path is designed for visible progress:
 4. failure leaves a readable error instead of closing silently.
 
 Doom/DOSBox support writes a DOSBox config tuned for full-pane display and sound.
-Native terminal/Kitty-graphics games are cloned and built under user data with
-`git clone --depth 1` and `make`. Build failures include a dependency hint in
-the error text.
+Native terminal/Kitty-graphics games are fetched at full immutable commit SHAs
+and built under user data with `make`. Existing source caches must retain the
+expected origin, pinned HEAD, and a clean tracked worktree. Build failures
+include a dependency hint in the error text.
+An explicitly configured different `dir` in `games.conf` remains user-managed
+and is treated as a trusted local executable rather than a Kilix-managed cache.
 
 Because these are optional downloads and builds, a fresh Plebian-OS image should
 still boot the desktop and pass the core UI tests without preinstalling every

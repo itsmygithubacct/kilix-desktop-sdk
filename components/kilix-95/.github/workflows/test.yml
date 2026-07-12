@@ -1,0 +1,28 @@
+name: test
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      KILIX_COMMIT: 85301efc7506486cf499d3655fd402bb4403b27e
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - name: Install test dependencies
+        run: sudo apt-get update && sudo apt-get install -y python3-pil python3-xlib
+      - name: Run tests
+        env:
+          KILIX_HOME: ${{ github.workspace }}/../kilix
+        run: |
+          git init "$KILIX_HOME"
+          git -C "$KILIX_HOME" remote add origin https://github.com/itsmygithubacct/kilix
+          git -C "$KILIX_HOME" fetch --depth 1 origin "$KILIX_COMMIT"
+          git -C "$KILIX_HOME" checkout --detach FETCH_HEAD
+          python3 tests/run.py

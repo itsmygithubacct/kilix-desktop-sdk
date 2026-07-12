@@ -19,8 +19,10 @@ import configparser
 import hashlib
 import os
 import shutil
+import stat
 import sys
 import tarfile
+import tempfile
 import urllib.request
 import zipfile
 
@@ -52,9 +54,13 @@ DOSBOX_URL = ("https://github.com/dosbox-staging/dosbox-staging/releases/"
 DOSBOX_SHA256 = "bc229df72ea103b7865cdca67324772dbffa8e58866477e69a79638b723a0442"
 
 BASHED_REPO = "https://github.com/itsmygithubacct/Bashed-Earth"
+BASHED_REF = "aa65fbd937c346d287b53afc54cddee63c874699"
 LANDER_REPO = "https://github.com/itsmygithubacct/terminal_lander"
+LANDER_REF = "4b686f7dc86b86a1550f9f657eed39110eb91ba7"
 BROKEOUT_REPO = "https://github.com/itsmygithubacct/kitty-brokeout"
+BROKEOUT_REF = "4fc06ba47004a8fc4d68bb5b07a96974511abfc9"
 AMP_REPO = "https://github.com/itsmygithubacct/kilix-amp"
+AMP_REF = "0595836ff8496fd6321d8bf88b8e2c69779c7b29"
 
 # the Start-menu registry (taskbar/shell build the Games submenu from this)
 GAMES = {
@@ -219,6 +225,20 @@ def _safe_extract_tar(tar, dest):
     tar.extractall(root)
 
 
+def _safe_extract_zip(archive, dest):
+    """Extract a ZIP only when every regular member stays below ``dest``."""
+    root = os.path.abspath(dest)
+    for member in archive.infolist():
+        target = os.path.abspath(os.path.join(root, member.filename))
+        if not _inside(root, target):
+            raise RuntimeError(f"unsafe path in archive: {member.filename}")
+        mode = member.external_attr >> 16
+        if stat.S_ISLNK(mode) or stat.S_ISCHR(mode) or stat.S_ISBLK(mode) \
+                or stat.S_ISFIFO(mode) or stat.S_ISSOCK(mode):
+            raise RuntimeError(f"unsupported archive member: {member.filename}")
+    archive.extractall(root)
+
+
 def ensure_dosbox(cp, report):
     """A runnable dosbox: config > $PATH > previously vendored > download."""
     cur = os.path.expanduser(cp.get("doom", "dosbox", fallback=""))
@@ -266,7 +286,7 @@ def ensure_doom(cp, report):
     _fetch(DOOM_URLS, outer, report, sha256=DOOM_ZIP_SHA256)
     report("extracting the shareware episode …")
     with zipfile.ZipFile(outer) as z:
-        z.extractall(ddir)
+        _safe_extract_zip(z, ddir)
     # DEICE's split archive: DOOMS_19.1 + DOOMS_19.2 = a self-extracting ZIP
     joined = os.path.join(ddir, "dooms_19.sfx")
     with open(joined, "wb") as out:
@@ -277,7 +297,7 @@ def ensure_doom(cp, report):
             with open(p, "rb") as f:
                 out.write(f.read())
     with zipfile.ZipFile(joined) as z:      # zipfile handles the MZ stub
-        z.extractall(ddir)
+        _safe_extract_zip(z, ddir)
     for junk in ("doom19s.zip", "dooms_19.sfx", "DOOMS_19.1", "DOOMS_19.2",
                  "DOOMS_19.DAT", "DEICE.EXE", "INSTALL.BAT"):
         p = _find(ddir, junk)
@@ -374,17 +394,79 @@ def _audio_check(report):
     report("audio: no PulseAudio/PipeWire found — Doom will run silent")
 
 
-def _clone_and_make(repo, dest, binary, dep_hint, report):
-    """Shared clone+build installer: git clone --depth 1, make, return the
-    built binary's path."""
+def _verify_source_checkout(repo, ref, dest):
+    """Require the expected origin, pinned HEAD, and clean tracked files."""
     import subprocess
     if not os.path.isdir(os.path.join(dest, ".git")):
-        os.makedirs(os.path.dirname(dest), exist_ok=True)
-        report(f"cloning {repo} …")
-        r = subprocess.run(["git", "clone", "--depth", "1", repo, dest],
-                           capture_output=True, text=True)
-        if r.returncode != 0:
-            raise RuntimeError(f"clone failed:\n{r.stderr.strip()[-500:]}")
+        raise RuntimeError(f"managed source is not a git checkout: {dest}")
+    origin = subprocess.run(
+        ["git", "-C", dest, "config", "--get", "remote.origin.url"],
+        capture_output=True, text=True,
+    )
+    if origin.returncode != 0 or origin.stdout.strip() != repo:
+        raise RuntimeError(
+            f"refusing untrusted checkout origin at {dest}: "
+            f"{origin.stdout.strip() or 'missing'}"
+        )
+    dirty = subprocess.run(
+        ["git", "-C", dest, "status", "--porcelain", "--untracked-files=no"],
+        capture_output=True, text=True,
+    )
+    if dirty.returncode != 0 or dirty.stdout.strip():
+        raise RuntimeError(f"refusing modified source checkout: {dest}")
+    head = subprocess.run(
+        ["git", "-C", dest, "rev-parse", "HEAD"], capture_output=True, text=True,
+    )
+    if head.returncode != 0 or head.stdout.strip() != ref:
+        raise RuntimeError(
+            f"source checkout is not the pinned commit {ref}; "
+            f"remove the disposable cache at {dest} to reinstall"
+        )
+
+
+def _install_source_checkout(repo, ref, dest, report):
+    """Stage a pinned checkout beside ``dest``, then rename it into place.
+
+    A failed init/fetch/checkout never leaves a half-created managed cache, so
+    a transient network error can be retried without manual cleanup.
+    """
+    import subprocess
+    parent = os.path.dirname(dest)
+    os.makedirs(parent, exist_ok=True)
+    stage = tempfile.mkdtemp(
+        prefix=f".{os.path.basename(dest)}.install-", dir=parent)
+    try:
+        report(f"fetching pinned source {ref[:12]} from {repo} …")
+        commands = [
+            ["git", "init", "--quiet", stage],
+            ["git", "-C", stage, "remote", "add", "origin", repo],
+            ["git", "-C", stage, "fetch", "--depth", "1", "origin", ref],
+            ["git", "-C", stage, "checkout", "--detach", "FETCH_HEAD"],
+        ]
+        for command in commands:
+            result = subprocess.run(command, capture_output=True, text=True)
+            if result.returncode != 0:
+                raise RuntimeError(
+                    f"source setup failed ({' '.join(command[:3])}):\n"
+                    f"{(result.stderr or result.stdout).strip()[-500:]}"
+                )
+        _verify_source_checkout(repo, ref, stage)
+        os.replace(stage, dest)
+        stage = None
+    finally:
+        if stage is not None:
+            shutil.rmtree(stage, ignore_errors=True)
+
+
+def _clone_and_make(repo, ref, dest, binary, dep_hint, report):
+    """Fetch one immutable commit, build it, and return the binary path."""
+    import subprocess
+    dest = os.path.abspath(os.path.expanduser(dest))
+    if not os.path.isdir(os.path.join(dest, ".git")):
+        if os.path.exists(dest):
+            raise RuntimeError(f"refusing to replace non-git path: {dest}")
+        _install_source_checkout(repo, ref, dest, report)
+    _verify_source_checkout(repo, ref, dest)
     exe = os.path.join(dest, binary)
     if not os.access(exe, os.X_OK):
         report("building (make) …")
@@ -398,51 +480,68 @@ def _clone_and_make(repo, dest, binary, dep_hint, report):
     return exe
 
 
-def _repo_ready(cp, section, binary):
+def _repo_ready(cp, section, binary, managed_dir, repo, ref):
     if not cp.has_section(section):
         return None
     d = os.path.expanduser(cp.get(section, "dir", fallback=""))
     exe = os.path.join(d, binary) if d else ""
-    return exe if exe and os.access(exe, os.X_OK) else None
+    if not (exe and os.access(exe, os.X_OK)):
+        return None
+    # A different path in games.conf is an explicit user-managed executable.
+    # Only caches created in our data directory carry the origin/ref contract.
+    if os.path.realpath(d) == os.path.realpath(managed_dir):
+        try:
+            _verify_source_checkout(repo, ref, d)
+        except (OSError, RuntimeError):
+            return None
+    return exe
 
 
 def bashed_ready(cp=None):
-    return _repo_ready(cp or load(), "bashed-earth", "bashed-earth")
+    return _repo_ready(
+        cp or load(), "bashed-earth", "bashed-earth",
+        os.path.join(GAMES_DIR, "bashed-earth"), BASHED_REPO, BASHED_REF)
 
 
 def ensure_bashed(cp, report):
     return bashed_ready(cp) or _clone_and_make(
-        BASHED_REPO, os.path.join(GAMES_DIR, "bashed-earth"), "bashed-earth",
+        BASHED_REPO, BASHED_REF, os.path.join(GAMES_DIR, "bashed-earth"), "bashed-earth",
         "needs gcc/clang, zlib, make", report)
 
 
 def lander_ready(cp=None):
-    return _repo_ready(cp or load(), "terminal-lander", "terminal-lander")
+    return _repo_ready(
+        cp or load(), "terminal-lander", "terminal-lander",
+        os.path.join(GAMES_DIR, "terminal-lander"), LANDER_REPO, LANDER_REF)
 
 
 def ensure_lander(cp, report):
     return lander_ready(cp) or _clone_and_make(
-        LANDER_REPO, os.path.join(GAMES_DIR, "terminal-lander"),
+        LANDER_REPO, LANDER_REF, os.path.join(GAMES_DIR, "terminal-lander"),
         "terminal-lander", "needs a C compiler + zlib, make", report)
 
 
 def brokeout_ready(cp=None):
-    return _repo_ready(cp or load(), "kitty-brokeout", "kitty-brokeout")
+    return _repo_ready(
+        cp or load(), "kitty-brokeout", "kitty-brokeout",
+        os.path.join(GAMES_DIR, "kitty-brokeout"), BROKEOUT_REPO, BROKEOUT_REF)
 
 
 def ensure_brokeout(cp, report):
     return brokeout_ready(cp) or _clone_and_make(
-        BROKEOUT_REPO, os.path.join(GAMES_DIR, "kitty-brokeout"),
+        BROKEOUT_REPO, BROKEOUT_REF, os.path.join(GAMES_DIR, "kitty-brokeout"),
         "kitty-brokeout", "needs a C compiler + zlib, make", report)
 
 
 def amp_ready(cp=None):
-    return _repo_ready(cp or load(), "kilix-amp", "kilix-amp")
+    return _repo_ready(
+        cp or load(), "kilix-amp", "kilix-amp",
+        os.path.join(APPS_DIR, "kilix-amp"), AMP_REPO, AMP_REF)
 
 
 def ensure_amp(cp, report):
     return amp_ready(cp) or _clone_and_make(
-        AMP_REPO, os.path.join(APPS_DIR, "kilix-amp"), "kilix-amp",
+        AMP_REPO, AMP_REF, os.path.join(APPS_DIR, "kilix-amp"), "kilix-amp",
         "needs libsdl2-dev, libsdl2-image-dev, libsndfile1-dev, zlib1g-dev",
         report)
 

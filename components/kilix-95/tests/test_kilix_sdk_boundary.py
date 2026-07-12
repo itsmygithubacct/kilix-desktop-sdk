@@ -1,9 +1,14 @@
 """Kilix 95 runtime imports host helpers through kilix_sdk."""
 import ast
+import json
+import os
 from pathlib import Path
+import sys
 
 
 ROOT = Path(__file__).resolve().parents[1]
+KILIX_HOME = Path(os.environ.get("KILIX_HOME", ROOT.parent / "kilix"))
+sys.path.insert(0, str(KILIX_HOME / "config"))
 
 
 def import_sources(path):
@@ -25,5 +30,17 @@ assert "gfx" not in main_imports
 host_text = (ROOT / "host.py").read_text()
 assert "from kilix_sdk import paths" in host_text
 assert "except ImportError:" in host_text
+
+import kilix_sdk
+
+manifest = json.loads((ROOT / "provider.json").read_text())
+assert manifest["provider_api"] == 1
+assert manifest["version"] == (ROOT / "VERSION").read_text().strip()
+assert manifest["requires_kilix_sdk"] == "1.0"
+assert set(manifest["security_features"]) == {
+    "default-password-nag", "masked-secret-clipboard"}
+assert kilix_sdk.SDK_API_VERSION == (1, 0)
+kilix_sdk.require_compatible(manifest["requires_kilix_sdk"])
+assert "require_kilix_sdk(\"1.0\")" in (ROOT / "main.py").read_text()
 
 print("ok")
