@@ -378,10 +378,13 @@ XP_SCHEME = "kilix XP"
 NO_SOUNDS = "No Sounds"                                  # all silent
 _BUILTIN_SCHEMES = {DEFAULT_SCHEME: "95", XP_SCHEME: "xp"}
 
-# Events with NO cue by default — silent unless the user assigns one in
-# Settings > Sounds. Minimize fires often, and Default Beep is the generic
-# system bell path, so both should stay quiet out of the box.
-DEFAULT_SILENT = {"asterisk", "minimize"}
+# Only the marquee cues are audible out of the box: the startup/shutdown
+# music and the Critical Stop error. Everything else — window-management
+# blips, open/close ticks, dialog beeps, recycle — fires far too often for
+# an always-on desktop and stays silent unless the user assigns a sound in
+# Settings > Sounds.
+DEFAULT_AUDIBLE = {"startup", "shutdown", "error"}
+DEFAULT_SILENT = _EVENT_IDS - DEFAULT_AUDIBLE
 
 _active = None                                           # dict: event_id -> path|None (overrides only)
 _active_name = DEFAULT_SCHEME
