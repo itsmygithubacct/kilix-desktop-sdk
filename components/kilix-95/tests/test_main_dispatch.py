@@ -213,19 +213,76 @@ def test_frame_files_are_private():
     t = FakeTerm(cols=4, rows=3, cell_w=8, cell_h=8)
     d = desk_main.Desk(term=t)
     try:
-        d.blit()
+        # More than the old eight-slot ring proves that every full placement
+        # gets a new pathname for the lifetime of this private frame dir.
+        for _ in range(10):
+            d.blit(force_full=True)
         assert d._frame_dir and os.path.isdir(d._frame_dir)
         assert stat.S_IMODE(os.stat(d._frame_dir).st_mode) == 0o700
-        files = os.listdir(d._frame_dir)
-        assert len(files) == 1, files
-        frame = os.path.join(d._frame_dir, files[0])
-        assert stat.S_IMODE(os.stat(frame).st_mode) == 0o600
-        payload = t.writes[-1].rsplit(";", 1)[1].removesuffix("\x1b\\")
-        assert base64.b64decode(payload).decode() == frame
+        paths = [base64.b64decode(write.rsplit(";", 1)[1]
+                                  .removesuffix("\x1b\\")).decode()
+                 for write in t.writes]
+        assert len(paths) == len(set(paths)) == 10, paths
+        assert [os.path.basename(path) for path in paths] == [
+            f"full-{n}.rgb" for n in range(1, 11)]
+        assert set(os.listdir(d._frame_dir)) == {
+            f"full-{n}.rgb" for n in range(1, 11)}
+        for write, frame in zip(t.writes, paths):
+            assert ",N=1;" in write, "full frame is not transient memory-only"
+            assert stat.S_IMODE(os.stat(frame).st_mode) == 0o600
     finally:
         frame_dir = d._frame_dir
         d.cleanup_shm()
     assert not frame_dir or not os.path.exists(frame_dir)
+
+
+def test_frame_path_collisions_fail_closed():
+    import os
+
+    sentinel = b"do-not-truncate"
+
+    def reserve(path):
+        with open(path, "wb") as f:
+            f.write(sentinel)
+
+    # A collision on the next full-frame leaf must not truncate or announce it.
+    t = FakeTerm(cols=4, rows=3, cell_w=8, cell_h=8)
+    d = desk_main.Desk(term=t)
+    try:
+        full = d._frame_path("full", 1)
+        reserve(full)
+        try:
+            d.blit(force_full=True)
+        except FileExistsError:
+            pass
+        else:
+            assert False, "full-frame collision did not fail closed"
+        with open(full, "rb") as f:
+            assert f.read() == sentinel
+        assert not t.writes, "colliding full frame was announced"
+    finally:
+        d.cleanup_shm()
+
+    # The damage-band transport has the same exclusive-create guarantee.
+    t = FakeTerm(cols=4, rows=3, cell_w=8, cell_h=8)
+    d = desk_main.Desk(term=t)
+    try:
+        d.blit(force_full=True)
+        band = d._frame_path("band", 1)
+        reserve(band)
+        d.fb.putpixel((0, 0), (1, 2, 3))
+        writes = len(t.writes)
+        try:
+            d.blit()
+        except FileExistsError:
+            pass
+        else:
+            assert False, "band-frame collision did not fail closed"
+        with open(band, "rb") as f:
+            assert f.read() == sentinel
+        assert len(t.writes) == writes, "colliding band frame was announced"
+    finally:
+        d.cleanup_shm()
 
 
 for _name, _fn in sorted(list(globals().items())):
