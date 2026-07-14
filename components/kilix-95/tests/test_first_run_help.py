@@ -8,7 +8,11 @@ n0 = len(d.wm.windows)
 d._first_run_help()
 assert d.shell.state.get("help_shown") is True, "marker not persisted"
 assert len(d.wm.windows) == n0 + 1, "Help did not open on first run"
-assert H.find_window(d, "Help") is not None, "the opened window is not Help"
+help_win = H.find_window(d, "Help")
+assert help_win is not None, "the opened window is not Help"
+welcome = help_win.body.plain()
+assert "F11" in welcome and "content-only fullscreen" in welcome, welcome
+assert "page tabs" in welcome and "clickable pane chrome" in welcome, welcome
 
 # a second call is a no-op — Help pops exactly once
 d._first_run_help()

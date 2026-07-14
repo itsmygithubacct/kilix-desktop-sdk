@@ -38,6 +38,9 @@ def build_book():
             ("b", "Using the Start menu — launch programs and games."),
             ("b", "Managing windows — move, size, minimize, close."),
             ("b", "Keyboard shortcuts — do it all from the keys."),
+            ("b", "F11 — use content-only fullscreen for `kilix run` and "
+                  "Kitty graphics-protocol apps. Kilix hides its page tabs and "
+                  "clickable pane chrome until F11 restores them."),
             ("b", "Control Panel and Themes — make the desktop your own."),
             ("b", "My Computer, Network Neighborhood, and My Briefcase."),
             ("p", "Did you know? Right-click almost anywhere for Properties, "
@@ -194,6 +197,10 @@ def build_book():
                   "path."),
             ("b", "`kilix run COMMAND` runs an X11 program in a contained "
                   "pane."),
+            ("b", "Press F11 in a `kilix run` or Kitty graphics-protocol app "
+                  "for content-only fullscreen. The Kilix page strip and "
+                  "clickable pane title bar disappear; press F11 again to "
+                  "restore the normal chrome and window geometry."),
             ("b", "`kilix browse URL` opens a URL through Kilix's browser "
                   "launcher."),
             ("b", "`kilix serve` starts the mux terminal service used by Mux "

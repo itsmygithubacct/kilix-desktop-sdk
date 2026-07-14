@@ -52,6 +52,13 @@ manual = Help(d, "systemmanual")
 assert manual.topic == "systemmanual", manual.topic
 assert "Start > Help > System Manual" in manual.body.plain()
 
+kilix = Help(d, "kilix")
+assert kilix.topic == "kilix", kilix.topic
+kilix_text = kilix.body.plain()
+assert "Kitty graphics-protocol app" in kilix_text, kilix_text
+assert "page strip" in kilix_text and "clickable pane title bar" in kilix_text
+assert "press F11 again" in kilix_text, kilix_text
+
 fallback = Help(d, "nonesuch")
 assert fallback.topic == BOOK[0][0], fallback.topic
 
