@@ -30,6 +30,7 @@ import storage
 
 _here = os.path.dirname(os.path.abspath(__file__))
 KILIX_HOME = kilix_host.find_kilix_home()
+PLEB_RECOVERY_DOC = "/usr/local/share/doc/pleb/RECOVERY.md"
 
 OPEN_MODES = ["kilix tab", "kilix os-window", "kilix fullscreen",
               "kilix run (X11 app)", "web browser"]
@@ -754,6 +755,47 @@ class Shell:
         wm.msgbox(self.desk, "Web Browser",
                   "No default browser opener was found.", icon="error")
         return False
+
+    @staticmethod
+    def pleb_recovery_doc_candidates():
+        """Recovery-guide locations, in installed-then-source priority order.
+
+        PLEB_RECOVERY_DOC_DST is primarily Pleb's installer destination
+        override. Honouring it here too makes a deliberately relocated guide
+        discoverable when the desktop is launched from the same environment.
+        """
+        source_home = os.environ.get("GPU_TERMINAL_SOURCE_HOME") or \
+            os.path.expanduser("~/gpu_terminal")
+        candidates = [os.environ.get("PLEB_RECOVERY_DOC_DST"),
+                      PLEB_RECOVERY_DOC,
+                      os.path.join(source_home, "pleb", "docs", "RECOVERY.md")]
+        result = []
+        for path in candidates:
+            if not path:
+                continue
+            path = os.path.abspath(os.path.expanduser(path))
+            if path not in result:
+                result.append(path)
+        return result
+
+    def open_pleb_recovery(self):
+        """Open Pleb's canonical recovery guide or provide a useful fallback."""
+        for path in self.pleb_recovery_doc_candidates():
+            if os.path.isfile(path) and os.access(path, os.R_OK):
+                self.open_app("notepad", path)
+                return path
+        wm.msgbox(
+            self.desk, "Pleb Recovery Guide",
+            "The Pleb recovery guide is not installed.\n\n"
+            f"Expected: {PLEB_RECOVERY_DOC}\n\n"
+            "If `pleb update` reports that libxxhash is missing, run:\n"
+            "sudo /usr/local/sbin/plebian-os-install-deps\n"
+            "pleb update\n\n"
+            "If that helper is unavailable, install the immediate dependency:\n"
+            "sudo apt-get update\n"
+            "sudo apt-get install libxxhash-dev",
+            icon="warn")
+        return None
 
     FIREFOX_CANDS = ("firefox-esr", "firefox")
     CHROME_CANDS = ("google-chrome", "google-chrome-stable", "chromium",
