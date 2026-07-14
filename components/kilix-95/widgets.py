@@ -1153,6 +1153,24 @@ def sep():
     return MenuItem("-")
 
 
+def _accelerator(label):
+    """Return the classic first-letter menu accelerator."""
+    for index, char in enumerate(label):
+        if char.isalnum():
+            return index, char.lower()
+    return -1, ""
+
+
+def _underline_accelerator(d, x, y, label, color):
+    index, _key = _accelerator(label)
+    if index < 0:
+        return
+    before = T.text_w(T.FONT, label[:index])
+    width = max(2, T.text_w(T.FONT, label[index]))
+    d.line([(x + before, y + 12), (x + before + width - 1, y + 12)],
+           fill=color)
+
+
 class Menu:
     """One popup panel. The MenuHost stacks these for submenus."""
     ITEM_H = 17
@@ -1306,8 +1324,9 @@ class Menu:
                 for j in range(4):
                     d.point((cx + j, cy + 2 - j), fill=fg)
                     d.point((cx + j, cy + 1 - j), fill=fg)
-            d.text((tx, y0 + (self.item_h - 13) // 2), it.label,
-                   font=T.FONT, fill=fg)
+            text_y = y0 + (self.item_h - 13) // 2
+            d.text((tx, text_y), it.label, font=T.FONT, fill=fg)
+            _underline_accelerator(d, tx, text_y, it.label, fg)
             if it.submenu is not None:
                 ax = x1 - 10
                 ay = y0 + self.item_h // 2
@@ -1414,6 +1433,23 @@ class MenuHost:
             elif it.action:
                 self.close_all()
                 it.action()
+        else:
+            key = (getattr(ev, "text", "") or ev.key or "").lower()
+            if len(key) == 1 and key.isalnum():
+                matches = [i for i, item in enumerate(m.items)
+                           if item.enabled and _accelerator(item.label)[1] == key]
+                if matches:
+                    following = [i for i in matches if i > m.hot]
+                    m.hot = following[0] if following else matches[0]
+                    m._reveal(m.hot)
+                    self.desk.dirty = True
+                    if len(matches) == 1:
+                        item = m.items[m.hot]
+                        if item.submenu is not None:
+                            self._open_submenu(m)
+                        elif item.action:
+                            self.close_all()
+                            item.action()
         return True                   # menus swallow keys while open
 
     def on_mouse(self, ev):
@@ -1498,8 +1534,9 @@ class MenuBar(Widget):
             if i == self.menu_open:
                 d.rectangle([x, self.y + 1, x + w - 1, self.y + self.h - 2],
                             fill=T.SEL_BG)
-            d.text((x + 7, self.y + 3), label, font=T.FONT,
-                   fill=T.SEL_TX if i == self.menu_open else T.TEXT)
+            color = T.SEL_TX if i == self.menu_open else T.TEXT
+            d.text((x + 7, self.y + 3), label, font=T.FONT, fill=color)
+            _underline_accelerator(d, x + 7, self.y + 3, label, color)
 
     def _open(self, i, label_x):
         gx, gy = self.window.client_origin()
@@ -1528,6 +1565,15 @@ class MenuBar(Widget):
             if x <= lx < x + w and i != self.menu_open:
                 self._open(i, x)
                 return
+
+    def activate_accelerator(self, key):
+        key = (key or "").lower()
+        for i, (label, _builder) in enumerate(self.items):
+            if _accelerator(label)[1] == key:
+                span = next(value for value in self._spans() if value[0] == i)
+                self._open(i, span[2])
+                return True
+        return False
 
 
 class Dropdown(Widget):

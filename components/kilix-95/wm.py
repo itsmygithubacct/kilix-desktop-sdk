@@ -349,6 +349,13 @@ class Window:
         self.desk.menus.open(items, gx, gy)
 
     def on_key(self, ev):
+        if ev.alt:
+            key = (getattr(ev, "text", "") or ev.key or "").lower()
+            if len(key) == 1:
+                for widget in self.widgets:
+                    if isinstance(widget, W.MenuBar) and \
+                            widget.activate_accelerator(key):
+                        return True
         if self.focus and self.focus.on_key(ev):
             return True
         if ev.key == "Tab" and not ev.ctrl:
@@ -411,6 +418,8 @@ class WM:
         self.desk.dirty = True
 
     def activate(self, win):
+        was_minimized = win.minimized
+        task_rect = self._task_rect(win) if was_minimized else None
         if win.minimized:
             win.minimized = False
         if self.windows and self.windows[-1] is not win:
@@ -423,9 +432,14 @@ class WM:
         win.caret_on = True
         win.dirty = True
         self.desk.dirty = True
+        if task_rect:
+            self.desk.animate_window(task_rect,
+                                     (win.x, win.y, win.w, win.h))
 
     def minimize(self, win):
         self.desk.play_sound("minimize")
+        self.desk.animate_window((win.x, win.y, win.w, win.h),
+                                 self._task_rect(win))
         win.minimized = True
         if self.active is win:
             self.active = None
@@ -434,6 +448,14 @@ class WM:
                     self.activate(w)
                     break
         self.desk.dirty = True
+
+    def _task_rect(self, win):
+        for value, x0, x1 in self.desk.taskbar._buttons():
+            if value is win:
+                y0 = self.desk.taskbar.rect()[1] + 3
+                return x0, y0, max(2, x1 - x0 + 1), T.TASKBAR_H - 6
+        y0 = self.desk.taskbar.rect()[1] + 3
+        return 4, y0, 48, T.TASKBAR_H - 6
 
     def toggle_maximize(self, win):
         if not win.resizable:
@@ -462,35 +484,56 @@ class WM:
     # ── drags ───────────────────────────────────────────────────────────────
     def begin_drag(self, win, mode, gx, gy):
         self.drag = (win, mode, gx, gy, (win.x, win.y, win.w, win.h))
+        if not self.desk.shell.state.get("full_window_drag", True):
+            self.desk.drag_outline = (win.x, win.y, win.w, win.h)
 
-    def drag_motion(self, gev):
+    def _drag_rect(self, gev):
         win, mode, gx, gy, (ox, oy, ow, oh) = self.drag
         dx, dy = gev.x - gx, gev.y - gy
-        sw, sh = self.desk.size()
+        _sw, sh = self.desk.size()
         if mode == "move":
-            win.x = ox + dx
-            win.y = max(0, min(oy + dy, sh - T.TASKBAR_H - 10))
-        else:
-            x, y, w, h = ox, oy, ow, oh
-            if "e" in mode:
-                w = max(win.min_w, ow + dx)
-            if "s" in mode:
-                h = max(win.min_h, oh + dy)
-            if "w" in mode:
-                w = max(win.min_w, ow - dx)
-                x = ox + ow - w
-            if "n" in mode:
-                h = max(win.min_h, oh - dy)
-                y = max(0, oy + oh - h)
-                h = oy + oh - y
+            return (ox + dx,
+                    max(0, min(oy + dy, sh - T.TASKBAR_H - 10)), ow, oh)
+        x, y, w, h = ox, oy, ow, oh
+        if "e" in mode:
+            w = max(win.min_w, ow + dx)
+        if "s" in mode:
+            h = max(win.min_h, oh + dy)
+        if "w" in mode:
+            w = max(win.min_w, ow - dx)
+            x = ox + ow - w
+        if "n" in mode:
+            h = max(win.min_h, oh - dy)
+            y = max(0, oy + oh - h)
+            h = oy + oh - y
+        return x, y, w, h
+
+    def drag_motion(self, gev):
+        win = self.drag[0]
+        rect = self._drag_rect(gev)
+        if not self.desk.shell.state.get("full_window_drag", True):
+            self.desk.drag_outline = rect
+            self.desk.dirty = True
+            return
+        x, y, w, h = rect
+        if (w, h) != (win.w, win.h):
+            win.w, win.h = w, h
+            win.surface = None
+            win.on_resize()
+        win.x, win.y = x, y
+        self.desk.dirty = True
+
+    def end_drag(self):
+        if self.drag and self.desk.drag_outline:
+            win = self.drag[0]
+            x, y, w, h = self.desk.drag_outline
             if (w, h) != (win.w, win.h):
                 win.w, win.h = w, h
                 win.surface = None
                 win.on_resize()
             win.x, win.y = x, y
-        self.desk.dirty = True
-
-    def end_drag(self):
+            self.desk.drag_outline = None
+            self.desk.dirty = True
         self.drag = None
 
     # ── routing ─────────────────────────────────────────────────────────────

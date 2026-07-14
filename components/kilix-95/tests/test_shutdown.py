@@ -77,14 +77,22 @@ assert "rc=$?" in seen["cmd"] and "exit $rc" in seen["cmd"]
 
 # Update-and-Restart uses the most complete updater available
 real_exists = os.path.exists
+old_source_home = os.environ.get("GPU_TERMINAL_SOURCE_HOME")
 try:
     os.path.exists = lambda p: p == "/usr/local/bin/plebian-os-update"
     assert d.shell._best_update_command() == "/usr/local/bin/plebian-os-update"
-    os.path.exists = lambda p: p.endswith("/pleb/bin/pleb")
-    assert d.shell._best_update_command().endswith('/bin/pleb" update')
+    source_home = "/tmp/gpu-terminal-source-fixture"
+    os.environ["GPU_TERMINAL_SOURCE_HOME"] = source_home
+    os.path.exists = lambda p: p == source_home + "/pleb/bin/pleb"
+    assert d.shell._best_update_command() == \
+        f'"{source_home}/pleb/bin/pleb" update'
     os.path.exists = lambda p: False
     assert d.shell._best_update_command().endswith('kilix" update')
 finally:
     os.path.exists = real_exists
+    if old_source_home is None:
+        os.environ.pop("GPU_TERMINAL_SOURCE_HOME", None)
+    else:
+        os.environ["GPU_TERMINAL_SOURCE_HOME"] = old_source_home
 
 print("test_shutdown OK")

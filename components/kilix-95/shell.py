@@ -1,8 +1,8 @@
 """kilix desktop — the desktop surface (the shell).
 
 Owns the wallpaper, the icon grid, the launcher files and every "open
-something" verb. The desktop folder is a real directory
-(~/.local/share/kilix/desktop by default, override with $KILIX_DESKTOP_DIR):
+something" verb. The desktop folder is a real directory under Kilix 95's
+per-user storage (override with $KILIX_DESKTOP_DIR):
 plain files and directories dropped there appear as icons, and "Create
 Launcher…" writes freedesktop-style .desktop files there. Programs launch
 into new kilix tabs/windows over kitty remote control; X11 apps go through
@@ -19,12 +19,14 @@ import subprocess
 from PIL import Image
 
 import icons
+import nostalgia
 import recycle
 import theme as T
 import vbox
 import widgets as W
 import wm
 import host as kilix_host
+import storage
 
 _here = os.path.dirname(os.path.abspath(__file__))
 KILIX_HOME = kilix_host.find_kilix_home()
@@ -80,15 +82,20 @@ class Shell:
         self.desk = desk
         self.dir = os.path.expanduser(
             os.environ.get("KILIX_DESKTOP_DIR")
-            or os.path.join(os.environ.get("XDG_DATA_HOME")
-                            or "~/.local/share", "kilix", "desktop"))
+            or storage.data_dir("desktop"))
         self.dir = os.path.expanduser(self.dir)
         os.makedirs(self.dir, exist_ok=True)
         self.state_path = os.path.join(self.dir, ".state.json")
         self.state = {"flavor": T.flavor_name(),
                       "wall_color": list(T.DESKTOP), "wall_image": None,
                       "wall_mode": "stretch", "wall_custom": False,
-                      "recent": []}
+                      "wall_pattern": "None", "recent": [],
+                      "cursor_scheme": "Standard", "saver_name": "Mystify",
+                      "saver_idle": 180, "saver_lock": False,
+                      "full_window_drag": True, "show_quick_launch": True,
+                      "show_home": True, "show_settings": True,
+                      "show_terminals": True,
+                      "era_profile": "Windows 95 Plus!"}
         try:
             with open(self.state_path) as f:
                 loaded = json.load(f)
@@ -154,18 +161,27 @@ class Shell:
         items = [
             {"label": "My Computer", "icon": "computer",
              "data": ("builtin", ("mycomp", None))},
+            {"label": "Network Neighborhood", "icon": "network",
+             "data": ("builtin", ("networkhood", None))},
+            {"label": "My Briefcase", "icon": "briefcase",
+             "data": ("builtin", ("briefcase", None))},
             {"label": "Recycle Bin",
              "icon": "recyclebin_full" if bin_full else "recyclebin_empty",
              "data": ("builtin", ("recyclebin", None))},
-            {"label": "Home", "icon": "home",
-             "data": ("builtin", ("filemgr", os.path.expanduser("~")))},
-            {"label": "kilix Settings", "icon": "settings",
-             "data": ("builtin", ("settings", None))},
-            {"label": "Terminal", "icon": "terminal",
-             "data": ("builtin", ("terminal", None))},
-            {"label": "Mux Terminal", "icon": "mux",
-             "data": ("builtin", ("mux", None))},
         ]
+        if self.state.get("show_home", True):
+            items.append({"label": "Home", "icon": "home",
+                          "data": ("builtin", ("filemgr", os.path.expanduser("~")))})
+        if self.state.get("show_settings", True):
+            items.append({"label": "kilix Settings", "icon": "settings",
+                          "data": ("builtin", ("settings", None))})
+        if self.state.get("show_terminals", True):
+            items += [
+                {"label": "Terminal", "icon": "terminal",
+                 "data": ("builtin", ("terminal", None))},
+                {"label": "Mux Terminal", "icon": "mux",
+                 "data": ("builtin", ("mux", None))},
+            ]
         try:
             names = sorted(os.listdir(self.dir), key=str.lower)
         except OSError:
@@ -294,7 +310,11 @@ class Shell:
                 items.append(MI("Open with Notepad", icon="notepad",
                                 action=lambda: self.open_app("notepad", arg)))
             if kind in ("launcher", "path"):
+                paths = [entry["data"][1] for entry in self._sel_or_one(item)
+                         if entry["data"][0] in ("launcher", "path")]
                 items += [sep(),
+                          MI("Send To", icon="sendto",
+                             submenu=self.send_to_menu_items(paths)),
                           MI("Rename…", action=lambda: self._rename_item(item)),
                           MI("Delete…", action=lambda: self._delete_items(
                               self._sel_or_one(item)))]
@@ -313,6 +333,11 @@ class Shell:
                 MI("Open Desktop Folder", icon="folder_open",
                    action=lambda: self.open_app("filemgr", self.dir)),
                 sep(),
+                MI("Arrange Icons", icon="desktop", submenu=[
+                    MI("by Name", action=self.refresh),
+                    MI("Auto Arrange", checked=True, action=self.refresh),
+                    MI("Line Up Icons", action=self.refresh),
+                ]),
                 MI("Display…", icon="display", action=self.display_properties),
                 MI("Sounds…", icon="soundcp",
                    action=lambda: self.open_app("soundcp")),
@@ -588,8 +613,12 @@ class Shell:
         k = os.environ.get("KILIX_KITTEN")
         if k and os.access(k, os.X_OK):
             return k
-        for cand in (os.path.join(KILIX_HOME, "src/kitty/launcher/kitten"),
-                     os.path.join(KILIX_HOME, "kitty.app/bin/kitten"),
+        storage_home = os.environ.get(
+            "KILIX_STORAGE_HOME", os.path.expanduser(
+                "~/.local/gpu_terminal/kilix"))
+        for cand in (os.path.join(storage_home,
+                                  "build/current/src/kitty/launcher/kitten"),
+                     os.path.join(storage_home, "prebuilt/kitty.app/bin/kitten"),
                      shutil.which("kitten")):
             if cand and os.access(cand, os.X_OK):
                 return cand
@@ -669,6 +698,25 @@ class Shell:
         kilix = os.path.join(KILIX_HOME, "kilix")
         return self._tab([kilix, "serve", session],
                          f"Mux: {session}", cwd or os.path.expanduser("~"))
+
+    def open_dos_prompt(self):
+        """Authentic Start-menu caller for the managed DOSBox prompt."""
+        return self._tab(["python3", os.path.join(_here, "games.py"), "dosbox"],
+                         "MS-DOS Prompt", os.path.expanduser("~"))
+
+    def send_to_menu_items(self, paths):
+        def send(destination):
+            try:
+                copied = nostalgia.send_paths(paths, destination)
+                self.dir_changed(destination)
+                wm.msgbox(self.desk, "Send To",
+                          f"Copied {len(copied)} item(s) to:\n{destination}",
+                          icon="info")
+            except (OSError, shutil.Error) as error:
+                wm.msgbox(self.desk, "Send To", str(error), icon="error")
+        return [W.MenuItem(name, icon="folder",
+                           action=lambda destination=path: send(destination))
+                for name, path in nostalgia.send_to_destinations(self)]
 
     def run_maintenance(self, cmd, title):
         """Run an update/maintenance command in a new kilix tab, pausing at the
@@ -914,7 +962,7 @@ class Shell:
                 go()
         wm.msgbox(self.desk, "Games",
                   f"{meta['label']} isn't set up yet.\n\n{meta['blurb']}\n"
-                  "(Paths are remembered in ~/.config/kilix/games.conf.)",
+                  "(Paths are remembered in Kilix 95's private config directory.)",
                   icon=meta["icon"], buttons=("Install", "Cancel"),
                   cb=answered)
 
@@ -1064,7 +1112,11 @@ class Shell:
         `pleb update`, else `kilix update`."""
         if os.path.exists("/usr/local/bin/plebian-os-update"):
             return "/usr/local/bin/plebian-os-update"
-        pleb = os.path.join(os.path.expanduser("~"), "pleb", "bin", "pleb")
+        source_home = os.environ.get("GPU_TERMINAL_SOURCE_HOME") or \
+            os.path.expanduser("~/gpu_terminal")
+        pleb = os.path.join(
+            os.path.abspath(os.path.expanduser(source_home)),
+            "pleb", "bin", "pleb")
         if os.path.exists(pleb):
             return f'"{pleb}" update'
         return f'"{os.path.join(KILIX_HOME, "kilix")}" update'
@@ -1077,72 +1129,7 @@ class Shell:
                   icon="flame")
 
     def display_properties(self):
-        desk = self.desk
-        win = wm.Window(desk, "Display Properties", 380, 250, icon="display",
-                        resizable=False, modal=True)
-        cw, ch = win.client_size()
-        win.add(W.GroupBox(10, 6, cw - 20, 96, "Background color"))
-        sw_size, gap = 34, 8
-        cur = list(self.state["wall_color"])
-
-        class _Swatch(W.Widget):
-            def __init__(s, i, col, x, y):
-                super().__init__(x, y, sw_size, sw_size)
-                s.col = col
-
-            def draw(s, d, img):
-                sel = list(s.col) == cur
-                T.sunken(d, s.x, s.y, s.x + s.w - 1, s.y + s.h - 1,
-                         fill=s.col)
-                if sel:
-                    T.focus_rect(d, s.x - 2, s.y - 2, s.x + s.w + 1,
-                                 s.y + s.h + 1)
-
-            def on_mouse(s, ev):
-                if ev.press:
-                    cur[:] = list(s.col)
-                    win.invalidate()
-                return True
-
-        x = 22
-        for i, (name, col) in enumerate(WALL_COLORS):
-            win.add(_Swatch(i, col, x, 26))
-            x += sw_size + gap
-        win.add(W.Label(22, 70, "Wallpaper (image file, optional):"))
-        f_img = win.add(W.TextField(22, 108, cw - 166,
-                                    self.state.get("wall_image") or ""))
-
-        def browse_img():
-            import filedialog
-            filedialog.open_file(
-                desk, "Choose Wallpaper",
-                lambda p: p and f_img.set(p),
-                start=os.path.dirname(f_img.text) if f_img.text.strip()
-                else None,
-                filters=[("Images", "*.png;*.jpg;*.jpeg;*.bmp;*.gif"),
-                         ("All Files", "*.*")])
-        win.add(W.Button(cw - 140, 107, 30, 23, "…", cb=browse_img))
-        modes = ["stretch", "tile", "center"]
-        d_mode = win.add(W.Dropdown(cw - 100, 108, 78, modes,
-                                    modes.index(self.state.get("wall_mode",
-                                                               "stretch"))))
-
-        def apply(close=False):
-            self.state["wall_color"] = cur
-            self.state["wall_image"] = f_img.text.strip() or None
-            self.state["wall_mode"] = d_mode.value
-            self.state["wall_custom"] = True
-            self._save_state()
-            self._wall = None
-            self.invalidate()
-            if close:
-                win.close()
-
-        win.add(W.Button(cw - 244, ch - 33, 72, 23, "OK", default=True,
-                         cb=lambda: apply(True)))
-        win.add(W.Button(cw - 164, ch - 33, 72, 23, "Cancel", cb=win.close))
-        win.add(W.Button(cw - 84, ch - 33, 72, 23, "Apply", cb=apply))
-        desk.wm.add(win)
+        self.open_app("displayprops")
 
 
 # ── launcher file helpers ────────────────────────────────────────────────────

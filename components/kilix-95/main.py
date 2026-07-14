@@ -2,7 +2,7 @@
 """kilix desktop — a Windows 95-style desktop environment in a kilix pane.
 
 The whole desktop is rendered as pixels (PIL framebuffer, blitted through
-the kitty graphics protocol — the same t=t /dev/shm path `kilix browse`
+the kitty graphics protocol via private Kilix 95 session files
 uses, or inline t=d in streamed sessions) with pixel-precise SGR mouse
 input. Start bar, overlapping windows, desktop launchers, a file manager,
 Notepad, an image viewer and a Settings app that edits the kilix config
@@ -25,6 +25,20 @@ import time
 _here = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, _here)
 
+# Set the bytecode destination before importing any project module.  This also
+# keeps a direct `python3 main.py` launch from creating __pycache__ in the tree.
+_storage_base = os.environ.get("GPU_TERMINAL_HOME") or os.path.expanduser(
+    "~/.local/gpu_terminal")
+_storage_home = os.environ.get("KILIX95_STORAGE_HOME") or os.path.join(
+    _storage_base, "kilix-95")
+_cache_home = os.environ.get("KILIX95_CACHE_HOME") or os.path.join(
+    _storage_home, "cache")
+_pycache = os.path.abspath(os.path.expanduser(os.path.join(
+    _cache_home, "pycache")))
+os.makedirs(_pycache, mode=0o700, exist_ok=True)
+sys.pycache_prefix = _pycache
+
+import storage
 import host as kilix_host
 
 KILIX_HOME = kilix_host.add_kilix_config_path()   # kilix_sdk
@@ -174,11 +188,19 @@ class Desk:
         self._hover_since = 0.0
         self.saver = None             # active screensaver instance or None
         self.saving = False
+        self.busy = False             # hourglass pointer for staged operations
+        self.dialup_state = {"connected": False, "status": "Disconnected"}
+        self.new_hardware = False
+        self.hardware_signature = ()
+        self._hardware_checked = 0.0
+        self.drag_outline = None       # classic outline-only window dragging
+        self.window_animation = None   # minimize/restore outline animation
         self.bsod = False             # code-rendered full-screen panic state
         self._saver_last = 0.0
         self._last_input = time.time()
         try:
-            self.saver_idle = float(os.environ.get("KILIX_SAVER_IDLE") or 180)
+            self.saver_idle = float(os.environ.get("KILIX_SAVER_IDLE") or
+                                    self.shell.state.get("saver_idle", 180))
         except ValueError:
             self.saver_idle = 180.0
 
@@ -257,6 +279,10 @@ class Desk:
             fb.paste(surf, (win.x, win.y), win.compose_mask)
         self.taskbar.draw(fb, d)
         self.menus.draw(fb, d)
+        if self.drag_outline:
+            self._draw_outline(d, self.drag_outline)
+        if self.window_animation:
+            self._draw_outline(d, self.window_animation["rect"])
         if self.switcher is not None:
             self._draw_switcher(d)
         elif self._tooltip:
@@ -268,9 +294,49 @@ class Desk:
 
     def _paint_cursor(self, d):
         x, y = self.mouse_pos
+        if self.busy:
+            # The pointer stays visible beside the familiar hourglass.
+            d.line([(x + 10, y + 1), (x + 20, y + 1)], fill=T.TEXT, width=2)
+            d.line([(x + 10, y + 14), (x + 20, y + 14)], fill=T.TEXT, width=2)
+            d.line([(x + 11, y + 3), (x + 19, y + 12)], fill=T.TEXT)
+            d.line([(x + 19, y + 3), (x + 11, y + 12)], fill=T.TEXT)
         pts = [(x, y), (x, y + 14), (x + 4, y + 10), (x + 7, y + 16),
                (x + 9, y + 15), (x + 6, y + 9), (x + 11, y + 9)]
-        d.polygon(pts, fill=T.LIGHT, outline=T.TEXT)
+        scheme = self.shell.state.get("cursor_scheme", "Standard")
+        if scheme == "Dinosaur":
+            d.polygon([(x, y + 3), (x + 9, y), (x + 14, y + 4),
+                       (x + 10, y + 8), (x + 5, y + 7), (x + 2, y + 14)],
+                      fill=(0, 128, 0), outline=T.TEXT)
+            d.point((x + 10, y + 3), fill=T.LIGHT)
+        else:
+            fill = T.TEXT if scheme == "Black" else T.LIGHT
+            outline = T.LIGHT if scheme == "Inverted" else T.TEXT
+            d.polygon(pts, fill=fill, outline=outline)
+
+    def _draw_outline(self, d, rect):
+        x, y, w, h = (int(value) for value in rect)
+        if w > 2 and h > 2:
+            T.focus_rect(d, x, y, x + w - 1, y + h - 1)
+
+    def animate_window(self, start, end, duration=.16):
+        self.window_animation = {
+            "start": tuple(start), "end": tuple(end), "rect": tuple(start),
+            "started": time.time(), "duration": duration,
+        }
+        self.dirty = True
+
+    def _tick_animation(self, now):
+        animation = self.window_animation
+        if not animation:
+            return
+        amount = min(1.0, max(0.0, (now - animation["started"]) /
+                              animation["duration"]))
+        animation["rect"] = tuple(
+            round(a + (b - a) * amount)
+            for a, b in zip(animation["start"], animation["end"]))
+        self.dirty = True
+        if amount >= 1:
+            self.window_animation = None
 
     # ── Alt+Tab window switcher ──────────────────────────────────────────────
     def _switch(self, direction):
@@ -369,9 +435,10 @@ class Desk:
             return True
         return False
 
-    def _start_saver(self):
+    def _start_saver(self, name=None):
         import screensaver
-        self.saver = screensaver.pick(self.size())
+        name = name or self.shell.state.get("saver_name", "Mystify")
+        self.saver = screensaver.pick(self.size(), name)
         self.saving = True
         self._saver_last = time.time()
         self.dirty = True
@@ -383,6 +450,29 @@ class Desk:
         self.saver = None
         self._last_input = time.time()
         self.dirty = True
+        state = self.shell.state
+        if state.get("saver_lock") and state.get("saver_password"):
+            try:
+                from apps.displayprops import show_unlock
+                show_unlock(self)
+            except Exception:
+                pass
+
+    def _hardware_tick(self, now):
+        """Notice block-device arrivals without mounting or changing them."""
+        if now - self._hardware_checked < 5:
+            return
+        self._hardware_checked = now
+        try:
+            import nostalgia
+            current = nostalgia.block_device_signature()
+        except Exception:
+            return
+        previous = self.hardware_signature
+        self.hardware_signature = current
+        if previous and set(current) - set(previous):
+            self.new_hardware = True
+            self.taskbar.invalidate()
 
     # ── shutdown screen ──────────────────────────────────────────────────────
     def _system_screen(self, name):
@@ -617,8 +707,7 @@ class Desk:
 
     def _frame_path(self):
         if self._frame_dir is None:
-            root = "/dev/shm" if os.path.isdir("/dev/shm") \
-                and os.access("/dev/shm", os.W_OK) else None
+            root = storage.private_session_dir("frames")
             self._frame_dir = tempfile.mkdtemp(
                 prefix=f"tty-graphics-protocol-{T.RUNTIME_ID}-{self.wid}-",
                 dir=root)
@@ -629,13 +718,6 @@ class Desk:
         if self._frame_dir:
             shutil.rmtree(self._frame_dir, ignore_errors=True)
             self._frame_dir = None
-        else:
-            for i in range(8):
-                try:
-                    os.unlink(f"/dev/shm/tty-graphics-protocol-{T.RUNTIME_ID}-"
-                              f"{self.wid}-{i}.rgb")
-                except OSError:
-                    pass
 
     # ── input normalization ─────────────────────────────────────────────────
     def _norm_key(self, raw):
@@ -860,7 +942,7 @@ class Desk:
         self.shell._save_state()
         try:
             import apps
-            apps.open(self, "winhelp", None)
+            apps.open(self, "winhelp", "welcome")
         except Exception:
             pass
 
@@ -917,6 +999,11 @@ class Desk:
         self._show_system_screen("startup",
                                  self._system_screen_seconds("startup"))
         self._refresh_password_nag()      # arm the tray icon before first paint
+        try:
+            import nostalgia
+            self.hardware_signature = nostalgia.block_device_signature()
+        except Exception:
+            self.hardware_signature = ()
         self._first_run_help()
         self._first_run_password_nag()    # …and pop the change-password bubble
         last_blink = time.time()
@@ -954,6 +1041,8 @@ class Desk:
                     self.do_resize()
                 now = time.time()
                 self.taskbar.tick(now)
+                self._hardware_tick(now)
+                self._tick_animation(now)
                 for hook in list(self.tick_hooks):
                     hook(now)
                 if now - last_blink >= 0.53:

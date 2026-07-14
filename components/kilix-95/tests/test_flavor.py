@@ -4,7 +4,7 @@ import os
 import tempfile
 
 _cache = tempfile.mkdtemp(prefix="kilix95-flavor-xdg-")
-os.environ["XDG_DATA_HOME"] = _cache
+os.environ["KILIX95_DATA_HOME"] = _cache
 
 import harness as H
 import sounds

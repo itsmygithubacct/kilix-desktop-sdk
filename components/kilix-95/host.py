@@ -8,15 +8,17 @@ def _discover_kilix_home():
     if env:
         return os.path.abspath(os.path.expanduser(env))
 
-    home = os.path.expanduser("~")
+    source_home = os.environ.get("GPU_TERMINAL_SOURCE_HOME") or \
+        os.path.expanduser("~/gpu_terminal")
+    source_home = os.path.abspath(os.path.expanduser(source_home))
     candidates = [
-        os.path.join(home, "kilix"),
+        os.path.join(source_home, "kilix"),
         os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "kilix")),
     ]
     for cand in candidates:
         if os.path.exists(os.path.join(cand, "kilix")):
             return cand
-    return os.path.join(home, "kilix")
+    return os.path.join(source_home, "kilix")
 
 
 def _add_host_config_path():

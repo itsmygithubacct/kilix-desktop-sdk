@@ -16,6 +16,22 @@ kilix desktop
 
 Quit through Start -> Shut Down..., or press `Ctrl+Alt+Q`.
 
+## Release 0.1.2
+
+Version 0.1.2 includes:
+
+- canonical source discovery under `~/gpu_terminal` and Kilix 95-owned runtime
+  state under `~/.local/gpu_terminal/kilix-95`;
+- private session frames and ephemeral installer logs, plus a fully isolated
+  test environment;
+- a larger classic shell with Control Panel applets, Display Properties,
+  Device Manager, Network Neighborhood, Dial-Up Networking, Printers,
+  My Briefcase, PowerToys, and the safe disk-map theater;
+- original Plus!-style themes, additional screen savers, Quick Launch, and the
+  kitten-fire wallpaper reserved for the Windows XP flavor; and
+- Chess Bash and Kilix Fishtank integrations plus a repaired, immutable
+  Kilix-Amp install with private XDG config, data, state, and cache roots.
+
 ## Release 0.1.1
 
 Version 0.1.1 declares the provider/SDK contract, preserves the default-password
@@ -34,14 +50,15 @@ kilix desktop
 For local development from this checkout:
 
 ```bash
-cd ~/kilix-95
-KILIX_HOME=~/kilix python3 main.py
+cd ~/gpu_terminal/kilix-95
+KILIX_HOME=~/gpu_terminal/kilix python3 main.py
 ```
 
 For screenshot/test rendering without taking over the terminal:
 
 ```bash
-KILIX_HOME=~/kilix python3 main.py --screenshot /tmp/shot.png --scene all
+KILIX_HOME=~/gpu_terminal/kilix \
+  python3 main.py --screenshot /tmp/shot.png --scene all
 ```
 
 Useful screenshot scenes:
@@ -56,8 +73,9 @@ Kilix 95 is the authoritative desktop-provider checkout, intentionally hosted
 by Kilix. The copy bundled in Kilix is a compatibility fallback; the launcher
 reports which one it selected instead of silently preferring a divergent tree.
 The Kilix launcher passes `KILIX_HOME` so this repo can use the host SDK and
-launch helpers. If `KILIX_HOME` is unset, `host.py` falls back to `~/kilix`,
-then a sibling `../kilix`, then `~/kilix` again.
+launch helpers. If `KILIX_HOME` is unset, `host.py` checks
+`${GPU_TERMINAL_SOURCE_HOME:-~/gpu_terminal}/kilix`, then the sibling
+`../kilix` checkout. Its final fallback is the canonical source-root path.
 
 The boundary is:
 
@@ -89,8 +107,8 @@ The desktop owns a single RGB framebuffer. On every dirty frame it draws:
 
 The framebuffer is blitted through the Kitty graphics protocol:
 
-- Local Kilix sessions write frame bytes to private files in `/dev/shm` and
-  place them with Kitty `t=t`.
+- Local Kilix sessions write frame bytes to private files under
+  `~/.local/gpu_terminal/kilix-95/session` and place them with Kitty `t=t`.
 - Streamed `kilix serve` sessions use inline `t=d` when `KILIX_STREAM=1`.
 - tmux passthrough is handled when `KILIX_STREAM=1` and `TMUX` are set.
 
@@ -136,11 +154,12 @@ The Start menu is built in `taskbar.py`.
 
 Top-level sections:
 
-- **Programs**: built-in accessories, games, browser entries, terminals,
-  media player, user launchers, and discovered XDG apps.
+- **Programs**: built-in accessories, games, browsers, terminals, the MS-DOS
+  Prompt/DOSBox caller, PowerToys, special folders, user launchers, and
+  discovered XDG apps.
 - **Documents**: recently opened files.
-- **Settings**: Kilix settings, display properties, sound schemes, desktop
-  flavor.
+- **Settings**: Control Panel, Kilix settings, display properties, sound
+  schemes, and desktop flavor.
 - **Help**: Help Topics, project how-tos, terminal how-tos, System Manual.
 - **System**: update and maintenance entries when the relevant helpers exist.
 - **Find**: file search.
@@ -149,6 +168,36 @@ Top-level sections:
 
 The menu is data-driven through `widgets.MenuItem`, so submenus can be nested
 without new widget code.
+
+## Windows 95 Nostalgia Features
+
+The classic shell additions are functional, with host-facing behavior kept
+read-only or explicitly user-triggered:
+
+- Control Panel and five-tab Display Properties cover original themes,
+  wallpaper patterns, sound/pointer schemes, eight screen savers, local
+  password protection, and RTM/Plus!/late-Win9x/Kilix-XP presentation profiles.
+- My Computer includes a not-ready floppy, mounted removable media, a managed
+  read-only Kilix 95 CD-ROM, Control Panel, Printers, Dial-Up Networking,
+  Network Neighborhood, My Briefcase, and Recycle Bin.
+- Network Neighborhood maps configured SSH aliases to real SSH tabs and
+  explicitly configured local shares to File Manager. Dial-Up Networking
+  stages an original modem sound before handing off to the normal browser; it
+  never changes host networking.
+- Device Manager and Add New Hardware inspect hardware without mounting disks
+  or installing drivers. Printers discovers CUPS queues read-only and supports
+  virtual print-to-folder destinations.
+- My Briefcase performs non-destructive two-folder synchronization: deletions
+  are not propagated and two-sided conflicts are never overwritten. Send To
+  uses non-overwriting copies.
+- PowerToys supplies Command Prompt Here, Explore From Here, QuickRes,
+  DeskMenu, Send To settings, TweakUI, Round Clock, and a safe disk-map theater
+  that never rearranges host data.
+
+Classic interaction details include keyboard menu accelerators, outline-only
+window dragging, minimize/restore animation, configurable pointers, a busy
+hourglass, Quick Launch, device and connection tray indicators, property
+sheets, and first-run Welcome/Did You Know help.
 
 ## Help And Manuals
 
@@ -213,7 +262,7 @@ open through `kilix run --refit-windows` so the VM window stays contained.
 The desktop folder is:
 
 ```text
-~/.local/share/kilix/desktop
+~/.local/gpu_terminal/kilix-95/data/desktop
 ```
 
 Override it with:
@@ -273,6 +322,12 @@ Notable apps:
 | Amp | media playback front end | pairs with the sound scheme controls and external media helpers |
 | Sound Control Panel | UI sound scheme editor | saves schemes under user data, not the repo |
 | Settings | Kilix/Kitty configuration editor | writes the active `kitty.conf` and attempts live reload |
+| Control Panel / Display Properties | classic settings namespace | themes, patterns, pointers, screen savers, compatibility profiles |
+| My Computer | machine namespace | drives, removable media, virtual CD, and system folders |
+| Network Neighborhood / Dial-Up | connection theater and launchers | SSH/local shares plus a browser hand-off; no host network mutation |
+| Printers / Device Manager | host service inspection | read-only discovery plus safe virtual-printer setup |
+| My Briefcase | two-folder synchronization | no deletion propagation or two-sided-conflict overwrite |
+| PowerToys / Disk Defragmenter | shell conveniences and disk-map theater | configuration helpers; the disk is never modified |
 | Help | two-pane guide with live links | link rows open through the system default browser helper |
 | System Manual | searchable man-page browser | scans manpath and renders selected pages as text |
 | Task Manager | running-window list | can switch to windows, request close, or open Run |
@@ -291,13 +346,19 @@ Runtime state is intentionally outside the repo.
 
 | data | default location |
 |---|---|
-| desktop folder | `~/.local/share/kilix/desktop` |
+| desktop folder | `~/.local/gpu_terminal/kilix-95/data/desktop` |
 | desktop state | `.state.json` inside the desktop folder |
-| recycle bin | `$KILIX_RECYCLE_DIR`, beside `$KILIX_DESKTOP_DIR`, or `~/.local/share/kilix/recycled` |
-| generated/bundled sound cache | `~/.local/share/kilix/sounds` |
-| games config | `~/.config/kilix/games.conf` |
-| game/app downloads | `~/.local/share/kilix/games`, `~/.local/share/kilix/apps` |
-| Kitty/Kilix settings | `$KITTY_CONFIG_DIRECTORY/kitty.conf`, else `${XDG_CONFIG_HOME:-~/.config}/kilix/kitty.conf` |
+| recycle bin | `$KILIX_RECYCLE_DIR`, beside `$KILIX_DESKTOP_DIR`, or `~/.local/gpu_terminal/kilix-95/data/recycled` |
+| generated/bundled sound cache | `~/.local/gpu_terminal/kilix-95/data/sounds` |
+| themes and virtual CD | `~/.local/gpu_terminal/kilix-95/data/themes`, `data/virtual-cd` |
+| Briefcase data and sync record | `~/.local/gpu_terminal/kilix-95/data/briefcase`, `config/briefcase.json` |
+| nostalgia/network/printer definitions | `~/.local/gpu_terminal/kilix-95/config/nostalgia.json` |
+| games config | `~/.local/gpu_terminal/kilix-95/config/games.conf` |
+| game/app downloads | `~/.local/gpu_terminal/kilix-95/data/games`, `~/.local/gpu_terminal/kilix-95/data/apps` |
+| Kilix-Amp runtime | `config/app-state`, `data/app-state`, `state/app-state`, and `cache/app-state` below the Kilix 95 storage root |
+| desktop frames and installer logs | `~/.local/gpu_terminal/kilix-95/session` |
+| Python bytecode cache | `~/.local/gpu_terminal/kilix-95/cache/pycache` |
+| Kitty/Kilix settings | `$KITTY_CONFIG_DIRECTORY/kitty.conf`, else `~/.local/gpu_terminal/kilix/config/kitty.conf` |
 
 Settings is the most important host mutation: it edits the active Kitty/Kilix
 configuration, not only desktop-local state.
@@ -356,7 +417,7 @@ $KITTY_CONFIG_DIRECTORY/kitty.conf
 or, when that variable is absent:
 
 ```text
-${XDG_CONFIG_HOME:-~/.config}/kilix/kitty.conf
+~/.local/gpu_terminal/kilix/config/kitty.conf
 ```
 
 The Kilix launcher creates that user file with a relative include of its
@@ -451,8 +512,8 @@ with pinned checksums are verified before use, and tar extraction rejects unsafe
 paths, links, devices, and FIFOs.
 
 Games and optional apps currently include Doom/DOSBox paths plus terminal or
-Kitty-graphics projects such as Bashed Earth, Joustix, Terminal Lander, Kitty
-Brokeout, and kilix-amp support.
+Kitty-graphics projects such as Bashed Earth, Joustix, Chess Bash, Kilix
+Fishtank, Terminal Lander, Kitty Brokeout, and kilix-amp support.
 
 Game readiness checks are conservative. `games.py` first looks for a configured
 working install, then for tools already on `$PATH`, then for previously vendored
@@ -539,7 +600,8 @@ python3 tests/test_start_help_menu.py
 Render screenshot fixtures:
 
 ```bash
-KILIX_HOME=~/kilix python3 main.py --screenshot /tmp/shot.png --scene all
+KILIX_HOME=~/gpu_terminal/kilix \
+  python3 main.py --screenshot /tmp/shot.png --scene all
 ```
 
 Test style:
@@ -568,6 +630,10 @@ The full suite is intentionally fast enough to run before every commit.
 | variable | effect |
 |---|---|
 | `KILIX_HOME` | host Kilix checkout |
+| `GPU_TERMINAL_SOURCE_HOME` | shared source root (default `~/gpu_terminal`) |
+| `GPU_TERMINAL_HOME` | shared writable root (default `~/.local/gpu_terminal`) |
+| `KILIX95_STORAGE_HOME` | Kilix 95 writable root override |
+| `KILIX95_CONFIG_HOME`, `KILIX95_STATE_HOME`, `KILIX95_CACHE_HOME`, `KILIX95_DATA_HOME`, `KILIX95_SESSION_HOME` | individual Kilix 95 storage-category overrides |
 | `KILIX_DESKTOP_DIR` | desktop folder override |
 | `KILIX_RECYCLE_DIR` | recycle-bin override |
 | `KILIX_DESKTOP_FLAVOR` | `95` or `xp` first-launch flavor |
@@ -587,17 +653,18 @@ Common development examples:
 
 ```bash
 # fresh, isolated desktop state
-KILIX_DESKTOP_DIR=$(mktemp -d) KILIX_HOME=~/kilix python3 main.py
+KILIX_DESKTOP_DIR=$(mktemp -d) KILIX_HOME=~/gpu_terminal/kilix \
+  python3 main.py
 
 # XP flavor screenshot without changing saved state
-KILIX_DESKTOP_FLAVOR=xp KILIX_HOME=~/kilix \
+KILIX_DESKTOP_FLAVOR=xp KILIX_HOME=~/gpu_terminal/kilix \
   python3 main.py --screenshot /tmp/xp.png --scene desktop
 
 # disable sound while debugging UI behavior
-KILIX_NO_SOUND=1 KILIX_HOME=~/kilix python3 main.py
+KILIX_NO_SOUND=1 KILIX_HOME=~/gpu_terminal/kilix python3 main.py
 
 # test System Manual against a controlled manpath
-MANPATH=/tmp/test-man KILIX_HOME=~/kilix python3 main.py
+MANPATH=/tmp/test-man KILIX_HOME=~/gpu_terminal/kilix python3 main.py
 ```
 
 Variables set by the host environment, such as `KITTY_LISTEN_ON`,
@@ -671,7 +738,8 @@ Resize the terminal once, or run a screenshot scene to separate rendering
 problems from terminal graphics transport problems:
 
 ```bash
-KILIX_HOME=~/kilix python3 main.py --screenshot /tmp/shot.png --scene desktop
+KILIX_HOME=~/gpu_terminal/kilix \
+  python3 main.py --screenshot /tmp/shot.png --scene desktop
 ```
 
 ## Fonts And Authenticity

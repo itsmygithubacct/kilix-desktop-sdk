@@ -1,7 +1,7 @@
 """kilix desktop — UI sound engine + scheme model.
 
-Original Strudel-rendered built-in cues are cached under ~/.local/share/kilix/
-sounds by flavor. A pure-Python synth remains as a fallback if a bundled asset
+Original Strudel-rendered built-in cues are cached in Kilix 95's private data
+directory by flavor. A pure-Python synth remains as a fallback if a bundled asset
 is missing. A *scheme* maps each system event to a sound file (any format) or
 silence, defaulting to the active built-in flavor; the active scheme persists to
 sounds/scheme.json, named schemes to sounds/schemes/<name>.json. Playback is
@@ -20,6 +20,8 @@ import subprocess
 import threading
 import wave
 
+import storage
+
 RATE = 44100
 SYNTH_VERSION = 3          # bump when bundled/synth cues change so caches refresh
 _PLAYERS = ("paplay", "aplay", "ffplay", "play")     # WAV players
@@ -37,9 +39,7 @@ C4, E4, G4 = 261.63, 329.63, 392.0
 
 
 def _data_dir():
-    base = os.environ.get("XDG_DATA_HOME") or os.path.join(
-        os.path.expanduser("~"), ".local", "share")
-    return os.path.join(base, "kilix", "sounds")
+    return storage.data_dir("sounds")
 
 
 def _theme_flavor():

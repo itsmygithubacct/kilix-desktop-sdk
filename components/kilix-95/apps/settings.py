@@ -1,7 +1,7 @@
 """kilix desktop — kilix Settings (the control panel).
 
-Edits the writable per-user Kilix configuration (normally
-``$XDG_CONFIG_HOME/kilix``; ``$KITTY_CONFIG_DIRECTORY`` overrides it). The
+Edits the writable per-user Kilix configuration (normally under
+``~/.local/gpu_terminal/kilix``; ``$KITTY_CONFIG_DIRECTORY`` overrides it). The
 tracked Kilix ``config/`` tree contains defaults and is never rewritten. Two
 form tabs cover the common knobs;
 the third tab is the raw file in a text editor. Apply writes the file and
@@ -50,9 +50,13 @@ BEHAVIOR = [
 
 
 def config_path():
-    d = os.environ.get("KITTY_CONFIG_DIRECTORY") or os.path.join(
-        os.environ.get("XDG_CONFIG_HOME") or os.path.join(
-            os.path.expanduser("~"), ".config"), "kilix")
+    try:
+        from kilix_sdk.paths import config_dir
+        d = config_dir()
+    except ImportError:
+        d = os.environ.get("KITTY_CONFIG_DIRECTORY") or os.path.join(
+            os.environ.get("KILIX_STORAGE_HOME", os.path.expanduser(
+                "~/.local/gpu_terminal/kilix")), "config")
     return os.path.join(d, "kitty.conf")
 
 

@@ -245,6 +245,9 @@ class FileWindow(wm.Window):
                 sep(),
                 MI("Cut", action=lambda: self._cut(targets)),
                 MI("Copy", action=lambda: self._copy(targets)),
+                MI("Send To", icon="sendto",
+                   submenu=self.desk.shell.send_to_menu_items(
+                       [target["data"] for target in targets])),
                 MI("Create Launcher…", icon="exe",
                    action=lambda: self.desk.shell.create_launcher_dialog(
                        prefill_cmd=_shell.shell_quote(item["data"]))),

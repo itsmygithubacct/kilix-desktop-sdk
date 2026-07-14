@@ -38,6 +38,10 @@ def build_book():
             ("b", "Using the Start menu — launch programs and games."),
             ("b", "Managing windows — move, size, minimize, close."),
             ("b", "Keyboard shortcuts — do it all from the keys."),
+            ("b", "Control Panel and Themes — make the desktop your own."),
+            ("b", "My Computer, Network Neighborhood, and My Briefcase."),
+            ("p", "Did you know? Right-click almost anywhere for Properties, "
+                  "or choose MS-DOS Prompt to start the managed DOSBox prompt."),
         ]),
         ("desktop", "Desktop basics", [
             ("h", "Desktop basics"),
@@ -55,6 +59,8 @@ def build_book():
             ("p", "Click Start, or press Ctrl+Esc, to open the Start menu — the "
                   "one place that reaches everything on the system."),
             ("b", "Programs holds the accessories and a Games submenu."),
+            ("b", "Programs also holds PowerToys, special folders, networking, "
+                  "and the MS-DOS Prompt caller."),
             ("b", "Documents lists files you opened recently."),
             ("b", "Settings adjusts the desktop's look and behaviour."),
             ("b", "Help opens this guide, project how-tos, and the System "
@@ -97,6 +103,66 @@ def build_book():
             ("b", "Character Map — browse and copy special characters."),
             ("p", "Open any of them and press F1, or read this Help book, to "
                   "learn more."),
+        ]),
+        ("controlpanel", "Control Panel and Themes", [
+            ("h", "Control Panel and Themes"),
+            ("p", "Control Panel gathers Display, Themes, Sounds, input, "
+                  "Date/Time, Fonts, Printers, Network, hardware, System, and "
+                  "PowerToys in one classic icon view."),
+            ("b", "Display Properties changes wallpaper, patterns, appearance, "
+                  "pointer scheme, screen saver, and compatibility era."),
+            ("b", "The Windows 95, Kilix Space, Terminal Green, Dangerous "
+                  "Creatures, Inside Your Computer, Plebian, and Kilix XP "
+                  "themes use original generated art and sounds."),
+            ("b", "Screen savers include Mystify, Starfield, Matrix, Pipes, "
+                  "Maze, Marquee, Flying Kilix, and Blank."),
+            ("b", "A screen-saver password is stored as a salted verifier; "
+                  "Kilix 95 never changes the host login password."),
+        ]),
+        ("mycomputer", "My Computer and special folders", [
+            ("h", "My Computer and special folders"),
+            ("p", "My Computer collects the host filesystem, Home, Desktop, "
+                  "mounted removable media, system folders, and a managed "
+                  "read-only Kilix 95 CD-ROM."),
+            ("b", "The floppy icon gives the authentic not-ready response until "
+                  "a removable disk is mounted by the host."),
+            ("b", "Printers discovers CUPS queues read-only and can add a safe "
+                  "print-to-folder destination."),
+            ("b", "Device Manager and Add New Hardware inspect devices without "
+                  "loading drivers, mounting disks, or changing the host."),
+        ]),
+        ("network", "Network and Dial-Up Networking", [
+            ("h", "Network and Dial-Up Networking"),
+            ("p", "Network Neighborhood shows concrete SSH aliases and local "
+                  "shares that you explicitly add."),
+            ("b", "Opening an SSH computer starts the real ssh command in a "
+                  "Kilix tab; opening a local share starts File Manager."),
+            ("b", "Dial-Up Networking recreates the modem ritual and sound, "
+                  "then hands off to the normal full-speed browser."),
+            ("b", "The dial-up feature is presentation only and never changes "
+                  "the machine's network configuration."),
+        ]),
+        ("briefcase", "Using My Briefcase", [
+            ("h", "Using My Briefcase"),
+            ("p", "My Briefcase safely synchronizes two folders. Preview shows "
+                  "the proposed direction for every file before copying."),
+            ("b", "It never propagates a deletion."),
+            ("b", "It never overwrites a file changed on both sides; conflicts "
+                  "are left untouched for you to resolve."),
+            ("b", "Right-click a desktop or File Manager item and use Send To "
+                  "for a simple non-overwriting copy to My Briefcase."),
+        ]),
+        ("powertoys", "PowerToys and classic polish", [
+            ("h", "PowerToys and classic polish"),
+            ("p", "PowerToys provides Command Prompt Here, Explore From Here, "
+                  "QuickRes, DeskMenu, Send To, TweakUI, Round Clock, and the "
+                  "safe Disk Defragmenter display."),
+            ("b", "TweakUI can hide desktop icons, Quick Launch, or live window "
+                  "contents during dragging."),
+            ("b", "Outline dragging, minimize animation, busy pointers, menu "
+                  "accelerators, and property sheets complete the period feel."),
+            ("b", "Disk Defragmenter visualizes real usage but never moves host "
+                  "data."),
         ]),
         ("systemmanual", "Using System Manual", [
             ("h", "Using System Manual"),

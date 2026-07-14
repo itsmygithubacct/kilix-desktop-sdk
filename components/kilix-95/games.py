@@ -2,11 +2,12 @@
 """kilix 95 — the Games section: registry + on-demand installers.
 
 `games.py doom` is what Start ▸ Programs ▸ Games ▸ Doom runs (in a new kilix
-tab). If ~/.config/kilix/games.conf points at a working DOSBox and Doom, it
+tab). If the Kilix 95 games config points at a working DOSBox and Doom, it
 boots straight in; otherwise it downloads the official shareware episode
 (id's doom19s.zip from the idgames mirrors — the shareware episode is freely
 redistributable) and, when no dosbox is installed, a dosbox-staging release
-build, stores everything under ~/.local/share/kilix/games/, writes the
+build, stores everything under ~/.local/gpu_terminal/kilix-95/data/games/,
+writes the
 config, and boots. Nothing is written inside the kilix tree.
 
 No DOS needed for the install: doom19s.zip's DEICE parts (DOOMS_19.1/.2)
@@ -27,16 +28,12 @@ import urllib.request
 import zipfile
 
 import host as kilix_host
+import storage
 
 HOME = os.path.expanduser("~")
-CONF = os.path.join(os.environ.get("XDG_CONFIG_HOME")
-                    or os.path.join(HOME, ".config"), "kilix", "games.conf")
-GAMES_DIR = os.path.join(os.environ.get("XDG_DATA_HOME")
-                         or os.path.join(HOME, ".local", "share"),
-                         "kilix", "games")
-APPS_DIR = os.path.join(os.environ.get("XDG_DATA_HOME")
-                        or os.path.join(HOME, ".local", "share"),
-                        "kilix", "apps")
+CONF = storage.config_dir("games.conf")
+GAMES_DIR = storage.data_dir("games")
+APPS_DIR = storage.data_dir("apps")
 KILIX_HOME = kilix_host.find_kilix_home()
 
 DOOM_URLS = [  # idgames mirrors of id Software's shareware installer
@@ -57,12 +54,16 @@ BASHED_REPO = "https://github.com/itsmygithubacct/Bashed-Earth"
 BASHED_REF = "aa65fbd937c346d287b53afc54cddee63c874699"
 JOUSTIX_REPO = "https://github.com/itsmygithubacct/joustix"
 JOUSTIX_REF = "04d20de46461a0da95b2dd14668d656e964dceab"
+CHESS_BASH_REPO = "https://github.com/itsmygithubacct/chess-bash"
+CHESS_BASH_REF = "454282a8b12804997fad95f51381e57daefc9444"
+FISHTANK_REPO = "https://github.com/itsmygithubacct/kilix-fishtank"
+FISHTANK_REF = "b4cd1dc4845c78e3fbdaa023f061e51e2d3ef177"
 LANDER_REPO = "https://github.com/itsmygithubacct/terminal_lander"
 LANDER_REF = "4b686f7dc86b86a1550f9f657eed39110eb91ba7"
 BROKEOUT_REPO = "https://github.com/itsmygithubacct/kitty-brokeout"
 BROKEOUT_REF = "4fc06ba47004a8fc4d68bb5b07a96974511abfc9"
 AMP_REPO = "https://github.com/itsmygithubacct/kilix-amp"
-AMP_REF = "0595836ff8496fd6321d8bf88b8e2c69779c7b29"
+AMP_REF = "8937c3671ed50a16f2541d73506e207f8b3471bb"
 
 # the Start-menu registry (taskbar/shell build the Games submenu from this)
 GAMES = {
@@ -70,37 +71,49 @@ GAMES = {
         "label": "Doom", "icon": "doom",
         "blurb": "Download the official shareware episode (~2.4 MB) —\n"
                  "plus DOSBox if none is installed — into\n"
-                 "~/.local/share/kilix/games, and play?",
+                 "Kilix 95's private data directory, and play?",
     },
     "dosbox": {
         "label": "DOSBox", "icon": "dosbox",
         "blurb": "Open an MS-DOS prompt (DOSBox) with C: mounted to\n"
-                 "~/.local/share/kilix/games. Fetches a dosbox-staging\n"
+                 "Kilix 95's private data directory. Fetches dosbox-staging\n"
                  "build there first if none is already installed.",
     },
     "bashed-earth": {
         "label": "Bashed Earth", "icon": "tank",
         "blurb": "Clone and build Bashed Earth (terminal artillery\n"
                  "combat, github.com/itsmygithubacct/Bashed-Earth)\n"
-                 "into ~/.local/share/kilix/games, and play?",
+                 "into Kilix 95's private data directory, and play?",
     },
     "joustix": {
         "label": "Joustix", "icon": "joustix",
         "blurb": "Clone and build Joustix (a flying-joust arcade game,\n"
                  "github.com/itsmygithubacct/joustix) into\n"
-                 "~/.local/share/kilix/games, and play?",
+                 "Kilix 95's private data directory, and play?",
+    },
+    "chess-bash": {
+        "label": "Chess Bash", "icon": "chess-bash",
+        "blurb": "Clone and build Chess Bash (animated isometric chess,\n"
+                 "github.com/itsmygithubacct/chess-bash) into\n"
+                 "Kilix 95's private data directory, and play?",
+    },
+    "kilix-fishtank": {
+        "label": "Kilix Fishtank", "icon": "fishtank",
+        "blurb": "Clone and build Kilix Fishtank (an arcade-style\n"
+                 "virtual aquarium, github.com/itsmygithubacct/\n"
+                 "kilix-fishtank) into Kilix 95's private data directory?",
     },
     "terminal-lander": {
         "label": "Terminal Lander", "icon": "lander",
         "blurb": "Clone and build Terminal Lander (a kitty-graphics\n"
                  "lunar lander, github.com/itsmygithubacct/terminal_lander)\n"
-                 "into ~/.local/share/kilix/games, and play?",
+                 "into Kilix 95's private data directory, and play?",
     },
     "kitty-brokeout": {
         "label": "Kitty Brokeout", "icon": "brokeout",
         "blurb": "Clone and build Kitty Brokeout (a kitty-graphics\n"
                  "brick breaker, github.com/itsmygithubacct/kitty-brokeout)\n"
-                 "into ~/.local/share/kilix/games, and play?",
+                 "into Kilix 95's private data directory, and play?",
     },
 }
 
@@ -167,6 +180,8 @@ def game_ready(game, cp=None):
     cp = cp or load()
     return {"doom": doom_ready, "dosbox": dosbox_ready,
             "bashed-earth": bashed_ready, "joustix": joustix_ready,
+            "chess-bash": chess_bash_ready,
+            "kilix-fishtank": fishtank_ready,
             "terminal-lander": lander_ready,
             "kitty-brokeout": brokeout_ready
             }.get(game, lambda c=None: None)(cp)
@@ -276,7 +291,7 @@ def ensure_dosbox(cp, report):
         _safe_extract_tar(t, vend)
     os.unlink(tar)
     exe = _find(vend, "dosbox")
-    if not (exe and os.access(exe, os.X_OK)):
+    if not (exe and os.path.isfile(exe) and os.access(exe, os.X_OK)):
         raise RuntimeError("dosbox-staging unpack yielded no dosbox binary")
     return exe
 
@@ -484,7 +499,7 @@ def _clone_and_make(repo, ref, dest, binary, dep_hint, report):
         if r.returncode != 0:
             raise RuntimeError(f"build failed ({dep_hint}):\n"
                                + (r.stderr or r.stdout).strip()[-600:])
-    if not os.access(exe, os.X_OK):
+    if not (os.path.isfile(exe) and os.access(exe, os.X_OK)):
         raise RuntimeError(f"make succeeded but no {binary} binary appeared")
     return exe
 
@@ -494,7 +509,7 @@ def _repo_ready(cp, section, binary, managed_dir, repo, ref):
         return None
     d = os.path.expanduser(cp.get(section, "dir", fallback=""))
     exe = os.path.join(d, binary) if d else ""
-    if not (exe and os.access(exe, os.X_OK)):
+    if not (exe and os.path.isfile(exe) and os.access(exe, os.X_OK)):
         return None
     # A different path in games.conf is an explicit user-managed executable.
     # Only caches created in our data directory carry the origin/ref contract.
@@ -530,6 +545,34 @@ def ensure_joustix(cp, report):
         "joustix", "needs a C compiler + zlib, make", report)
 
 
+def chess_bash_ready(cp=None):
+    return _repo_ready(
+        cp or load(), "chess-bash", "chess-bash",
+        os.path.join(GAMES_DIR, "chess-bash"),
+        CHESS_BASH_REPO, CHESS_BASH_REF)
+
+
+def ensure_chess_bash(cp, report):
+    return chess_bash_ready(cp) or _clone_and_make(
+        CHESS_BASH_REPO, CHESS_BASH_REF,
+        os.path.join(GAMES_DIR, "chess-bash"), "chess-bash",
+        "needs a C compiler + zlib, make; Stockfish is optional", report)
+
+
+def fishtank_ready(cp=None):
+    return _repo_ready(
+        cp or load(), "kilix-fishtank", "kilix-fishtank",
+        os.path.join(GAMES_DIR, "kilix-fishtank"),
+        FISHTANK_REPO, FISHTANK_REF)
+
+
+def ensure_fishtank(cp, report):
+    return fishtank_ready(cp) or _clone_and_make(
+        FISHTANK_REPO, FISHTANK_REF,
+        os.path.join(GAMES_DIR, "kilix-fishtank"), "kilix-fishtank",
+        "needs a C compiler + zlib, libm, pthreads, and make", report)
+
+
 def lander_ready(cp=None):
     return _repo_ready(
         cp or load(), "terminal-lander", "terminal-lander",
@@ -563,7 +606,8 @@ def amp_ready(cp=None):
 def ensure_amp(cp, report):
     return amp_ready(cp) or _clone_and_make(
         AMP_REPO, AMP_REF, os.path.join(APPS_DIR, "kilix-amp"), "kilix-amp",
-        "needs libsdl2-dev, libsdl2-image-dev, libsndfile1-dev, zlib1g-dev",
+        "needs libsdl2-dev, libsdl2-image-dev, libsndfile1-dev, zlib1g-dev, "
+        "libfluidsynth-dev, and a GM SoundFont",
         report)
 
 
@@ -592,6 +636,14 @@ def ensure(game, report=print):
     elif game == "joustix":
         exe = ensure_joustix(cp, report)
         cp.set("joustix", "dir", os.path.dirname(exe))
+        payload = exe
+    elif game == "chess-bash":
+        exe = ensure_chess_bash(cp, report)
+        cp.set("chess-bash", "dir", os.path.dirname(exe))
+        payload = exe
+    elif game == "kilix-fishtank":
+        exe = ensure_fishtank(cp, report)
+        cp.set("kilix-fishtank", "dir", os.path.dirname(exe))
         payload = exe
     elif game == "terminal-lander":
         exe = ensure_lander(cp, report)

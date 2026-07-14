@@ -43,12 +43,13 @@ def read(path):
 
 
 @contextlib.contextmanager
-def xdg_conf():
-    """Use the default XDG path with no KITTY_CONFIG_DIRECTORY override."""
+def storage_conf():
+    """Use the canonical Kilix storage path with no config override."""
     old_kitty = os.environ.pop("KITTY_CONFIG_DIRECTORY", None)
-    old_xdg = os.environ.get("XDG_CONFIG_HOME")
-    root = tempfile.mkdtemp(prefix="kilix95-xdg-")
-    os.environ["XDG_CONFIG_HOME"] = root
+    old_storage = os.environ.get("KILIX_STORAGE_HOME")
+    old_config = os.environ.pop("KILIX_CONFIG_HOME", None)
+    root = tempfile.mkdtemp(prefix="kilix-storage-")
+    os.environ["KILIX_STORAGE_HOME"] = root
     try:
         yield root
     finally:
@@ -56,10 +57,14 @@ def xdg_conf():
             os.environ["KITTY_CONFIG_DIRECTORY"] = old_kitty
         else:
             os.environ.pop("KITTY_CONFIG_DIRECTORY", None)
-        if old_xdg is None:
-            os.environ.pop("XDG_CONFIG_HOME", None)
+        if old_storage is None:
+            os.environ.pop("KILIX_STORAGE_HOME", None)
         else:
-            os.environ["XDG_CONFIG_HOME"] = old_xdg
+            os.environ["KILIX_STORAGE_HOME"] = old_storage
+        if old_config is None:
+            os.environ.pop("KILIX_CONFIG_HOME", None)
+        else:
+            os.environ["KILIX_CONFIG_HOME"] = old_config
 
 
 # ── F06: raw editor edits survive a tab roundtrip and reach disk ────────────
@@ -190,17 +195,17 @@ with conf("# empty-ish\n") as path, H.desktop_dir():
     assert win.flavor_dd.value == "kilix XP"
 
 
-# The no-override path creates a private XDG config and leaves tracked host
+# The no-override path creates a private project config and leaves tracked host
 # defaults untouched. This is the normal launcher path, not only a fallback.
 defaults = os.path.join(settings._shell.KILIX_HOME, "config", "kitty.conf")
 with open(defaults, "rb") as f:
     defaults_before = f.read()
-with xdg_conf() as xdg:
+with storage_conf() as storage_root:
     d = H.make_desk()
     import apps
     apps.open(d, "settings", None)
     win = H.find_window(d, "SettingsWin")
-    expected = os.path.join(xdg, "kilix", "kitty.conf")
+    expected = os.path.join(storage_root, "config", "kitty.conf")
     assert win.path == expected
     assert not os.path.exists(expected)
     win._apply()
@@ -213,10 +218,10 @@ with open(defaults, "rb") as f:
 
 # Atomic replacement must replace a stale link rather than following it and
 # rewriting an unrelated file.
-with xdg_conf() as xdg:
-    directory = os.path.join(xdg, "kilix")
+with storage_conf() as storage_root:
+    directory = os.path.join(storage_root, "config")
     os.makedirs(directory)
-    unrelated = os.path.join(xdg, "unrelated.conf")
+    unrelated = os.path.join(storage_root, "unrelated.conf")
     with open(unrelated, "w", encoding="utf-8") as f:
         f.write("keep me\n")
     target = os.path.join(directory, "kitty.conf")
