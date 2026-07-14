@@ -327,6 +327,26 @@ def _tank(p):
     p.hline(2, 13, 12, S)
 
 
+def _joustix(p):
+    # An ostrich-mounted knight with a raised lance (Joustix).
+    p.hline(8, 14, 2, DY)                          # lance shaft
+    p.px(15, 2, Y)                                 # lance point
+    p.rect(6, 2, 8, 4, fill=S, outline=K)          # helmet
+    p.px(7, 1, R)                                  # plume
+    p.rect(6, 5, 8, 7, fill=DB, outline=K)         # rider
+    p.rect(4, 7, 10, 10, fill=Y, outline=K)        # ostrich body
+    p.px(3, 7, Y)
+    p.px(2, 6, DY)                                 # tail
+    p.rect(10, 5, 11, 8, fill=Y, outline=K)        # neck
+    p.rect(11, 4, 13, 5, fill=Y, outline=K)        # head
+    p.px(14, 5, R)                                 # beak
+    p.px(12, 4, K)                                 # eye
+    p.vline(6, 11, 13, DY)                         # legs
+    p.vline(9, 11, 13, DY)
+    p.hline(4, 6, 14, K)
+    p.hline(9, 11, 14, K)                          # feet
+
+
 def _lander(p):
     # a lunar lander descending on a lit thruster (Terminal Lander)
     p.rect(6, 2, 9, 3, fill=S, outline=K)          # ascent stage
@@ -538,6 +558,7 @@ ICONS = {
     "notepad": _notepad, "browser": _browser, "run": _run,
     "shutdown": _shutdown, "flame": _flame, "home": _home,
     "games": _games, "doom": _doom, "dosbox": _dosbox, "tank": _tank,
+    "joustix": _joustix,
     "lander": _lander, "brokeout": _brokeout,
     "amp": _amp,
     "question": _question, "info": _info, "warn": _warn, "error": _error,

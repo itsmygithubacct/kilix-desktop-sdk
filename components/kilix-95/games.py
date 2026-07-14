@@ -55,6 +55,8 @@ DOSBOX_SHA256 = "bc229df72ea103b7865cdca67324772dbffa8e58866477e69a79638b723a044
 
 BASHED_REPO = "https://github.com/itsmygithubacct/Bashed-Earth"
 BASHED_REF = "aa65fbd937c346d287b53afc54cddee63c874699"
+JOUSTIX_REPO = "https://github.com/itsmygithubacct/joustix"
+JOUSTIX_REF = "04d20de46461a0da95b2dd14668d656e964dceab"
 LANDER_REPO = "https://github.com/itsmygithubacct/terminal_lander"
 LANDER_REF = "4b686f7dc86b86a1550f9f657eed39110eb91ba7"
 BROKEOUT_REPO = "https://github.com/itsmygithubacct/kitty-brokeout"
@@ -81,6 +83,12 @@ GAMES = {
         "blurb": "Clone and build Bashed Earth (terminal artillery\n"
                  "combat, github.com/itsmygithubacct/Bashed-Earth)\n"
                  "into ~/.local/share/kilix/games, and play?",
+    },
+    "joustix": {
+        "label": "Joustix", "icon": "joustix",
+        "blurb": "Clone and build Joustix (a flying-joust arcade game,\n"
+                 "github.com/itsmygithubacct/joustix) into\n"
+                 "~/.local/share/kilix/games, and play?",
     },
     "terminal-lander": {
         "label": "Terminal Lander", "icon": "lander",
@@ -158,7 +166,8 @@ def game_ready(game, cp=None):
     """Installed-and-runnable check dispatched by game name (None if not)."""
     cp = cp or load()
     return {"doom": doom_ready, "dosbox": dosbox_ready,
-            "bashed-earth": bashed_ready, "terminal-lander": lander_ready,
+            "bashed-earth": bashed_ready, "joustix": joustix_ready,
+            "terminal-lander": lander_ready,
             "kitty-brokeout": brokeout_ready
             }.get(game, lambda c=None: None)(cp)
 
@@ -509,6 +518,18 @@ def ensure_bashed(cp, report):
         "needs gcc/clang, zlib, make", report)
 
 
+def joustix_ready(cp=None):
+    return _repo_ready(
+        cp or load(), "joustix", "joustix",
+        os.path.join(GAMES_DIR, "joustix"), JOUSTIX_REPO, JOUSTIX_REF)
+
+
+def ensure_joustix(cp, report):
+    return joustix_ready(cp) or _clone_and_make(
+        JOUSTIX_REPO, JOUSTIX_REF, os.path.join(GAMES_DIR, "joustix"),
+        "joustix", "needs a C compiler + zlib, make", report)
+
+
 def lander_ready(cp=None):
     return _repo_ready(
         cp or load(), "terminal-lander", "terminal-lander",
@@ -568,6 +589,10 @@ def ensure(game, report=print):
         exe = ensure_bashed(cp, report)
         cp.set("bashed-earth", "dir", os.path.dirname(exe))
         payload = exe
+    elif game == "joustix":
+        exe = ensure_joustix(cp, report)
+        cp.set("joustix", "dir", os.path.dirname(exe))
+        payload = exe
     elif game == "terminal-lander":
         exe = ensure_lander(cp, report)
         cp.set("terminal-lander", "dir", os.path.dirname(exe))
@@ -620,8 +645,8 @@ def _launch_dosbox(payload):
 
 
 def _launch_native(exe):
-    # a native terminal game (Bashed Earth, Terminal Lander) that speaks the
-    # kitty graphics protocol itself: runs right here in the tab
+    # a native terminal game that speaks the kitty graphics protocol itself:
+    # runs right here in the tab
     os.chdir(os.path.dirname(exe))
     os.execv(exe, [exe])
 

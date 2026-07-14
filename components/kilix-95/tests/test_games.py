@@ -69,6 +69,14 @@ write("")                                        # empty conf, no [terminal-land
 assert games.lander_ready(games.load()) is None
 assert games.game_ready("terminal-lander") is None
 
+# Joustix is installed from a pinned source checkout and launches natively in
+# its Kilix tab, just like the other Kitty-graphics games.
+assert "joustix" in games.GAMES
+assert games.GAMES["joustix"]["icon"] == "joustix"
+write("")                                        # empty conf, no [joustix]
+assert games.joustix_ready(games.load()) is None
+assert games.game_ready("joustix") is None
+
 # Kitty Brokeout is a first-class Games entry, built from source the same way.
 assert "kitty-brokeout" in games.GAMES
 assert games.GAMES["kitty-brokeout"]["icon"] == "brokeout"
@@ -108,7 +116,8 @@ with zipfile.ZipFile(bad_zip) as archive:
         assert "unsafe path" in str(error)
 assert not os.path.exists(os.path.join(root, "zip-escape.txt"))
 
-for ref in (games.BASHED_REF, games.LANDER_REF, games.BROKEOUT_REF,
+for ref in (games.BASHED_REF, games.JOUSTIX_REF, games.LANDER_REF,
+            games.BROKEOUT_REF,
             games.AMP_REF):
     assert len(ref) == 40 and all(c in "0123456789abcdef" for c in ref)
 
