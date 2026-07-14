@@ -12,6 +12,7 @@ import zipfile
 
 import harness as H       # noqa: F401  (sets up sys.path for `import games`)
 import games
+import icons
 
 tmp = tempfile.mkdtemp(prefix="games-test-")
 games.CONF = os.path.join(tmp, "games.conf")
@@ -77,6 +78,26 @@ write("")                                        # empty conf, no [joustix]
 assert games.joustix_ready(games.load()) is None
 assert games.game_ready("joustix") is None
 
+# Chess Bash follows the same pinned native Kitty-graphics game contract.
+assert "chess-bash" in games.GAMES
+assert games.GAMES["chess-bash"]["icon"] == "chess-bash"
+write("")                                        # empty conf, no [chess-bash]
+assert games.chess_bash_ready(games.load()) is None
+assert games.game_ready("chess-bash") is None
+assert "chess-bash" in icons.ICONS
+icons.get("chess-bash", 16)
+icons.get("chess-bash", 32)
+
+# Kilix Fishtank is another pinned native Kitty-graphics game.
+assert "kilix-fishtank" in games.GAMES
+assert games.GAMES["kilix-fishtank"]["icon"] == "fishtank"
+write("")                                        # empty conf, no [kilix-fishtank]
+assert games.fishtank_ready(games.load()) is None
+assert games.game_ready("kilix-fishtank") is None
+assert "fishtank" in icons.ICONS
+icons.get("fishtank", 16)
+icons.get("fishtank", 32)
+
 # Kitty Brokeout is a first-class Games entry, built from source the same way.
 assert "kitty-brokeout" in games.GAMES
 assert games.GAMES["kitty-brokeout"]["icon"] == "brokeout"
@@ -116,11 +137,19 @@ with zipfile.ZipFile(bad_zip) as archive:
         assert "unsafe path" in str(error)
 assert not os.path.exists(os.path.join(root, "zip-escape.txt"))
 
-for ref in (games.BASHED_REF, games.JOUSTIX_REF, games.LANDER_REF,
+for ref in (games.BASHED_REF, games.JOUSTIX_REF, games.CHESS_BASH_REF,
+            games.FISHTANK_REF,
+            games.LANDER_REF,
             games.BROKEOUT_REF,
             games.AMP_REF):
     assert len(ref) == 40 and all(c in "0123456789abcdef" for c in ref)
 
+# A directory named like the executable is not runnable readiness. os.access
+# alone reports X_OK for searchable directories, so require a regular file.
+fake_amp = os.path.join(root, "fake-amp")
+os.makedirs(os.path.join(fake_amp, "kilix-amp"))
+write(f"[kilix-amp]\ndir = {fake_amp}\n")
+assert games.amp_ready(games.load()) is None
 
 # Managed native-game caches are installed atomically and remain pinned on
 # every ready check. A different configured directory is explicitly trusted.

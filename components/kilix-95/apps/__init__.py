@@ -73,5 +73,57 @@ def open(desk, name, arg=None):
                 desk.wm.activate(w)
                 return
         desk.wm.add(taskmgr.TaskManager(desk))
+    elif name == "controlpanel":
+        from . import controlpanel
+        for win in desk.wm.windows:
+            if isinstance(win, controlpanel.ControlPanel):
+                desk.wm.activate(win)
+                return
+        desk.wm.add(controlpanel.ControlPanel(desk, arg))
+    elif name == "displayprops":
+        from . import displayprops
+        for win in desk.wm.windows:
+            if isinstance(win, displayprops.DisplayProperties):
+                if arg == "themes":
+                    win._switch(4)
+                elif arg == "settings":
+                    win._switch(3)
+                desk.wm.activate(win)
+                return
+        desk.wm.add(displayprops.DisplayProperties(desk, arg))
+    elif name in ("mouseprops", "keyboardprops", "datetime", "fonts",
+                  "systemprops"):
+        from . import controlpanel
+        classes = {
+            "mouseprops": controlpanel.MouseProperties,
+            "keyboardprops": controlpanel.KeyboardProperties,
+            "datetime": controlpanel.DateTimeProperties,
+            "fonts": controlpanel.FontBrowser,
+            "systemprops": controlpanel.SystemProperties,
+        }
+        desk.wm.add(classes[name](desk, arg))
+    elif name == "networkhood":
+        from . import networkhood
+        desk.wm.add(networkhood.NetworkNeighborhood(desk, arg))
+    elif name == "dialup":
+        from . import dialup
+        desk.wm.add(dialup.DialUpNetworking(desk, arg))
+    elif name == "printers":
+        from . import printers
+        desk.wm.add(printers.Printers(desk, arg))
+    elif name in ("hardware", "devicemanager"):
+        from . import hardware
+        cls = hardware.HardwareWizard if name == "hardware" \
+            else hardware.DeviceManager
+        desk.wm.add(cls(desk, arg))
+    elif name == "briefcase":
+        from . import briefcase
+        desk.wm.add(briefcase.BriefcaseWindow(desk, arg))
+    elif name == "powertoys":
+        from . import powertoys
+        desk.wm.add(powertoys.PowerToys(desk, arg))
+    elif name == "defrag":
+        from . import defrag
+        desk.wm.add(defrag.Defragmenter(desk, arg))
     else:
         raise ValueError(f"unknown app {name!r}")

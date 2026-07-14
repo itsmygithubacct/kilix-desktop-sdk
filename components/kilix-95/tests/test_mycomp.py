@@ -79,11 +79,11 @@ def test_has_items_cheap_probe():
     assert recycle.has_items() is False
 
 
-# ── Control Panel opens Settings ─────────────────────────────────────────────
-def test_control_panel_opens_settings():
+# ── Control Panel opens the Control Panel namespace ──────────────────────────
+def test_control_panel_opens_namespace():
     d, win = _open()
     win._activate(_entry(win, "Control Panel"))
-    assert H.find_window(d, "SettingsWin") is not None
+    assert H.find_window(d, "ControlPanel") is not None
 
 
 # ── Recycle Bin opens the bin, singleton, and can restore ────────────────────
@@ -109,7 +109,7 @@ def test_recycle_bin():
 test_entries_exist()
 test_recycle_bin_icon_reflects_fullness()
 test_drive_opens_filemgr()
-test_control_panel_opens_settings()
+test_control_panel_opens_namespace()
 test_recycle_bin()
 test_has_items_cheap_probe()
 print("ok")

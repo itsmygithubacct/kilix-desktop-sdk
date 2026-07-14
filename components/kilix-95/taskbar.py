@@ -40,6 +40,8 @@ class Taskbar:
     # quick-launch toolbar (right of Start) --------------------------------
     def _ql_defs(self):
         shell = self.desk.shell
+        if not shell.state.get("show_quick_launch", True):
+            return []
         return [
             ("show_desktop", "Show Desktop", self._show_desktop),
             ("browser", "Web Browser",
@@ -70,6 +72,13 @@ class Taskbar:
         defs = []
         if getattr(self.desk, "password_nag", False):
             defs.append(("password", "Default password — click to change it"))
+        if getattr(self.desk, "new_hardware", False):
+            defs.append(("hardware", "New hardware found"))
+        state = getattr(self.desk, "dialup_state", {})
+        if state.get("connected"):
+            elapsed = max(0, int(time.time() - state.get("connected_at", time.time())))
+            defs.append(("network", f"{state.get('name', 'Network')} — "
+                                     f"connected {elapsed // 60}:{elapsed % 60:02d}"))
         defs += [("display", "Display"), ("speaker", "Volume")]
         return defs
 
@@ -281,6 +290,12 @@ class Taskbar:
         elif name == "password":
             self._close_popup()
             self.desk.shell.change_password_dialog()
+        elif name == "hardware":
+            self._close_popup()
+            self.desk.shell.open_app("hardware")
+        elif name == "network":
+            self._close_popup()
+            self.desk.shell.open_app("dialup")
 
     def show_password_balloon(self):
         """Pop the transient 'change your default password' bubble above the
@@ -466,6 +481,16 @@ class Taskbar:
                    action=lambda: shell.open_app("taskmgr")),
                 MI("WordPad", icon="wordpad",
                    action=lambda: shell.open_app("wordpad")),
+                MI("System Tools", icon="folder", submenu=[
+                    MI("Add New Hardware", icon="hardware",
+                       action=lambda: shell.open_app("hardware")),
+                    MI("Disk Defragmenter", icon="defrag",
+                       action=lambda: shell.open_app("defrag")),
+                    MI("Device Manager", icon="hardware",
+                       action=lambda: shell.open_app("devicemanager")),
+                    MI("System Information", icon="computer",
+                       action=lambda: shell.open_app("systemprops")),
+                ]),
             ]
             disc = app_items("Accessories")
             if disc:
@@ -484,6 +509,8 @@ class Taskbar:
                 sub(),
                 MI("File Manager", icon="folder_open",
                    action=lambda: shell.open_app("filemgr")),
+                MI("MS-DOS Prompt", icon="dosbox",
+                   action=shell.open_dos_prompt),
                 MI("Terminal", icon="terminal", action=shell.open_terminal),
                 MI("Mux Terminal", icon="mux", action=shell.open_mux_terminal),
                 MI("Web Browser", icon="browser",
@@ -510,6 +537,16 @@ class Taskbar:
                 # button → a zenity file picker) for choosing tracks
                 MI("Media Player", icon="amp",
                    action=lambda: shell.open_app("amp")),
+                MI("PowerToys", icon="powertoys",
+                   action=lambda: shell.open_app("powertoys")),
+                MI("Network Neighborhood", icon="network",
+                   action=lambda: shell.open_app("networkhood")),
+                MI("Dial-Up Networking", icon="dialup",
+                   action=lambda: shell.open_app("dialup")),
+                MI("My Briefcase", icon="briefcase",
+                   action=lambda: shell.open_app("briefcase")),
+                MI("Printers", icon="printer",
+                   action=lambda: shell.open_app("printers")),
             ]
             user = shell.launcher_menu_items()
             if user:
@@ -529,6 +566,8 @@ class Taskbar:
             return docs or [MI("(Empty)", enabled=False)]
 
         settings_sub = [
+            MI("Control Panel", icon="controlpanel",
+               action=lambda: shell.open_app("controlpanel")),
             MI("kilix Settings", icon="settings",
                action=lambda: shell.open_app("settings")),
             MI("Display…", icon="display", action=shell.display_properties),
@@ -543,6 +582,9 @@ class Taskbar:
                action=lambda: shell.open_app("findfiles")),
         ]
         help_sub = [
+            MI(f"Welcome to {T.PRODUCT_NAME}", icon="help",
+               action=lambda: shell.open_app("winhelp", "welcome")),
+            sub(),
             MI("System Manual", icon="help",
                action=lambda: shell.open_app("manual", "search")),
             MI("List", icon="doc_text",

@@ -3,6 +3,7 @@ with object.__new__ and driven with fake procs/pipes and a fake Xlib tree.
 Each assertion fails on the pre-fix code path."""
 import os
 import signal
+import stat
 import subprocess
 import tempfile
 
@@ -335,12 +336,16 @@ xpane.subprocess.Popen = fake_popen
 xpane.os.killpg = fake_killpg
 try:
     installer = xpane.InstallerWindow(d, "amp", "Media Player")
+    log_path = installer.log.name
     assert seen["start_new_session"] is True
+    assert stat.S_IMODE(os.stat(os.path.dirname(log_path)).st_mode) == 0o700
+    assert stat.S_IMODE(os.stat(log_path).st_mode) == 0o600
     assert installer._tick in d.tick_hooks
     installer.request_close()
     assert seen["signals"] == [(fake_proc.pid, signal.SIGTERM)]
     assert fake_proc.waits == 1
     assert installer._tick not in d.tick_hooks
+    assert not os.path.exists(log_path)
 finally:
     xpane.subprocess.Popen = orig_popen
     xpane.os.killpg = orig_killpg

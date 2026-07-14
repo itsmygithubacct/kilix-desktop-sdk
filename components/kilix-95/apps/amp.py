@@ -3,13 +3,25 @@
 Unlike the games (which live in kilix tabs), the media player opens INSIDE
 the desktop: an SDL2 app on a private X server, streamed into a kilix 95
 window. First run clones and builds github.com/itsmygithubacct/kilix-amp
-via the InstallerWindow; the layout/config it saves is kept private under
-its install dir so it never fights the user's own kilix-amp setup.
+via the InstallerWindow; the layout/config it saves is kept in Kilix 95's
+private XDG roots so it never fights the user's own kilix-amp setup.
 """
 import os
 
 import wm
+import storage
 from . import xpane
+
+
+def _runtime_env():
+    """Private persistent XDG roots for the desktop-managed player."""
+    roots = {
+        "XDG_CONFIG_HOME": storage.config_dir("app-state"),
+        "XDG_DATA_HOME": storage.data_dir("app-state"),
+        "XDG_STATE_HOME": storage.state_dir("app-state"),
+        "XDG_CACHE_HOME": storage.cache_dir("app-state"),
+    }
+    return {name: storage.private_dir(path) for name, path in roots.items()}
 
 
 def open_amp(desk, path=None):
@@ -29,9 +41,10 @@ def open_amp(desk, path=None):
               "The media player isn't built yet.\n\n"
               "Clone and build kilix-amp (a Winamp 2.x clone,\n"
               "github.com/itsmygithubacct/kilix-amp) into\n"
-              "~/.local/share/kilix/apps?\n"
+              "~/.local/gpu_terminal/kilix-95/data/apps?\n"
               "(Needs libsdl2-dev, libsdl2-image-dev,\n"
-              "libsndfile1-dev and zlib1g-dev to compile.)",
+              "libsndfile1-dev, zlib1g-dev, libfluidsynth-dev\n"
+              "and a GM SoundFont to compile and play MIDI.)",
               icon="amp", buttons=("Install", "Cancel"), cb=answered)
 
 
@@ -54,6 +67,10 @@ def _seed_sample(amp_dir):
 
 def _spawn(desk, exe, path=None):
     if not exe:
+        wm.msgbox(desk, "Media Player",
+                  "The Media Player install completed, but the pinned "
+                  "executable did not pass its readiness check.",
+                  icon="error")
         return
     d = os.path.dirname(exe)
     _seed_sample(d)
@@ -67,7 +84,7 @@ def _spawn(desk, exe, path=None):
             # (EQ / playlist) are never clipped
             # private, persistent config: window layout survives sessions and
             # never collides with a user-level kilix-amp install
-            env={"XDG_CONFIG_HOME": os.path.join(d, ".xpane-config")},
+            env=_runtime_env(),
             cwd=d))
     except Exception as e:
         wm.msgbox(desk, "Media Player",

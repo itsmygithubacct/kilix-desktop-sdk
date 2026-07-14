@@ -347,6 +347,42 @@ def _joustix(p):
     p.hline(9, 11, 14, K)                          # feet
 
 
+def _chess_bash(p):
+    # Armored chess knight above a small battlefield board.
+    for y in range(11, 15):
+        for x in range(2, 14):
+            p.px(x, y, W if (x + y) % 2 else DB)
+    p.hline(1, 14, 15, K)
+    p.poly([(4, 11), (5, 8), (7, 7), (6, 5), (8, 2),
+            (12, 4), (13, 7), (11, 9), (12, 11)],
+           fill=S, outline=K)
+    p.px(9, 4, W)                                  # eye
+    p.px(10, 4, K)
+    p.hline(7, 11, 9, Y)                           # armor trim
+    p.px(4, 9, R)                                  # impact spark
+    p.px(3, 8, Y)
+    p.px(3, 10, Y)
+
+
+def _fishtank(p):
+    # A glass aquarium with one bright fish, bubbles, weed, and sand.
+    p.rect(1, 2, 14, 14, fill=DB, outline=K)       # tank and deep water
+    p.hline(2, 13, 3, C)                           # waterline glint
+    p.vline(2, 4, 12, T)                           # glass edge
+    p.poly([(5, 7), (7, 5), (11, 6), (12, 8),
+            (10, 10), (7, 10)], fill=Y, outline=K) # fish body
+    p.poly([(6, 7), (3, 5), (3, 10)], fill=R, outline=K)  # tail
+    p.px(10, 7, W)                                 # eye
+    p.px(11, 7, K)
+    p.px(12, 4, C)                                 # bubbles
+    p.px(13, 6, C)
+    p.vline(4, 10, 13, DN)                         # water plant
+    p.px(3, 11, N)
+    p.px(5, 12, N)
+    p.hline(2, 13, 13, DY)                         # sand
+    p.hline(1, 14, 15, K)                          # sturdy base
+
+
 def _lander(p):
     # a lunar lander descending on a lit thruster (Terminal Lander)
     p.rect(6, 2, 9, 3, fill=S, outline=K)          # ascent stage
@@ -549,6 +585,136 @@ def _app(p):
     p.hline(5, 10, 10, B)
 
 
+def _controlpanel(p):
+    p.rect(1, 2, 14, 13, fill=S, outline=K)
+    p.hline(2, 13, 3, W)
+    for x, y, col in ((4, 6, B), (9, 6, R), (4, 10, N), (9, 10, Y)):
+        p.rect(x - 1, y - 1, x + 1, y + 1, fill=col, outline=K)
+    p.px(13, 12, G)
+
+
+def _network(p):
+    for x, y in ((1, 2), (10, 2), (5, 10)):
+        p.rect(x, y, x + 4, y + 3, fill=S, outline=K)
+        p.rect(x + 1, y + 1, x + 3, y + 2, fill=C)
+    p.hline(3, 12, 7, DB)
+    p.vline(3, 6, 7, DB); p.vline(12, 6, 7, DB); p.vline(7, 7, 10, DB)
+
+
+def _dialup(p):
+    p.rect(2, 5, 13, 12, fill=S, outline=K)
+    p.rect(4, 7, 8, 9, fill=DB, outline=K)
+    p.px(11, 7, N); p.px(11, 9, R)
+    p.hline(4, 11, 12, G)
+    p.vline(3, 2, 4, K); p.hline(3, 8, 2, K)
+    p.px(9, 1, K); p.px(10, 0, K)
+
+
+def _printer(p):
+    p.rect(4, 1, 11, 5, fill=W, outline=K)
+    p.hline(5, 10, 3, G)
+    p.rect(1, 5, 14, 11, fill=S, outline=K)
+    p.rect(4, 9, 11, 14, fill=W, outline=K)
+    p.hline(5, 10, 11, B); p.hline(5, 9, 13, G)
+    p.px(12, 7, N)
+
+
+def _briefcase(p):
+    p.rect(2, 5, 13, 13, fill=DY, outline=K)
+    p.rect(5, 2, 10, 5, fill=Y, outline=K)
+    p.rect(6, 3, 9, 5, fill=K)
+    p.hline(3, 12, 7, W)
+    p.rect(7, 8, 8, 10, fill=S, outline=K)
+
+
+def _cdrom(p):
+    p.rect(1, 6, 14, 13, fill=S, outline=K)
+    p.hline(2, 13, 7, W)
+    p.rect(4, 2, 11, 9, fill=C, outline=K)
+    p.rect(6, 4, 9, 7, fill=W, outline=G)
+    p.rect(7, 5, 8, 6, fill=K)
+    p.hline(4, 10, 11, G); p.px(12, 11, N)
+
+
+def _floppy(p):
+    p.rect(2, 1, 13, 14, fill=DB, outline=K)
+    p.rect(5, 2, 11, 6, fill=S, outline=K)
+    p.rect(5, 9, 11, 13, fill=W, outline=K)
+    p.hline(6, 10, 10, B); p.hline(6, 9, 12, G)
+
+
+def _datetime(p):
+    p.rect(1, 1, 14, 14, fill=W, outline=K)
+    p.rect(3, 3, 12, 12, fill=S, outline=DB)
+    p.vline(7, 4, 8, K); p.hline(7, 10, 8, K)
+    p.px(7, 8, R)
+    for x, y in ((7, 3), (12, 8), (7, 12), (3, 8)):
+        p.px(x, y, K)
+
+
+def _mouse(p):
+    p.poly([(5, 1), (10, 1), (12, 5), (12, 11), (10, 14),
+            (5, 14), (3, 11), (3, 5)], fill=S, outline=K)
+    p.vline(7, 2, 7, K); p.hline(4, 11, 7, K)
+    p.px(9, 4, W)
+
+
+def _keyboard(p):
+    p.rect(1, 4, 14, 12, fill=S, outline=K)
+    for y in (6, 8, 10):
+        for x in range(3, 13, 2):
+            p.px(x, y, W)
+    p.hline(5, 10, 11, W)
+
+
+def _fonts(p):
+    p.rect(1, 1, 14, 14, fill=W, outline=K)
+    p.poly([(4, 12), (7, 3), (9, 3), (12, 12), (10, 12),
+            (9, 9), (6, 9), (5, 12)], fill=DB, outline=K)
+    p.hline(7, 9, 7, W)
+
+
+def _hardware(p):
+    p.rect(4, 4, 11, 11, fill=N, outline=K)
+    p.rect(6, 6, 9, 9, fill=DB, outline=W)
+    for i in (3, 6, 9, 12):
+        p.px(i, 2, K); p.px(i, 13, K); p.px(2, i, K); p.px(13, i, K)
+
+
+def _theme(p):
+    p.rect(1, 2, 14, 13, fill=W, outline=K)
+    for x, y, col in ((4, 5, R), (8, 4, Y), (11, 7, N),
+                      (8, 10, C), (4, 9, DB)):
+        p.rect(x - 1, y - 1, x + 1, y + 1, fill=col, outline=K)
+
+
+def _powertoys(p):
+    p.rect(3, 3, 12, 12, fill=S, outline=K)
+    p.rect(6, 6, 9, 9, fill=DB, outline=W)
+    p.poly([(9, 1), (6, 7), (8, 7), (6, 14), (12, 6), (10, 6),
+            (12, 1)], fill=Y, outline=K)
+
+
+def _key_icon(p):
+    p.rect(1, 3, 8, 10, fill=Y, outline=K)
+    p.rect(3, 5, 6, 8, fill=W, outline=K)
+    p.hline(8, 14, 8, Y); p.vline(12, 8, 11, Y); p.vline(14, 8, 10, Y)
+
+
+def _sendto(p):
+    p.rect(1, 5, 10, 13, fill=W, outline=K)
+    p.poly([(1, 5), (5, 9), (10, 5)], fill=S, outline=K)
+    p.hline(7, 14, 3, DB); p.poly([(12, 1), (15, 3), (12, 5)], fill=DB)
+
+
+def _defrag(p):
+    colors = (R, DB, N, Y)
+    for y in range(2, 14, 4):
+        for x in range(1, 15, 4):
+            p.rect(x, y, x + 2, y + 2, fill=colors[(x + y) % len(colors)],
+                   outline=K)
+
+
 ICONS = {
     "computer": _computer, "display": _display, "drive": _drive,
     "folder": _folder, "folder_open": _folder_open,
@@ -558,7 +724,8 @@ ICONS = {
     "notepad": _notepad, "browser": _browser, "run": _run,
     "shutdown": _shutdown, "flame": _flame, "home": _home,
     "games": _games, "doom": _doom, "dosbox": _dosbox, "tank": _tank,
-    "joustix": _joustix,
+    "joustix": _joustix, "chess-bash": _chess_bash,
+    "fishtank": _fishtank,
     "lander": _lander, "brokeout": _brokeout,
     "amp": _amp,
     "question": _question, "info": _info, "warn": _warn, "error": _error,
@@ -568,6 +735,14 @@ ICONS = {
     "recyclebin_empty": _recyclebin_empty, "recyclebin_full": _recyclebin_full,
     "find": _find, "taskmgr": _taskmgr, "soundcp": _soundcp,
     "app": _app,
+    "controlpanel": _controlpanel, "theme": _theme,
+    "network": _network, "dialup": _dialup, "newconnection": _dialup,
+    "printer": _printer, "addprinter": _printer,
+    "briefcase": _briefcase, "cdrom": _cdrom, "floppy": _floppy,
+    "datetime": _datetime, "mouse": _mouse, "keyboard": _keyboard,
+    "fonts": _fonts, "hardware": _hardware, "system": _computer,
+    "powertoys": _powertoys, "key": _key_icon, "desktop": _display,
+    "sendto": _sendto, "defrag": _defrag,
 }
 
 _cache = {}

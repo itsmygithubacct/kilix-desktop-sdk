@@ -3,8 +3,8 @@
 
 Usage: python3 desktop/tests/run.py [name-substring ...]
 Prints PASS/FAIL per file (captured output shown on failure); exits nonzero
-on any failure. Each subprocess gets a throwaway KILIX_DESKTOP_DIR so no
-test can touch the real desktop dir even without the harness.
+on any failure. Each subprocess gets a complete throwaway home and provider
+storage environment so inherited category overrides cannot reach live data.
 """
 import os
 import shutil
@@ -14,6 +14,7 @@ import tempfile
 import time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
+SOURCE_HOME = os.path.dirname(os.path.dirname(HERE))
 
 
 def main():
@@ -24,7 +25,39 @@ def main():
     failed = []
     for name in names:
         env = dict(os.environ)
-        env["KILIX_DESKTOP_DIR"] = tempfile.mkdtemp(prefix="kilix95-test-")
+        sandbox = tempfile.mkdtemp(prefix="kilix95-test-")
+        home = os.path.join(sandbox, "home")
+        data_root = os.path.join(sandbox, "gpu-terminal-data")
+        kilix_root = os.path.join(data_root, "kilix")
+        kilix95_root = os.path.join(data_root, "kilix-95")
+        os.makedirs(home, mode=0o700)
+        env.update({
+            "HOME": home,
+            "GPU_TERMINAL_SOURCE_HOME": SOURCE_HOME,
+            "GPU_TERMINAL_HOME": data_root,
+            "KILIX_HOME": os.path.join(SOURCE_HOME, "kilix"),
+            "KILIX_STORAGE_HOME": kilix_root,
+            "KILIX_CONFIG_HOME": os.path.join(kilix_root, "config"),
+            "KILIX_STATE_DIRECTORY": os.path.join(kilix_root, "state"),
+            "KILIX_CACHE_HOME": os.path.join(kilix_root, "cache"),
+            "KILIX_DATA_HOME": os.path.join(kilix_root, "data"),
+            "KILIX_SESSION_HOME": os.path.join(kilix_root, "session"),
+            "KILIX_BUILD_DIRECTORY": os.path.join(kilix_root, "build"),
+            "KILIX95_STORAGE_HOME": kilix95_root,
+            "KILIX95_CONFIG_HOME": os.path.join(kilix95_root, "config"),
+            "KILIX95_STATE_HOME": os.path.join(kilix95_root, "state"),
+            "KILIX95_CACHE_HOME": os.path.join(kilix95_root, "cache"),
+            "KILIX95_DATA_HOME": os.path.join(kilix95_root, "data"),
+            "KILIX95_SESSION_HOME": os.path.join(kilix95_root, "session"),
+            "KILIX_DESKTOP_DIR": os.path.join(sandbox, "desktop"),
+            "KILIX_RECYCLE_DIR": os.path.join(sandbox, "recycle"),
+            "XDG_CONFIG_HOME": os.path.join(sandbox, "xdg", "config"),
+            "XDG_STATE_HOME": os.path.join(sandbox, "xdg", "state"),
+            "XDG_CACHE_HOME": os.path.join(sandbox, "xdg", "cache"),
+            "XDG_DATA_HOME": os.path.join(sandbox, "xdg", "data"),
+            "PYTHONDONTWRITEBYTECODE": "1",
+        })
+        env.pop("KITTY_CONFIG_DIRECTORY", None)
         t0 = time.time()
         try:
             p = subprocess.run([sys.executable, os.path.join(HERE, name)],
@@ -37,7 +70,7 @@ def main():
                    + (e.stderr or b"").decode("utf-8", "replace")
                    + "\n[timeout after 30s]")
         finally:
-            shutil.rmtree(env["KILIX_DESKTOP_DIR"], ignore_errors=True)
+            shutil.rmtree(sandbox, ignore_errors=True)
         print(f"{'PASS' if ok else 'FAIL'}  {name}  ({time.time() - t0:.1f}s)")
         if not ok:
             failed.append(name)

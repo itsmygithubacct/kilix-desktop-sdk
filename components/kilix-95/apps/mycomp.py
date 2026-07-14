@@ -6,7 +6,9 @@ Double-clicking a drive/folder opens a File Manager there; the Recycle Bin
 opens the shared Recycle Bin window.
 """
 import os
+import shutil
 
+import nostalgia
 import recycle
 import theme as T
 import widgets as W
@@ -29,14 +31,20 @@ class MyComputer(wm.Window):
             ("File", self._file_menu), ("Help", self._help_menu)]))
         self.grid = self.add(W.IconGrid(
             2, T.MENU_H + 2, cw - 4, ch - T.MENU_H - STATUS_H - 4,
-            on_activate=self._activate))
+            on_activate=self._activate, on_context=self._context))
         self.grid.set_items(self._entries())
         self.set_focus(self.grid)
         self._bin_icon = _bin_icon()
+        self._hardware_signature = nostalgia.block_device_signature()
         self.desk.tick_hooks.append(self._refresh_bin)
 
     def _refresh_bin(self, *_):
         # keep the Recycle Bin entry's icon in sync with the bin's fullness
+        signature = nostalgia.block_device_signature()
+        if signature != self._hardware_signature:
+            self._hardware_signature = signature
+            self.grid.set_items(self._entries())
+            self.invalidate()
         icon = _bin_icon()
         if icon == self._bin_icon:
             return
@@ -52,20 +60,39 @@ class MyComputer(wm.Window):
         super().close()
 
     def _entries(self):
-        return [
+        items = [
+            {"label": "3½ Floppy (A:)", "icon": "floppy",
+             "data": ("empty-drive", "A:")},
             {"label": "Local Disk (/)", "icon": "drive",
              "data": ("filemgr", "/")},
             {"label": "Home", "icon": "home",
              "data": ("filemgr", os.path.expanduser("~"))},
             {"label": "Desktop", "icon": "folder",
              "data": ("filemgr", self.desk.shell.dir)},
-            {"label": "Control Panel", "icon": "settings",
-             "data": ("settings", None)},
+            {"label": "Kilix 95 CD-ROM (K:)", "icon": "cdrom",
+             "data": ("cdrom", nostalgia.virtual_cd_path())},
+            {"label": "Control Panel", "icon": "controlpanel",
+             "data": ("app", "controlpanel")},
             {"label": "Sounds", "icon": "soundcp",
-             "data": ("soundcp", None)},
+             "data": ("app", "soundcp")},
+            {"label": "Printers", "icon": "printer",
+             "data": ("app", "printers")},
+            {"label": "Dial-Up Networking", "icon": "dialup",
+             "data": ("app", "dialup")},
+            {"label": "Network Neighborhood", "icon": "network",
+             "data": ("app", "networkhood")},
+            {"label": "My Briefcase", "icon": "briefcase",
+             "data": ("app", "briefcase")},
             {"label": "Recycle Bin", "icon": _bin_icon(),
              "data": ("bin", None)},
         ]
+        for drive in nostalgia.mounted_drives():
+            label = drive["label"] + " (" + drive["mount"] + ")"
+            items.insert(2, {"label": label,
+                             "icon": "cdrom" if drive["type"] == "rom"
+                             else "drive",
+                             "data": ("filemgr", drive["mount"])})
+        return items
 
     def on_resize(self):
         cw, ch = self.client_size()
@@ -83,10 +110,18 @@ class MyComputer(wm.Window):
         kind, arg = item["data"]
         if kind == "filemgr":
             self.desk.shell.open_app("filemgr", arg)
-        elif kind == "settings":
-            self.desk.shell.open_app("settings")
-        elif kind == "soundcp":
-            self.desk.shell.open_app("soundcp")
+        elif kind == "app":
+            self.desk.shell.open_app(arg)
+        elif kind == "cdrom":
+            try:
+                self.desk.shell.open_app("filemgr", nostalgia.ensure_virtual_cd())
+            except OSError as error:
+                wm.msgbox(self.desk, "CD-ROM", str(error), icon="error")
+        elif kind == "empty-drive":
+            wm.msgbox(self.desk, "3½ Floppy",
+                      f"The device {arg} is not ready.\n\n"
+                      "Insert a mounted removable disk and try again.",
+                      icon="error")
         elif kind == "bin":
             self._open_bin()
 
@@ -104,9 +139,37 @@ class MyComputer(wm.Window):
         return [
             MI("Open", enabled=bool(sel),
                action=lambda: sel and self._activate(sel[0])),
+            MI("Properties…", enabled=bool(sel),
+               action=lambda: sel and self._properties(sel[0])),
             W.sep(),
             MI("Close", action=self.request_close),
         ]
+
+    def _context(self, item, event):
+        if item is None:
+            return
+        gx, gy = self.client_origin()
+        self.desk.menus.open([
+            W.MenuItem("Open", action=lambda: self._activate(item)),
+            W.MenuItem("Properties…", action=lambda: self._properties(item)),
+        ], gx + event.x, gy + event.y)
+
+    def _properties(self, item):
+        kind, arg = item["data"]
+        if kind in ("filemgr", "cdrom") and arg and os.path.exists(arg):
+            try:
+                usage = shutil.disk_usage(arg)
+                detail = (f"Location: {arg}\n"
+                          f"Capacity: {nostalgia.human_size(usage.total)}\n"
+                          f"Free space: {nostalgia.human_size(usage.free)}")
+            except OSError:
+                detail = f"Location: {arg}"
+        elif kind == "empty-drive":
+            detail = f"Device: {arg}\nStatus: Not ready"
+        else:
+            detail = f"Type: {item['label']} system folder"
+        wm.msgbox(self.desk, item["label"] + " Properties", detail,
+                  icon=item.get("icon", "computer"))
 
     def _help_menu(self):
         return [W.MenuItem("About My Computer…", icon="computer",
