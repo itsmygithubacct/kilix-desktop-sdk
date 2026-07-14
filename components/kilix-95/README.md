@@ -30,7 +30,9 @@ Version 0.1.2 includes:
 - original Plus!-style themes, additional screen savers, Quick Launch, and the
   kitten-fire wallpaper reserved for the Windows XP flavor; and
 - Chess Bash and Kilix Fishtank integrations plus a repaired, immutable
-  Kilix-Amp install with private XDG config, data, state, and cache roots.
+  Kilix-Amp install with private XDG config, data, state, and cache roots; and
+- a Help-menu Pleb Recovery Guide that opens the installed recovery document
+  and supplies actionable `sudo` dependency repair advice when it is missing.
 
 ## Release 0.1.1
 
@@ -205,6 +207,8 @@ Start -> Help contains:
 
 - **System Manual**: searchable browser for installed man pages.
 - **List**: opens the System Manual browser with the full local man-page list.
+- **Pleb Recovery Guide**: opens `/usr/local/share/doc/pleb/RECOVERY.md`, falling
+  back to `$GPU_TERMINAL_SOURCE_HOME/pleb/docs/RECOVERY.md` for source runs.
 - **Kilix**: how-tos for Kilix, Kilix 95, Pleb, and Plebian-OS.
 - **Terminal**: how-tos for terminal basics, tmux, and bash.
 - **Help Topics**: the general two-pane desktop guide.

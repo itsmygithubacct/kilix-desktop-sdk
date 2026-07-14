@@ -589,6 +589,8 @@ class Taskbar:
                action=lambda: shell.open_app("manual", "search")),
             MI("List", icon="doc_text",
                action=lambda: shell.open_app("manual", "list")),
+            MI("Pleb Recovery Guide", icon="help",
+               action=lambda: shell.open_pleb_recovery()),
             sub(),
             MI("Kilix", icon="folder", submenu=[
                 MI("Kilix", icon="terminal",
