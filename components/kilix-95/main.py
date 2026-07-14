@@ -18,6 +18,7 @@ import os
 import select
 import shutil
 import signal
+import stat
 import sys
 import tempfile
 import time
@@ -27,15 +28,47 @@ sys.path.insert(0, _here)
 
 # Set the bytecode destination before importing any project module.  This also
 # keeps a direct `python3 main.py` launch from creating __pycache__ in the tree.
-_storage_base = os.environ.get("GPU_TERMINAL_HOME") or os.path.expanduser(
-    "~/.local/gpu_terminal")
-_storage_home = os.environ.get("KILIX95_STORAGE_HOME") or os.path.join(
-    _storage_base, "kilix-95")
-_cache_home = os.environ.get("KILIX95_CACHE_HOME") or os.path.join(
-    _storage_home, "cache")
-_pycache = os.path.abspath(os.path.expanduser(os.path.join(
-    _cache_home, "pycache")))
-os.makedirs(_pycache, mode=0o700, exist_ok=True)
+def _normalized(path):
+    return os.path.abspath(os.path.expanduser(path))
+
+
+def _private_bootstrap_dir(path):
+    """Create/repair one app-owned boundary before project imports."""
+    path = _normalized(path)
+    os.makedirs(path, mode=0o700, exist_ok=True)
+    info = os.lstat(path)
+    if stat.S_ISLNK(info.st_mode) or not stat.S_ISDIR(info.st_mode):
+        raise RuntimeError(f"Kilix 95 storage path is not a real directory: {path}")
+    if info.st_uid != os.geteuid():
+        raise RuntimeError(f"Kilix 95 storage path is not owned by this user: {path}")
+    os.chmod(path, 0o700)
+    return path
+
+
+def _is_within(path, root):
+    try:
+        return os.path.commonpath((path, root)) == root
+    except ValueError:
+        return False
+
+
+_storage_base = _normalized(os.environ.get("GPU_TERMINAL_HOME") or
+                            "~/.local/gpu_terminal")
+_storage_home = _normalized(os.environ.get("KILIX95_STORAGE_HOME") or
+                            os.path.join(_storage_base, "kilix-95"))
+if _storage_home in (os.path.abspath(os.sep), _normalized("~"), _storage_base):
+    raise RuntimeError(
+        "KILIX95_STORAGE_HOME must be a dedicated component directory")
+_storage_home = _private_bootstrap_dir(_storage_home)
+_cache_home = _normalized(os.environ.get("KILIX95_CACHE_HOME") or
+                          os.path.join(_storage_home, "cache"))
+if _is_within(_cache_home, _storage_home):
+    _cache_home = _private_bootstrap_dir(_cache_home)
+else:
+    # Preserve an operator-managed external cache root.  Only Kilix 95's
+    # dedicated bytecode leaf below it is tightened.
+    os.makedirs(_cache_home, mode=0o700, exist_ok=True)
+_pycache = _private_bootstrap_dir(os.path.join(_cache_home, "pycache"))
 sys.pycache_prefix = _pycache
 
 import storage
