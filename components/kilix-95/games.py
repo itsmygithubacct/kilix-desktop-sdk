@@ -131,9 +131,26 @@ def load():
 
 
 def save(cp):
-    os.makedirs(os.path.dirname(CONF), exist_ok=True)
-    with open(CONF, "w") as f:
-        cp.write(f)
+    directory = os.path.dirname(CONF)
+    os.makedirs(directory, exist_ok=True)
+    fd, pending = tempfile.mkstemp(prefix=".games.conf.", dir=directory)
+    try:
+        # mkstemp creates the file as 0600 regardless of the caller's umask.
+        # Replacing the destination also avoids following a pre-existing
+        # games.conf symlink and reconciles older, overly broad file modes.
+        with os.fdopen(fd, "w") as stream:
+            fd = -1
+            cp.write(stream)
+        os.replace(pending, CONF)
+        pending = None
+    finally:
+        if fd >= 0:
+            os.close(fd)
+        if pending is not None:
+            try:
+                os.unlink(pending)
+            except FileNotFoundError:
+                pass
 
 
 def _find(d, name):
