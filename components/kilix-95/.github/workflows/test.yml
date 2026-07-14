@@ -12,7 +12,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     env:
-      KILIX_COMMIT: 6e7c3519f004b069bb9236acdb93635536083f68
+      KILIX_COMMIT: 8231da15fa08291a7ababe5a790b81fa632121f8
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
       - name: Install test dependencies

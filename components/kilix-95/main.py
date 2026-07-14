@@ -674,9 +674,8 @@ class Desk:
             # escape, never mmap a slot reused with a different band geometry
             # (kitty deletes each file after reading; the dir is cleaned up).
             self._band_n = getattr(self, "_band_n", 0) + 1
-            path = os.path.join(os.path.dirname(self._frame_path()),
-                                f"band-{self._band_n}.rgb")
-            flags = os.O_WRONLY | os.O_CREAT | os.O_TRUNC
+            path = self._frame_path("band", self._band_n)
+            flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL
             if hasattr(os, "O_NOFOLLOW"):
                 flags |= os.O_NOFOLLOW
             fd = os.open(path, flags, 0o600)
@@ -691,9 +690,12 @@ class Desk:
                 self.term, rgb, self.w, self.h, self.term.cols,
                 self.term.rows, self.img_id, in_tmux=in_tmux)
             return
-        self.seq = (self.seq + 1) % 8
-        path = self._frame_path()
-        flags = os.O_WRONLY | os.O_CREAT | os.O_TRUNC
+        # kitty may still be opening a previously announced t=t path after a
+        # later frame is ready.  Never recycle a filename: truncating a path
+        # that kitty has mmaped can SIGBUS the terminal process.
+        self.seq += 1
+        path = self._frame_path("full", self.seq)
+        flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL
         if hasattr(os, "O_NOFOLLOW"):
             flags |= os.O_NOFOLLOW
         fd = os.open(path, flags, 0o600)
@@ -703,16 +705,16 @@ class Desk:
         self.term.write(
             f"\x1b[H\x1b_Ga=T,i={self.img_id},p=1,z=-1,t=t,f=24,"
             f"s={self.w},v={self.h},c={self.term.cols},r={self.term.rows},"
-            f"q=2,C=1;{payload}\x1b\\")
+            f"q=2,C=1,N=1;{payload}\x1b\\")
 
-    def _frame_path(self):
+    def _frame_path(self, kind, sequence):
         if self._frame_dir is None:
             root = storage.private_session_dir("frames")
             self._frame_dir = tempfile.mkdtemp(
                 prefix=f"tty-graphics-protocol-{T.RUNTIME_ID}-{self.wid}-",
                 dir=root)
             os.chmod(self._frame_dir, 0o700)
-        return os.path.join(self._frame_dir, f"{self.seq}.rgb")
+        return os.path.join(self._frame_dir, f"{kind}-{sequence}.rgb")
 
     def cleanup_shm(self):
         if self._frame_dir:
