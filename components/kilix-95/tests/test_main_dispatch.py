@@ -236,6 +236,91 @@ def test_frame_files_are_private():
     assert not frame_dir or not os.path.exists(frame_dir)
 
 
+def test_frame_reaper_removes_orphans_but_preserves_other_entries():
+    import os
+    import shutil
+    import tempfile
+
+    root = desk_main.storage.private_session_dir("frames")
+    orphan = os.path.join(
+        root, "tty-graphics-protocol-kilix95-old-session")
+    unrelated = os.path.join(root, "operator-owned-note")
+    target = tempfile.mkdtemp(prefix="frame-link-target-",
+                              dir=os.path.dirname(root))
+    link = os.path.join(root, "tty-graphics-protocol-do-not-follow")
+    os.mkdir(orphan, 0o700)
+    with open(os.path.join(orphan, "full-3088.rgb"), "wb") as f:
+        f.write(b"orphaned-shutdown-frame")
+    os.mkdir(unrelated, 0o700)
+    with open(os.path.join(unrelated, "keep"), "wb") as f:
+        f.write(b"keep")
+    with open(os.path.join(target, "sentinel"), "wb") as f:
+        f.write(b"outside-frame-root")
+    os.symlink(target, link)
+
+    d = desk_main.Desk(term=FakeTerm(cols=4, rows=3, cell_w=8, cell_h=8))
+    try:
+        d._frame_path("full", 1)             # first frame reaps old owners
+        assert not os.path.exists(orphan), "unlocked orphan was not reaped"
+        assert os.path.isfile(os.path.join(unrelated, "keep"))
+        assert os.path.islink(link), "matching symlink was followed or removed"
+        assert os.path.isfile(os.path.join(target, "sentinel"))
+    finally:
+        d.cleanup_shm()
+        if os.path.lexists(link):
+            os.unlink(link)
+        shutil.rmtree(unrelated, ignore_errors=True)
+        shutil.rmtree(target, ignore_errors=True)
+
+
+def test_frame_reaper_preserves_live_locked_directory():
+    import os
+
+    t1 = FakeTerm(cols=4, rows=3, cell_w=8, cell_h=8)
+    t2 = FakeTerm(cols=4, rows=3, cell_w=8, cell_h=8)
+    d1, d2 = desk_main.Desk(term=t1), desk_main.Desk(term=t2)
+    try:
+        first = d1._frame_path("full", 1)
+        with open(first, "wb") as f:
+            f.write(b"live-owner")
+        first_dir = d1._frame_dir
+        second = d2._frame_path("full", 1)
+        assert os.path.isdir(first_dir), "reaper removed a live frame owner"
+        with open(first, "rb") as f:
+            assert f.read() == b"live-owner"
+        assert os.path.dirname(second) != first_dir
+    finally:
+        d2.cleanup_shm()
+        d1.cleanup_shm()
+
+
+def test_frame_cleanup_survives_terminal_restore_failure():
+    import os
+
+    class BrokenRestore(FakeTerm):
+        def restore(self):
+            raise BrokenPipeError("terminal disappeared")
+
+    term = BrokenRestore(cols=4, rows=3, cell_w=8, cell_h=8)
+    d = desk_main.Desk(term=term)
+    d.blit(force_full=True)
+    frame_dir, frame_fd = d._frame_dir, d._frame_dir_fd
+    try:
+        d._restore_and_cleanup(term)
+    except BrokenPipeError:
+        pass
+    else:
+        assert False, "terminal restore failure did not propagate"
+    assert not os.path.exists(frame_dir), "restore failure skipped frame cleanup"
+    assert d._frame_dir is None and d._frame_dir_fd is None
+    try:
+        os.fstat(frame_fd)
+    except OSError:
+        pass
+    else:
+        assert False, "frame-directory lifetime lock was not released"
+
+
 def test_frame_path_collisions_fail_closed():
     import os
 
