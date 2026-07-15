@@ -28,11 +28,15 @@ Version 0.1.2 includes:
   Device Manager, Network Neighborhood, Dial-Up Networking, Printers,
   My Briefcase, PowerToys, and the safe disk-map theater;
 - original Plus!-style themes, additional screen savers, Quick Launch, and the
-  kitten-fire wallpaper reserved for the Windows XP flavor; and
+  kitten-fire wallpaper reserved for the Windows XP flavor;
 - Chess Bash and Kilix Fishtank integrations plus a repaired, immutable
-  Kilix-Amp install with private XDG config, data, state, and cache roots; and
+  Kilix-Amp install with private XDG config, data, state, and cache roots;
 - a Help-menu Pleb Recovery Guide that opens the installed recovery document
-  and supplies actionable `sudo` dependency repair advice when it is missing.
+  and supplies actionable `sudo` dependency repair advice when it is missing;
+  and
+- unique private transport files for every streamed frame, deferred retirement
+  until the terminal engine has consumed them, and startup orphan reaping that
+  bounds frame/cache churn and prevents delayed AMP-session `SIGBUS` crashes.
 
 ## Release 0.1.1
 
