@@ -14,6 +14,7 @@ Quit :  Start ▸ Shut Down…  ·  Ctrl+Alt+Q
 """
 import argparse
 import base64
+import fcntl
 import os
 import select
 import shutil
@@ -213,6 +214,7 @@ class Desk:
                            % 4000)
         self.seq = 0
         self._frame_dir = None
+        self._frame_dir_fd = None       # lifetime flock identifies a live owner
         # WM/loop polish state
         self.switcher = None          # Alt+Tab overlay: {"wins", "sel"} or None
         self._tooltip = None          # current tooltip text or None
@@ -742,17 +744,86 @@ class Desk:
 
     def _frame_path(self, kind, sequence):
         if self._frame_dir is None:
-            root = storage.private_session_dir("frames")
-            self._frame_dir = tempfile.mkdtemp(
-                prefix=f"tty-graphics-protocol-{T.RUNTIME_ID}-{self.wid}-",
-                dir=root)
-            os.chmod(self._frame_dir, 0o700)
+            self._prepare_frame_dir()
         return os.path.join(self._frame_dir, f"{kind}-{sequence}.rgb")
 
+    @staticmethod
+    def _open_frame_dir(path):
+        flags = os.O_RDONLY
+        for name in ("O_CLOEXEC", "O_DIRECTORY", "O_NOFOLLOW"):
+            flags |= getattr(os, name, 0)
+        return os.open(path, flags)
+
+    def _reap_frame_dirs(self, root):
+        """Remove frame directories whose owning desktop is no longer live.
+
+        A desktop holds an exclusive flock on its directory fd for the whole
+        directory lifetime.  Locks disappear even after SIGKILL or power loss,
+        so a later desktop can safely distinguish an orphan from a concurrent
+        live desktop without leaving a long-lived marker in the frames tree.
+        """
+        try:
+            entries = os.scandir(root)
+        except FileNotFoundError:
+            return
+        with entries:
+            for entry in entries:
+                if not entry.name.startswith("tty-graphics-protocol-"):
+                    continue
+                try:
+                    if not entry.is_dir(follow_symlinks=False):
+                        continue
+                    fd = self._open_frame_dir(entry.path)
+                except OSError:
+                    continue
+                try:
+                    try:
+                        fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                    except BlockingIOError:
+                        continue                 # a live desktop owns this dir
+                    shutil.rmtree(entry.path, ignore_errors=True)
+                finally:
+                    os.close(fd)
+
+    def _prepare_frame_dir(self):
+        root = storage.private_session_dir("frames")
+        root_fd = self._open_frame_dir(root)
+        frame_dir = None
+        frame_fd = None
+        try:
+            # Serialize reap+create so a second patched desktop cannot inspect
+            # the tiny interval between our mkdir and lifetime-lock acquisition.
+            fcntl.flock(root_fd, fcntl.LOCK_EX)
+            self._reap_frame_dirs(root)
+            frame_dir = tempfile.mkdtemp(
+                prefix=f"tty-graphics-protocol-{T.RUNTIME_ID}-{self.wid}-",
+                dir=root)
+            os.chmod(frame_dir, 0o700)
+            frame_fd = self._open_frame_dir(frame_dir)
+            fcntl.flock(frame_fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            self._frame_dir = frame_dir
+            self._frame_dir_fd = frame_fd
+            frame_fd = None
+        finally:
+            os.close(root_fd)                    # releases the root lock
+            if frame_fd is not None:
+                os.close(frame_fd)
+            if frame_dir is not None and self._frame_dir != frame_dir:
+                shutil.rmtree(frame_dir, ignore_errors=True)
+
     def cleanup_shm(self):
-        if self._frame_dir:
-            shutil.rmtree(self._frame_dir, ignore_errors=True)
-            self._frame_dir = None
+        frame_dir, frame_fd = self._frame_dir, self._frame_dir_fd
+        self._frame_dir = None
+        self._frame_dir_fd = None
+        try:
+            if frame_dir:
+                shutil.rmtree(frame_dir, ignore_errors=True)
+        finally:
+            if frame_fd is not None:
+                try:
+                    os.close(frame_fd)           # releases the lifetime lock
+                except OSError:
+                    pass
 
     # ── input normalization ─────────────────────────────────────────────────
     def _norm_key(self, raw):
@@ -1007,6 +1078,24 @@ class Desk:
 
     # ── main loop ───────────────────────────────────────────────────────────
     def run(self):
+        # Startup screens create local frame files before the main loop's
+        # teardown block.  Keep cleanup around the complete lifecycle too.
+        try:
+            self._run()
+        except KeyboardInterrupt:
+            pass
+        finally:
+            self.cleanup_shm()
+
+    def _restore_and_cleanup(self, term):
+        # A dead Kitty/X connection can make restore raise.  Cleanup must not
+        # depend on the terminal still being writable.
+        try:
+            term.restore()
+        finally:
+            self.cleanup_shm()
+
+    def _run(self):
         term = self.term
         resized = [False]
         signal.signal(signal.SIGWINCH, lambda *a: resized.__setitem__(0, True))
@@ -1118,8 +1207,7 @@ class Desk:
                 self.shutdown()       # shutdown cue on the way out
             except Exception:
                 pass
-            term.restore()
-            self.cleanup_shm()
+            self._restore_and_cleanup(term)
 
 
 # ── screenshot mode (offscreen render, used by the self-test) ───────────────
