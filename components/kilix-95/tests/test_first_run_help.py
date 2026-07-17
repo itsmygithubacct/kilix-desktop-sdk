@@ -1,10 +1,16 @@
-"""First launch opens the Help book once; the persisted marker stops repeats."""
+"""The opt-in full experience opens its Welcome book once."""
 import harness as H
 
-# a fresh desktop has no marker → the first call opens Help and sets it
+# The lean default does not interrupt a fresh desktop with Welcome.
 d = H.make_desk()
 assert not d.shell.state.get("help_shown")
 n0 = len(d.wm.windows)
+d._first_run_help()
+assert not d.shell.state.get("help_shown")
+assert len(d.wm.windows) == n0, "lean default opened Welcome"
+
+# Once the full experience is active, Welcome opens and records its marker.
+d.shell.set_full_experience(True)
 d._first_run_help()
 assert d.shell.state.get("help_shown") is True, "marker not persisted"
 assert len(d.wm.windows) == n0 + 1, "Help did not open on first run"
@@ -14,7 +20,7 @@ welcome = help_win.body.plain()
 assert "F11" in welcome and "content-only fullscreen" in welcome, welcome
 assert "page tabs" in welcome and "clickable pane chrome" in welcome, welcome
 
-# a second call is a no-op — Help pops exactly once
+# A second call is a no-op — Help pops exactly once.
 d._first_run_help()
 assert len(d.wm.windows) == n0 + 1, "Help opened a second time"
 

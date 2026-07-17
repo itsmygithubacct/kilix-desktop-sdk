@@ -16,6 +16,29 @@ import widgets as W
 from apps import dialup, displayprops, mycomp
 
 
+def test_00_extras_are_opt_in():
+    with H.desktop_dir():
+        d = H.make_desk()
+        assert not d.shell.full_experience_enabled()
+        desktop = {item["label"] for item in d.shell.grid.items}
+        assert not {"Network Neighborhood", "My Briefcase"} & desktop
+
+        win = mycomp.MyComputer(d)
+        d.wm.add(win)
+        labels = {item["label"] for item in win.grid.items}
+        assert not {"3½ Floppy (A:)", "Kilix 95 CD-ROM (K:)",
+                    "Printers", "Dial-Up Networking", "Network Neighborhood",
+                    "My Briefcase"} & labels
+
+        d.shell.set_full_experience(True)
+        desktop = {item["label"] for item in d.shell.grid.items}
+        assert {"Network Neighborhood", "My Briefcase"} <= desktop
+        labels = {item["label"] for item in win.grid.items}
+        assert {"3½ Floppy (A:)", "Kilix 95 CD-ROM (K:)",
+                "Printers", "Dial-Up Networking", "Network Neighborhood",
+                "My Briefcase"} <= labels
+
+
 def test_storage_and_theme_pack():
     d = H.make_desk()
     root = storage.storage_home()
@@ -33,6 +56,7 @@ def test_storage_and_theme_pack():
 
 def test_control_panel_and_namespaces_render():
     d = H.make_desk((800, 600))
+    d.shell.set_full_experience(True)
     for name, class_name in (
             ("controlpanel", "ControlPanel"),
             ("displayprops", "DisplayProperties"),

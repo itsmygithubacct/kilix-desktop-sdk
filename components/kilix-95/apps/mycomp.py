@@ -35,12 +35,17 @@ class MyComputer(wm.Window):
         self.grid.set_items(self._entries())
         self.set_focus(self.grid)
         self._bin_icon = _bin_icon()
-        self._hardware_signature = nostalgia.block_device_signature()
+        self._hardware_signature = self._device_signature()
         self.desk.tick_hooks.append(self._refresh_bin)
+
+    def _device_signature(self):
+        if not self.desk.shell.full_experience_enabled():
+            return ()
+        return nostalgia.block_device_signature()
 
     def _refresh_bin(self, *_):
         # keep the Recycle Bin entry's icon in sync with the bin's fullness
-        signature = nostalgia.block_device_signature()
+        signature = self._device_signature()
         if signature != self._hardware_signature:
             self._hardware_signature = signature
             self.grid.set_items(self._entries())
@@ -61,20 +66,26 @@ class MyComputer(wm.Window):
 
     def _entries(self):
         items = [
-            {"label": "3½ Floppy (A:)", "icon": "floppy",
-             "data": ("empty-drive", "A:")},
             {"label": "Local Disk (/)", "icon": "drive",
              "data": ("filemgr", "/")},
             {"label": "Home", "icon": "home",
              "data": ("filemgr", os.path.expanduser("~"))},
             {"label": "Desktop", "icon": "folder",
              "data": ("filemgr", self.desk.shell.dir)},
-            {"label": "Kilix 95 CD-ROM (K:)", "icon": "cdrom",
-             "data": ("cdrom", nostalgia.virtual_cd_path())},
             {"label": "Control Panel", "icon": "controlpanel",
              "data": ("app", "controlpanel")},
             {"label": "Sounds", "icon": "soundcp",
              "data": ("app", "soundcp")},
+            {"label": "Recycle Bin", "icon": _bin_icon(),
+             "data": ("bin", None)},
+        ]
+        if not self.desk.shell.full_experience_enabled():
+            return items
+        extras = [
+            {"label": "3½ Floppy (A:)", "icon": "floppy",
+             "data": ("empty-drive", "A:")},
+            {"label": "Kilix 95 CD-ROM (K:)", "icon": "cdrom",
+             "data": ("cdrom", nostalgia.virtual_cd_path())},
             {"label": "Printers", "icon": "printer",
              "data": ("app", "printers")},
             {"label": "Dial-Up Networking", "icon": "dialup",
@@ -83,9 +94,9 @@ class MyComputer(wm.Window):
              "data": ("app", "networkhood")},
             {"label": "My Briefcase", "icon": "briefcase",
              "data": ("app", "briefcase")},
-            {"label": "Recycle Bin", "icon": _bin_icon(),
-             "data": ("bin", None)},
         ]
+        items[0:0] = extras[:1]
+        items[-1:-1] = extras[1:]
         for drive in nostalgia.mounted_drives():
             label = drive["label"] + " (" + drive["mount"] + ")"
             items.insert(2, {"label": label,
@@ -93,6 +104,11 @@ class MyComputer(wm.Window):
                              else "drive",
                              "data": ("filemgr", drive["mount"])})
         return items
+
+    def refresh_full_experience(self):
+        self._hardware_signature = self._device_signature()
+        self.grid.set_items(self._entries())
+        self.invalidate()
 
     def on_resize(self):
         cw, ch = self.client_size()

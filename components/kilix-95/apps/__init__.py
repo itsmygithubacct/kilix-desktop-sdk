@@ -5,8 +5,25 @@ is a wm.Window subclass in its own module. Settings is a singleton (opening
 it again focuses the existing window); everything else opens fresh.
 """
 
+import wm
+
+
+FULL_EXPERIENCE_APPS = frozenset({
+    "briefcase", "defrag", "devicemanager", "dialup", "hardware",
+    "networkhood", "powertoys", "printers",
+})
+
 
 def open(desk, name, arg=None):
+    if name in FULL_EXPERIENCE_APPS \
+            and not desk.shell.full_experience_enabled():
+        wm.msgbox(
+            desk, "Full experience",
+            "This classic extra is disabled.\n\n"
+            "Open kilix Settings → Behavior and select\n"
+            "Activate full experience to make it available.",
+            icon="info")
+        return
     if name == "filemgr":
         from . import filemgr
         desk.wm.add(filemgr.FileWindow(desk, arg or "~"))

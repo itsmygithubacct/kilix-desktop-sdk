@@ -96,6 +96,7 @@ class Shell:
                       "full_window_drag": True, "show_quick_launch": True,
                       "show_home": True, "show_settings": True,
                       "show_terminals": True,
+                      "full_experience": False,
                       "era_profile": "Windows 95 Plus!"}
         try:
             with open(self.state_path) as f:
@@ -156,20 +157,49 @@ class Shell:
         except OSError:
             pass
 
+    def full_experience_enabled(self):
+        """Whether the optional nostalgia layer should be exposed."""
+        return bool(self.state.get("full_experience", False))
+
+    def set_full_experience(self, enabled):
+        """Persist and apply the optional nostalgia layer immediately."""
+        enabled = bool(enabled)
+        if enabled == self.full_experience_enabled():
+            return False
+        self.state["full_experience"] = enabled
+        self._save_state()
+        self.desk.menus.close_all()
+        self.desk.new_hardware = False
+        self.desk.hardware_signature = ()
+        if not enabled:
+            self.desk.dialup_state = {
+                "connected": False, "status": "Disconnected"}
+        self.refresh()
+        for win in list(self.desk.wm.windows):
+            refresh = getattr(win, "refresh_full_experience", None)
+            if refresh is not None:
+                refresh()
+        self.desk.taskbar.invalidate()
+        self.desk.dirty = True
+        return True
+
     # ── the icons ───────────────────────────────────────────────────────────
     def refresh(self):
         bin_full = bool(recycle.items())
         items = [
             {"label": "My Computer", "icon": "computer",
              "data": ("builtin", ("mycomp", None))},
-            {"label": "Network Neighborhood", "icon": "network",
-             "data": ("builtin", ("networkhood", None))},
-            {"label": "My Briefcase", "icon": "briefcase",
-             "data": ("builtin", ("briefcase", None))},
             {"label": "Recycle Bin",
              "icon": "recyclebin_full" if bin_full else "recyclebin_empty",
              "data": ("builtin", ("recyclebin", None))},
         ]
+        if self.full_experience_enabled():
+            items[1:1] = [
+                {"label": "Network Neighborhood", "icon": "network",
+                 "data": ("builtin", ("networkhood", None))},
+                {"label": "My Briefcase", "icon": "briefcase",
+                 "data": ("builtin", ("briefcase", None))},
+            ]
         if self.state.get("show_home", True):
             items.append({"label": "Home", "icon": "home",
                           "data": ("builtin", ("filemgr", os.path.expanduser("~")))})
@@ -313,10 +343,11 @@ class Shell:
             if kind in ("launcher", "path"):
                 paths = [entry["data"][1] for entry in self._sel_or_one(item)
                          if entry["data"][0] in ("launcher", "path")]
-                items += [sep(),
-                          MI("Send To", icon="sendto",
-                             submenu=self.send_to_menu_items(paths)),
-                          MI("Rename…", action=lambda: self._rename_item(item)),
+                items.append(sep())
+                if self.full_experience_enabled():
+                    items.append(MI("Send To", icon="sendto",
+                                    submenu=self.send_to_menu_items(paths)))
+                items += [MI("Rename…", action=lambda: self._rename_item(item)),
                           MI("Delete…", action=lambda: self._delete_items(
                               self._sel_or_one(item)))]
             if kind == "path":

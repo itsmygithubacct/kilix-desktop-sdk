@@ -161,8 +161,8 @@ The Start menu is built in `taskbar.py`.
 Top-level sections:
 
 - **Programs**: built-in accessories, games, browsers, terminals, the MS-DOS
-  Prompt/DOSBox caller, PowerToys, special folders, user launchers, and
-  discovered XDG apps.
+  Prompt/DOSBox caller, user launchers, and discovered XDG apps. PowerToys and
+  the optional classic folders appear when the full experience is active.
 - **Documents**: recently opened files.
 - **Settings**: Control Panel, Kilix settings, display properties, sound
   schemes, and desktop flavor.
@@ -177,8 +177,12 @@ without new widget code.
 
 ## Windows 95 Nostalgia Features
 
-The classic shell additions are functional, with host-facing behavior kept
-read-only or explicitly user-triggered:
+Kilix 95 starts with a lean desktop. Select **Activate full experience** in
+kilix Settings -> Behavior to expose the optional nostalgia layer. The choice
+is saved in desktop state and applied immediately; no restart is needed.
+
+The classic additions are functional, with host-facing behavior kept read-only
+or explicitly user-triggered:
 
 - Control Panel and five-tab Display Properties cover original themes,
   wallpaper patterns, sound/pointer schemes, eight screen savers, local
@@ -199,6 +203,11 @@ read-only or explicitly user-triggered:
 - PowerToys supplies Command Prompt Here, Explore From Here, QuickRes,
   DeskMenu, Send To settings, TweakUI, Round Clock, and a safe disk-map theater
   that never rearranges host data.
+
+With the full experience disabled, Briefcase, dial-up/modem theater, Network
+Neighborhood, Printers, PowerToys, hardware/defrag tools, the fake floppy and
+managed CD-ROM, Send To additions, device notifications, and first-run Welcome
+stay out of the desktop and menus.
 
 Classic interaction details include keyboard menu accelerators, outline-only
 window dragging, minimize/restore animation, configurable pointers, a busy
@@ -414,7 +423,7 @@ XP flavor reference:
 
 ## Settings App
 
-The Settings app edits the active `kitty.conf`.
+The Settings app edits the active `kitty.conf` and desktop preferences.
 
 It normally writes:
 
@@ -453,6 +462,10 @@ The form tabs cover common appearance and behavior settings:
 - tab bar style;
 - scrollback and close-confirmation behavior;
 - audio bell, copy-on-select, mouse-hide timing, and cursor blink timing.
+- the default-off **Activate full experience** desktop preference.
+
+The full-experience preference is stored in the desktop `.state.json`; it is
+not written into `kitty.conf`. Apply updates the desktop surfaces live.
 
 Settings rewrites only a key that the user changed. If a key is already present
 more than once, the last occurrence is treated as the active one, matching

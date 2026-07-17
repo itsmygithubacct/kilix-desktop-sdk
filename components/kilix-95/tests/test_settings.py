@@ -195,6 +195,26 @@ with conf("# empty-ish\n") as path, H.desktop_dir():
     assert win.flavor_dd.value == "kilix XP"
 
 
+# The nostalgia layer is a persistent, default-off desktop preference.
+with conf("# full experience\n") as path, H.desktop_dir():
+    d = H.make_desk()
+    import apps
+    apps.open(d, "settings", None)
+    win = H.find_window(d, "SettingsWin")
+
+    assert win.full_experience.checked is False
+    assert not d.shell.full_experience_enabled()
+    assert "My Briefcase" not in {item["label"] for item in d.shell.grid.items}
+
+    win.full_experience.checked = True
+    win._apply()
+    assert d.shell.full_experience_enabled()
+    assert "My Briefcase" in {item["label"] for item in d.shell.grid.items}
+
+    d2 = H.make_desk()
+    assert d2.shell.full_experience_enabled(), "preference was not persisted"
+
+
 # The no-override path creates a private project config and leaves tracked host
 # defaults untouched. This is the normal launcher path, not only a fallback.
 defaults = os.path.join(settings._shell.KILIX_HOME, "config", "kitty.conf")

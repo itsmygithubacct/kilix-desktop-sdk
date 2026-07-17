@@ -495,6 +495,8 @@ class Desk:
 
     def _hardware_tick(self, now):
         """Notice block-device arrivals without mounting or changing them."""
+        if not self.shell.full_experience_enabled():
+            return
         if now - self._hardware_checked < 5:
             return
         self._hardware_checked = now
@@ -1042,7 +1044,8 @@ class Desk:
         """First launch: open the Help book so a new user (e.g. a fresh
         Plebian-OS boot into the pixel desktop) gets oriented. A marker in
         the persisted desktop state makes it pop exactly once."""
-        if self.shell.state.get("help_shown"):
+        if not self.shell.full_experience_enabled() \
+                or self.shell.state.get("help_shown"):
             return
         self.shell.state["help_shown"] = True
         self.shell._save_state()
@@ -1123,11 +1126,12 @@ class Desk:
         self._show_system_screen("startup",
                                  self._system_screen_seconds("startup"))
         self._refresh_password_nag()      # arm the tray icon before first paint
-        try:
-            import nostalgia
-            self.hardware_signature = nostalgia.block_device_signature()
-        except Exception:
-            self.hardware_signature = ()
+        if self.shell.full_experience_enabled():
+            try:
+                import nostalgia
+                self.hardware_signature = nostalgia.block_device_signature()
+            except Exception:
+                self.hardware_signature = ()
         self._first_run_help()
         self._first_run_password_nag()    # …and pop the change-password bubble
         last_blink = time.time()

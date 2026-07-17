@@ -167,6 +167,15 @@ class SettingsWin(wm.Window):
                 self.fields[key] = (kind, wd)
                 self.panels[tab_i].append(wd)
                 y += 30
+        self.full_experience = self.add(W.Checkbox(
+            18, 232, "Activate full experience",
+            checked=desk.shell.full_experience_enabled()))
+        self.panels[1].append(self.full_experience)
+        experience_note = self.add(W.Label(
+            38, 260,
+            "Shows Briefcase, modem, classic hardware, and other extras.",
+            font=T.SMALL, color=T.SHADOW))
+        self.panels[1].append(experience_note)
         note_y = 44 + 30 * max(len(APPEARANCE) + 1, len(BEHAVIOR)) + 6
         note = self.add(W.Label(
             18, note_y, "Applied live to this kilix — no restart needed.",
@@ -332,7 +341,12 @@ class SettingsWin(wm.Window):
                     os.unlink(tmp)
                 except OSError:
                     pass
+        changed = self.desk.shell.set_full_experience(
+            self.full_experience.checked)
         msg = self._reload_live()
+        if changed:
+            state = "activated" if self.full_experience.checked else "disabled"
+            msg = f"Saved — full experience {state}."
         self.status.set(msg)
         self.invalidate()
         if close:

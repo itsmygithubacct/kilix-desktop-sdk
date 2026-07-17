@@ -241,13 +241,15 @@ class FileWindow(wm.Window):
                 items.append(MI("Open with Notepad", icon="notepad",
                                 action=lambda: self.desk.shell.open_app(
                                     "notepad", item["data"])))
+            items += [sep(),
+                      MI("Cut", action=lambda: self._cut(targets)),
+                      MI("Copy", action=lambda: self._copy(targets))]
+            if self.desk.shell.full_experience_enabled():
+                items.append(MI(
+                    "Send To", icon="sendto",
+                    submenu=self.desk.shell.send_to_menu_items(
+                        [target["data"] for target in targets])))
             items += [
-                sep(),
-                MI("Cut", action=lambda: self._cut(targets)),
-                MI("Copy", action=lambda: self._copy(targets)),
-                MI("Send To", icon="sendto",
-                   submenu=self.desk.shell.send_to_menu_items(
-                       [target["data"] for target in targets])),
                 MI("Create Launcher…", icon="exe",
                    action=lambda: self.desk.shell.create_launcher_dialog(
                        prefill_cmd=_shell.shell_quote(item["data"]))),

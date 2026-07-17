@@ -72,13 +72,16 @@ class Taskbar:
         defs = []
         if getattr(self.desk, "password_nag", False):
             defs.append(("password", "Default password — click to change it"))
-        if getattr(self.desk, "new_hardware", False):
-            defs.append(("hardware", "New hardware found"))
-        state = getattr(self.desk, "dialup_state", {})
-        if state.get("connected"):
-            elapsed = max(0, int(time.time() - state.get("connected_at", time.time())))
-            defs.append(("network", f"{state.get('name', 'Network')} — "
-                                     f"connected {elapsed // 60}:{elapsed % 60:02d}"))
+        if self.desk.shell.full_experience_enabled():
+            if getattr(self.desk, "new_hardware", False):
+                defs.append(("hardware", "New hardware found"))
+            state = getattr(self.desk, "dialup_state", {})
+            if state.get("connected"):
+                elapsed = max(
+                    0, int(time.time() - state.get("connected_at", time.time())))
+                defs.append((
+                    "network", f"{state.get('name', 'Network')} — connected "
+                    f"{elapsed // 60}:{elapsed % 60:02d}"))
         defs += [("display", "Display"), ("speaker", "Volume")]
         return defs
 
@@ -481,7 +484,9 @@ class Taskbar:
                    action=lambda: shell.open_app("taskmgr")),
                 MI("WordPad", icon="wordpad",
                    action=lambda: shell.open_app("wordpad")),
-                MI("System Tools", icon="folder", submenu=[
+            ]
+            if shell.full_experience_enabled():
+                items.append(MI("System Tools", icon="folder", submenu=[
                     MI("Add New Hardware", icon="hardware",
                        action=lambda: shell.open_app("hardware")),
                     MI("Disk Defragmenter", icon="defrag",
@@ -490,8 +495,7 @@ class Taskbar:
                        action=lambda: shell.open_app("devicemanager")),
                     MI("System Information", icon="computer",
                        action=lambda: shell.open_app("systemprops")),
-                ]),
-            ]
+                ]))
             disc = app_items("Accessories")
             if disc:
                 items.append(sub())
@@ -537,17 +541,20 @@ class Taskbar:
                 # button → a zenity file picker) for choosing tracks
                 MI("Media Player", icon="amp",
                    action=lambda: shell.open_app("amp")),
-                MI("PowerToys", icon="powertoys",
-                   action=lambda: shell.open_app("powertoys")),
-                MI("Network Neighborhood", icon="network",
-                   action=lambda: shell.open_app("networkhood")),
-                MI("Dial-Up Networking", icon="dialup",
-                   action=lambda: shell.open_app("dialup")),
-                MI("My Briefcase", icon="briefcase",
-                   action=lambda: shell.open_app("briefcase")),
-                MI("Printers", icon="printer",
-                   action=lambda: shell.open_app("printers")),
             ]
+            if shell.full_experience_enabled():
+                items += [
+                    MI("PowerToys", icon="powertoys",
+                       action=lambda: shell.open_app("powertoys")),
+                    MI("Network Neighborhood", icon="network",
+                       action=lambda: shell.open_app("networkhood")),
+                    MI("Dial-Up Networking", icon="dialup",
+                       action=lambda: shell.open_app("dialup")),
+                    MI("My Briefcase", icon="briefcase",
+                       action=lambda: shell.open_app("briefcase")),
+                    MI("Printers", icon="printer",
+                       action=lambda: shell.open_app("printers")),
+                ]
             user = shell.launcher_menu_items()
             if user:
                 items.append(sub())
@@ -581,10 +588,14 @@ class Taskbar:
             MI("Files or Folders…", icon="find",
                action=lambda: shell.open_app("findfiles")),
         ]
-        help_sub = [
-            MI(f"Welcome to {T.PRODUCT_NAME}", icon="help",
-               action=lambda: shell.open_app("winhelp", "welcome")),
-            sub(),
+        help_sub = []
+        if shell.full_experience_enabled():
+            help_sub += [
+                MI(f"Welcome to {T.PRODUCT_NAME}", icon="help",
+                   action=lambda: shell.open_app("winhelp", "welcome")),
+                sub(),
+            ]
+        help_sub += [
             MI("System Manual", icon="help",
                action=lambda: shell.open_app("manual", "search")),
             MI("List", icon="doc_text",

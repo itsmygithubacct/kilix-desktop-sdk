@@ -29,6 +29,9 @@ CONTROL_ITEMS = [
     ("System", "system", "systemprops", None),
     ("PowerToys", "powertoys", "powertoys", None),
 ]
+FULL_EXPERIENCE_ITEMS = frozenset({
+    "printers", "networkhood", "dialup", "hardware", "powertoys",
+})
 
 
 class ControlPanel(wm.Window):
@@ -42,11 +45,17 @@ class ControlPanel(wm.Window):
         self.grid = self.add(W.IconGrid(
             2, T.MENU_H + 2, cw - 4, ch - T.MENU_H - 23,
             on_activate=self._activate))
+        self.refresh_full_experience()
+        self.set_focus(self.grid)
+
+    def refresh_full_experience(self):
+        full = self.desk.shell.full_experience_enabled()
         self.grid.set_items([
             {"label": label, "icon": icon, "data": (app, value)}
             for label, icon, app, value in CONTROL_ITEMS
+            if full or app not in FULL_EXPERIENCE_ITEMS
         ])
-        self.set_focus(self.grid)
+        self.invalidate()
 
     def on_resize(self):
         cw, ch = self.client_size()
@@ -287,10 +296,13 @@ class SystemProperties(wm.Window):
         ]
         for index, line in enumerate(lines):
             self.add(W.Label(30, 34 + index * 17, line))
-        self.add(W.GroupBox(12, 138, cw - 24, 78, "Device management"))
-        self.add(W.Button(30, 166, 150, 23, "Device Manager…", icon="hardware",
-                          cb=lambda: desk.shell.open_app("devicemanager")))
-        self.add(W.Button(196, 166, 150, 23, "Disk Defragmenter…",
-                          icon="defrag", cb=lambda: desk.shell.open_app("defrag")))
+        if desk.shell.full_experience_enabled():
+            self.add(W.GroupBox(12, 138, cw - 24, 78, "Device management"))
+            self.add(W.Button(
+                30, 166, 150, 23, "Device Manager…", icon="hardware",
+                cb=lambda: desk.shell.open_app("devicemanager")))
+            self.add(W.Button(
+                196, 166, 150, 23, "Disk Defragmenter…", icon="defrag",
+                cb=lambda: desk.shell.open_app("defrag")))
         self.add(W.Button(cw - 84, ch - 33, 72, 23, "OK", default=True,
                           cb=self.close))
