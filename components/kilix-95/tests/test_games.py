@@ -151,8 +151,24 @@ os.makedirs(os.path.join(fake_amp, "kilix-amp"))
 write(f"[kilix-amp]\ndir = {fake_amp}\n")
 assert games.amp_ready(games.load()) is None
 
-# Managed native-game caches are installed atomically and remain pinned on
-# every ready check. A different configured directory is explicitly trusted.
+# Managed native-game caches install their pinned dependencies atomically and
+# remain pinned on every ready check. A different configured directory is
+# explicitly trusted.
+dependency_repo = os.path.join(root, "native-dependency")
+os.mkdir(dependency_repo)
+dependency_file = os.path.join(dependency_repo, "dependency.txt")
+with open(dependency_file, "w") as f:
+    f.write("pinned dependency\n")
+for command in (
+        ["git", "init", "--quiet", dependency_repo],
+        ["git", "-C", dependency_repo, "config", "user.name", "Kilix Test"],
+        ["git", "-C", dependency_repo, "config", "user.email",
+         "test@example.invalid"],
+        ["git", "-C", dependency_repo, "add", "dependency.txt"],
+        ["git", "-C", dependency_repo, "commit", "--quiet", "-m",
+         "fixture dependency"]):
+    subprocess.run(command, check=True, capture_output=True, text=True)
+
 source_repo = os.path.join(root, "native-source")
 os.mkdir(source_repo)
 source_binary = os.path.join(source_repo, "bashed-earth")
@@ -164,6 +180,9 @@ for command in (
         ["git", "-C", source_repo, "config", "user.name", "Kilix Test"],
         ["git", "-C", source_repo, "config", "user.email", "test@example.invalid"],
         ["git", "-C", source_repo, "add", "bashed-earth"],
+        ["git", "-c", "protocol.file.allow=always", "-C", source_repo,
+         "submodule", "add", "--quiet", dependency_repo,
+         "third_party/native-dependency"],
         ["git", "-C", source_repo, "commit", "--quiet", "-m", "fixture"]):
     subprocess.run(command, check=True, capture_output=True, text=True)
 pinned_ref = subprocess.run(
@@ -172,6 +191,8 @@ pinned_ref = subprocess.run(
 
 managed = os.path.join(games.GAMES_DIR, "bashed-earth")
 old_repo, old_ref = games.BASHED_REPO, games.BASHED_REF
+old_allow_protocol = os.environ.get("GIT_ALLOW_PROTOCOL")
+os.environ["GIT_ALLOW_PROTOCOL"] = "file"
 games.BASHED_REPO, games.BASHED_REF = source_repo, pinned_ref
 try:
     try:
@@ -190,6 +211,10 @@ try:
         source_repo, pinned_ref, managed, "bashed-earth", "fixture deps",
         lambda _message: None)
     assert executable == os.path.join(managed, "bashed-earth")
+    installed_dependency = os.path.join(
+        managed, "third_party", "native-dependency", "dependency.txt")
+    assert os.path.isfile(installed_dependency), \
+        "pinned source dependency was not initialized"
     write(f"[bashed-earth]\ndir = {managed}\n")
     cp = games.load()
     assert games.bashed_ready(cp) == executable
@@ -223,6 +248,17 @@ try:
         ["git", "-C", managed, "checkout", "--quiet", "--detach", pinned_ref],
         check=True)
 
+    subprocess.run(
+        ["git", "-C", managed, "submodule", "deinit", "--force", "--",
+         "third_party/native-dependency"], check=True,
+        capture_output=True, text=True)
+    assert games.bashed_ready(cp) is None, \
+        "uninitialized managed dependency was trusted"
+    subprocess.run(
+        ["git", "-c", "protocol.file.allow=always", "-C", managed,
+         "submodule", "update", "--init", "--recursive"], check=True,
+        capture_output=True, text=True)
+
     external = os.path.join(root, "user-managed")
     os.mkdir(external)
     external_exe = os.path.join(external, "bashed-earth")
@@ -234,6 +270,10 @@ try:
         "explicit user-managed executable was rejected"
 finally:
     games.BASHED_REPO, games.BASHED_REF = old_repo, old_ref
+    if old_allow_protocol is None:
+        os.environ.pop("GIT_ALLOW_PROTOCOL", None)
+    else:
+        os.environ["GIT_ALLOW_PROTOCOL"] = old_allow_protocol
 
 
 # Downloads must fail closed when the pinned checksum does not match.

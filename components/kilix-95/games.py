@@ -51,17 +51,17 @@ DOSBOX_URL = ("https://github.com/dosbox-staging/dosbox-staging/releases/"
 DOSBOX_SHA256 = "bc229df72ea103b7865cdca67324772dbffa8e58866477e69a79638b723a0442"
 
 BASHED_REPO = "https://github.com/itsmygithubacct/Bashed-Earth"
-BASHED_REF = "aa65fbd937c346d287b53afc54cddee63c874699"
+BASHED_REF = "51436f176abefc6549cff3b15b816e5d2922598b"
 JOUSTIX_REPO = "https://github.com/itsmygithubacct/joustix"
-JOUSTIX_REF = "c439d21bdc523847bc37c9bf1e3663b7662be42a"
+JOUSTIX_REF = "b37043bac2d2e07764dabf8fefb9dde4a5ec20ac"
 CHESS_BASH_REPO = "https://github.com/itsmygithubacct/chess-bash"
-CHESS_BASH_REF = "454282a8b12804997fad95f51381e57daefc9444"
+CHESS_BASH_REF = "34f388da080f5d2a34d002d218d230968874d204"
 FISHTANK_REPO = "https://github.com/itsmygithubacct/kilix-fishtank"
-FISHTANK_REF = "b4cd1dc4845c78e3fbdaa023f061e51e2d3ef177"
+FISHTANK_REF = "40c3d663987a430f15feeb2c917979c8f6345e2e"
 LANDER_REPO = "https://github.com/itsmygithubacct/terminal_lander"
-LANDER_REF = "2819ff825b4f528181f9436607e29d38b696ec75"
+LANDER_REF = "6a9415e61df1946a7951a7a1f80a46b49e9e68c2"
 BROKEOUT_REPO = "https://github.com/itsmygithubacct/kitty-brokeout"
-BROKEOUT_REF = "c69315520990855aa1eb13e737fbf93659e0935e"
+BROKEOUT_REF = "d7d98e04f1b8155283886416bafa3373f5aebc70"
 AMP_REPO = "https://github.com/itsmygithubacct/kilix-amp"
 AMP_REF = "8937c3671ed50a16f2541d73506e207f8b3471bb"
 
@@ -436,7 +436,7 @@ def _audio_check(report):
 
 
 def _verify_source_checkout(repo, ref, dest):
-    """Require the expected origin, pinned HEAD, and clean tracked files."""
+    """Require the expected origin, pinned HEAD, and clean dependencies."""
     import subprocess
     if not os.path.isdir(os.path.join(dest, ".git")):
         raise RuntimeError(f"managed source is not a git checkout: {dest}")
@@ -463,6 +463,30 @@ def _verify_source_checkout(repo, ref, dest):
             f"source checkout is not the pinned commit {ref}; "
             f"remove the disposable cache at {dest} to reinstall"
         )
+    submodules = subprocess.run(
+        ["git", "-C", dest, "submodule", "status", "--recursive"],
+        capture_output=True, text=True,
+    )
+    if submodules.returncode != 0:
+        raise RuntimeError(f"cannot verify source dependencies at {dest}")
+    invalid = [
+        line for line in submodules.stdout.splitlines()
+        if line and line[0] != " "
+    ]
+    if invalid:
+        raise RuntimeError(
+            f"source dependencies are not pinned and initialized at {dest}"
+        )
+    dependency_dirty = subprocess.run(
+        [
+            "git", "-C", dest, "submodule", "foreach", "--quiet",
+            "--recursive",
+            'test -z "$(git status --porcelain --untracked-files=no)"',
+        ],
+        capture_output=True, text=True,
+    )
+    if dependency_dirty.returncode != 0:
+        raise RuntimeError(f"refusing modified source dependency at {dest}")
 
 
 def _install_source_checkout(repo, ref, dest, report):
@@ -483,6 +507,11 @@ def _install_source_checkout(repo, ref, dest, report):
             ["git", "-C", stage, "remote", "add", "origin", repo],
             ["git", "-C", stage, "fetch", "--depth", "1", "origin", ref],
             ["git", "-C", stage, "checkout", "--detach", "FETCH_HEAD"],
+            ["git", "-C", stage, "submodule", "sync", "--recursive"],
+            [
+                "git", "-C", stage, "submodule", "update", "--init",
+                "--recursive", "--depth", "1",
+            ],
         ]
         for command in commands:
             result = subprocess.run(command, capture_output=True, text=True)
