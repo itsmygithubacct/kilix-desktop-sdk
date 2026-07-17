@@ -1,4 +1,5 @@
 import os
+from unittest.mock import patch
 
 import harness as H
 import icons
@@ -36,6 +37,15 @@ def test_desktop_mux_terminal_launcher():
     assert seen["argv"][1:] == ["serve", "main"]
 
 
+def test_remote_launch_uses_private_credential():
+    d = H.make_desk()
+    with patch.dict(os.environ, {"KILIX_RC_PASSWORD_FILE": "/tmp/rc-pass"}):
+        assert d.shell._kitten_remote("kitten", "launch") == [
+            "kitten", "@", "--password-file", "/tmp/rc-pass", "launch",
+        ]
+
+
 test_mux_icon_renders()
 test_desktop_mux_terminal_launcher()
+test_remote_launch_uses_private_credential()
 print("ok")
