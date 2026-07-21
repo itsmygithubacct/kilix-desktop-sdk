@@ -36,11 +36,11 @@ import kilix_sdk
 manifest = json.loads((ROOT / "provider.json").read_text())
 assert manifest["provider_api"] == 1
 assert manifest["version"] == (ROOT / "VERSION").read_text().strip()
-assert manifest["requires_kilix_sdk"] == "1.0"
+assert manifest["requires_kilix_sdk"] == "1.1"
 assert set(manifest["security_features"]) == {
     "default-password-nag", "masked-secret-clipboard"}
-assert kilix_sdk.SDK_API_VERSION == (1, 0)
+assert kilix_sdk.SDK_API_VERSION == (1, 1)
 kilix_sdk.require_compatible(manifest["requires_kilix_sdk"])
-assert "require_kilix_sdk(\"1.0\")" in (ROOT / "main.py").read_text()
+assert "require_kilix_sdk(\"1.1\")" in (ROOT / "main.py").read_text()
 
 print("ok")

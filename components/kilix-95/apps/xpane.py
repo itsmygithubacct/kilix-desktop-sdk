@@ -1,7 +1,7 @@
 """kilix desktop — XPane: an X11 application inside a kilix 95 window.
 
 The apprun recipe, embedded: the app runs on a private Xvfb sized to the
-window's client area, an ffmpeg rawvideo capture feeds frames into the
+window's client area, event-driven XDamage/MIT-SHM capture feeds frames into
 window surface through the Desk's fd hooks, and mouse/keys are injected
 with XTest into the private display only. Processes are owned by a
 StreamSupervisor, so closing the window (or the desktop) tears everything
@@ -23,7 +23,9 @@ import storage
 
 import clipboard                  # one shared clipboard across panes/windows
 import stream                     # from config/ (main.py puts it on the path)
+import xcapture
 import xinject
+from kilix_sdk import xapp as xapp_sdk
 from Xlib import display as xdisplay, X, Xatom
 
 _here = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -90,38 +92,27 @@ class XPane(wm.Window):
         self.compose_mask = Image.new("L", (aw, ah), 0)
         self.fsize = aw * ah * 3
         self.buf = bytearray()
+        self.capture = None
+        self.ff = None
+        initial_frame = None
         self._dead = False
-        self.sup = stream.StreamSupervisor(
-            f"desk-xpane-{os.getpid()}-{XPane._seq2}")
+        self.xapp = xapp_sdk.XAppSession(
+            f"desk-xpane-{os.getpid()}-{XPane._seq2}", aw, ah, fps)
+        self.sup = self.xapp.supervisor
         # any failure past here leaks Xvfb/app/display-lock unless we clean up
         try:
-            n = self.sup.pick_display()
             # the desktop paints its own pointer, so hide Xvfb's software cursor
-            self.sup.start_xvfb(n, aw, ah, nocursor=True)
-            e = dict(os.environ, DISPLAY=f":{n}",
-                     XAUTHORITY=self.sup.xauth, **(env or {}))
-            # python-xlib reads XAUTHORITY at connect time. Scope the override
-            # to this connection so later host-display launches do not inherit
-            # a private Xvfb authority file.
-            with clipboard.xauthority_env(self.sup.xauth):
-                self.xd = xdisplay.Display(f":{n}")
+            n = self.xapp.start_xvfb(nocursor=True)
+            self.xd = self.xapp.connect()
             self._paint_root_chroma()
-            self.app = self.sup.spawn("app", cmd, env=e, cwd=cwd,
-                                      stdout=subprocess.DEVNULL,
-                                      stderr=subprocess.DEVNULL)
-            self.inj = xinject.Injector(self.xd, aw, ah)
-            self.ff = self.sup.spawn(
-                "cap", ["ffmpeg", "-loglevel", "quiet",
-                        "-f", "x11grab", "-draw_mouse", "0",  # desktop draws
-                        "-framerate", str(fps),               # only pointer
-                        "-video_size", f"{aw}x{ah}", "-i", f":{n}",
-                        "-f", "rawvideo", "-pix_fmt", "rgb24", "-"],
-                # ffmpeg is another client of the authenticated private Xvfb.
-                env=e,
-                stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
-            os.set_blocking(self.ff.stdout.fileno(), False)
+            self.app = self.xapp.launch_app(cmd, env=env, cwd=cwd)
+            self.inj = self.xapp.make_injector()
+            started = self.xapp.start_capture(draw_cursor=False)
+            self.capture = self.xapp.capture
+            self.ff = self.xapp.capture_process
+            initial_frame = started.initial_frame
         except Exception:
-            self.sup.cleanup()
+            self.xapp.close()
             raise
         self.add(_XSurface(self, aw, ah))
         self.set_focus(self.widgets[-1])
@@ -129,7 +120,8 @@ class XPane(wm.Window):
         # a copy/paste failure must never stop the app window from opening.
         self.clip = None
         try:
-            self.clip = clipboard.SelectionBridge(desk, f":{n}", self.sup.xauth)
+            self.clip = clipboard.SelectionBridge(
+                desk, self.xapp.display, self.xapp.xauthority)
         except Exception:
             self.clip = None
         # micro-WM on the private Xvfb: advertise just enough EWMH that the
@@ -148,7 +140,11 @@ class XPane(wm.Window):
         self.fill = fill
         self._fill_deadline = self._born + 15 if fill else 0.0
         self._fill_at = 0.0
-        desk.add_fd(self.ff.stdout.fileno(), self._pump)
+        if self.capture is not None:
+            desk.add_fd(self.capture.fileno(), self._pump_damage)
+            self._accept_frame(initial_frame)
+        else:
+            desk.add_fd(self.ff.stdout.fileno(), self._pump)
         desk.tick_hooks.append(self._tick)
 
     def hit_test(self, gx, gy):
@@ -295,6 +291,30 @@ class XPane(wm.Window):
                 self.desk.wm.minimize(self)
 
     # ── frames in ───────────────────────────────────────────────────────────
+    def _accept_frame(self, frame):
+        if frame is None or frame == self._last_frame:
+            return
+        self._last_frame = frame
+        self.frame_img = Image.frombytes(
+            "RGB", (self.app_w, self.app_h), frame)
+        # Color-key: opaque everywhere the pixel differs from the chroma.
+        diff = ImageChops.difference(
+            self.frame_img, Image.new("RGB", self.frame_img.size, CHROMA))
+        mask = diff.convert("L").point(lambda value: 0 if value == 0 else 255)
+        if mask.size != (self.w, self.h):
+            mask = mask.resize((self.w, self.h), Image.NEAREST)
+        self.compose_mask = mask
+        self.invalidate()
+
+    def _pump_damage(self):
+        try:
+            update = self.capture.pump()
+        except Exception:
+            self.close()
+            return
+        if update is not None:
+            self._accept_frame(update[0])
+
     def _pump(self):
         try:
             while True:
@@ -310,25 +330,13 @@ class XPane(wm.Window):
         while len(self.buf) >= self.fsize:        # newest frame wins
             frame = bytes(self.buf[:self.fsize])
             del self.buf[:self.fsize]
-        if frame is not None and frame != self._last_frame:
-            self._last_frame = frame
-            self.frame_img = Image.frombytes(
-                "RGB", (self.app_w, self.app_h), frame)
-            # color-key: opaque everywhere the pixel differs from the chroma.
-            # difference→L is zero only for an exact chroma match (all luma
-            # coefficients are positive), so this is an exact key.
-            diff = ImageChops.difference(
-                self.frame_img, Image.new("RGB", self.frame_img.size, CHROMA))
-            mask = diff.convert("L").point(lambda v: 0 if v == 0 else 255)
-            if mask.size != (self.w, self.h):     # window resized: match surface
-                mask = mask.resize((self.w, self.h), Image.NEAREST)
-            self.compose_mask = mask
-            self.invalidate()
+        self._accept_frame(frame)
 
     def _tick(self, now):
         if self._dead:
             return
-        if self.app.poll() is not None or self.ff.poll() is not None:
+        if self.app.poll() is not None or \
+                (self.ff is not None and self.ff.poll() is not None):
             self.close()                          # app or capture gone: close
             return
         self._pump_wm()                           # drain any min/max requests
@@ -435,10 +443,14 @@ class XPane(wm.Window):
             self.clip.close()
         if getattr(self, "_wm_on", False):
             self.desk.remove_fd(self.xd.fileno())
-        self.desk.remove_fd(self.ff.stdout.fileno())
+        if getattr(self, "capture", None) is not None:
+            self.desk.remove_fd(self.capture.fileno())
+        elif self.ff is not None:
+            self.desk.remove_fd(self.ff.stdout.fileno())
         if self._tick in self.desk.tick_hooks:
             self.desk.tick_hooks.remove(self._tick)
-        self.sup.cleanup()
+        self.xapp.close()
+        self.capture = self.ff = None
 
     def close(self):
         self._teardown()

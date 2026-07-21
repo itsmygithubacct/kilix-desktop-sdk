@@ -16,6 +16,14 @@ kilix desktop
 
 Quit through Start -> Shut Down..., or press `Ctrl+Alt+Q`.
 
+## Release 0.1.3
+
+Version 0.1.3 consumes the Kilix 1.1 provider SDK: the shared immutable
+content catalog drives Games, and `kilix_sdk.xapp.XAppSession` owns private X
+display authentication, app/capture processes, event-driven capture fallback,
+input injection, and teardown. This also adds Kilix JPAK through the shared
+catalog without another provider-specific installer.
+
 ## Release 0.1.2
 
 Version 0.1.2 includes:
@@ -90,10 +98,10 @@ The boundary is:
 - Kilix CLI helpers: `kilix run`, `kilix browse`, `kilix serve`.
 - Kitty remote control: `kitten @ launch` for new tabs and windows.
 
-`provider.json` declares provider API 1, the required `kilix_sdk` 1.0 contract,
+`provider.json` declares provider API 1, the required `kilix_sdk` 1.1 contract,
 and the security behaviors the provider implements. Kilix validates that
 data-only manifest and its implementation markers before executing the
-provider. `main.py` also calls `kilix_sdk.require_compatible("1.0")` as a
+provider. `main.py` also calls `kilix_sdk.require_compatible("1.1")` as a
 defense-in-depth runtime check. Incompatible hosts fail early with a clear
 version error.
 

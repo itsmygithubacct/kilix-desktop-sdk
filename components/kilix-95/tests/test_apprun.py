@@ -59,18 +59,39 @@ old_capture = pane.ff
 pane.ffbuf = bytearray(b"partial")
 pane.app_w = pane.app_h = 4
 pane.disp = ":99"
+pane.capture = None
 
 new_capture = FakeProc()
-orig_popen = apprun.subprocess.Popen
+
+
+class FakeXApp:
+    def __init__(self, old, new):
+        self.capture = None
+        self.capture_process = old
+        self.new = new
+        self.geometry = None
+
+    def set_geometry(self, width, height):
+        self.geometry = (width, height)
+
+    def stop_capture(self):
+        apprun._stop_proc(self.capture_process)
+        self.capture = self.capture_process = None
+
+    def start_capture(self, **_kwargs):
+        self.capture_process = self.new
+        return apprun.xapp_sdk.CaptureStart("ffmpeg@2")
+
+
+pane.xapp = FakeXApp(old_capture, new_capture)
 try:
-    apprun.subprocess.Popen = lambda *_args, **_kw: new_capture
     pane._spawn_capture(2)
     assert old_capture.terminated
     assert old_capture.stdout.closed
     assert pane.ff is new_capture
     assert pane.ffbuf == bytearray()
+    assert pane.xapp.geometry == (4, 4)
 finally:
-    apprun.subprocess.Popen = orig_popen
     new_capture.stdout.close()
 
 print("test_apprun OK")

@@ -192,12 +192,20 @@ orig_display = xpane.xdisplay.Display
 orig_injector = xpane.xinject.Injector
 orig_paint = xpane.XPane._paint_root_chroma
 orig_bridge = xpane.clipboard.SelectionBridge
+orig_damage = xpane.xcapture.XDamageCapture
 old_wm = os.environ.get("KILIX_XPANE_WM")
 xpane.stream.StreamSupervisor = AuthFakeSup
 xpane.xdisplay.Display = lambda *_args: object()
 xpane.xinject.Injector = lambda *_args: object()
 xpane.XPane._paint_root_chroma = lambda self: None
 xpane.clipboard.SelectionBridge = lambda *_args: None
+
+
+def unavailable_damage(*_args, **_kwargs):
+    raise xpane.xcapture.CaptureUnavailable("test fallback")
+
+
+xpane.xcapture.XDamageCapture = unavailable_damage
 os.environ["KILIX_XPANE_WM"] = "0"
 pane = None
 try:
@@ -215,6 +223,7 @@ finally:
     xpane.xinject.Injector = orig_injector
     xpane.XPane._paint_root_chroma = orig_paint
     xpane.clipboard.SelectionBridge = orig_bridge
+    xpane.xcapture.XDamageCapture = orig_damage
     if old_wm is None:
         os.environ.pop("KILIX_XPANE_WM", None)
     else:

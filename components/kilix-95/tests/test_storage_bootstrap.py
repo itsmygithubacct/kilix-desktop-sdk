@@ -28,7 +28,7 @@ def run_version():
          str(ROOT / "main.py"), "--version"],
         cwd=ROOT, env=env, capture_output=True, text=True, timeout=30)
     assert result.returncode == 0, result.stdout + result.stderr
-    assert result.stdout.strip() == "kilix-95 0.1.2", result.stdout
+    assert result.stdout.strip() == "kilix-95 0.1.3", result.stdout
 
 
 try:

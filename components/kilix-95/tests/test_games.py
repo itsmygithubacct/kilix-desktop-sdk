@@ -98,6 +98,17 @@ assert "fishtank" in icons.ICONS
 icons.get("fishtank", 16)
 icons.get("fishtank", 32)
 
+# Kilix JPAK arrives through the host-owned catalog, without another local
+# registry or installer implementation. A host without its custom icon still
+# gets the normal icon fallback until the provider's artwork is updated.
+assert "kilix-jpak" in games.GAMES
+assert games.GAMES["kilix-jpak"]["label"] == "Kilix JPAK"
+assert games.CONTENT_CATALOG.require("kilix-jpak").ref == games.JPAK_REF
+write("")
+assert games.jpak_ready(games.load()) is None
+assert games.game_ready("kilix-jpak") is None
+icons.get(games.GAMES["kilix-jpak"]["icon"], 16)
+
 # Kitty Brokeout is a first-class Games entry, built from source the same way.
 assert "kitty-brokeout" in games.GAMES
 assert games.GAMES["kitty-brokeout"]["icon"] == "brokeout"
