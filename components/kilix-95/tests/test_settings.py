@@ -166,15 +166,18 @@ with conf("font_size 12\n") as path:
 
     for key in settings.shared_settings.MANAGED_KEYS:
         assert key in win.fields, f"Kilix 95 Settings is missing {key}"
+    _, volume = win.fields["KILIX_CHROME_VOLUME"]
     _, network = win.fields["KILIX_CHROME_NETWORK"]
     _, close = win.fields["KILIX_CHROME_BUTTON_CLOSE"]
     _, doom = win.fields["KILIX_GAME_DOOM"]
+    volume.checked = False
     network.checked = False
     close.checked = False
     doom.checked = False
     win._apply()
 
     shared_text = read(win.shared_path)
+    assert "KILIX_CHROME_VOLUME=0" in shared_text
     assert "KILIX_CHROME_NETWORK=0" in shared_text
     assert "KILIX_CHROME_BUTTON_CLOSE=0" in shared_text
     assert "KILIX_GAME_DOOM=0" in shared_text

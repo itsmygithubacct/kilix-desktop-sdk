@@ -50,6 +50,7 @@ BEHAVIOR = [
     ("cursor_blink_interval", "Cursor blink interval", "text", None),
 ]
 TOP_BAR = [
+    ("KILIX_CHROME_VOLUME", "Volume", "bool", "1"),
     ("KILIX_CHROME_NETWORK", "Network / Wi-Fi", "bool", "1"),
     ("KILIX_CHROME_CALENDAR", "Calendar", "bool", "1"),
     ("KILIX_CHROME_CLOCK", "Date and time", "bool", "1"),

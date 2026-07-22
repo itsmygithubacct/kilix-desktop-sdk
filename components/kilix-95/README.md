@@ -18,11 +18,12 @@ Quit through Start -> Shut Down..., or press `Ctrl+Alt+Q`.
 
 ## Release 0.1.3
 
-Version 0.1.3 consumes the Kilix 1.1 provider SDK: the shared immutable
+Version 0.1.3 consumes the Kilix 1.3 provider SDK: the shared immutable
 content catalog drives Games, and `kilix_sdk.xapp.XAppSession` owns private X
 display authentication, app/capture processes, event-driven capture fallback,
 input injection, and teardown. Kilix JPAK, Kilix Rancher, and Kilix Pong arrive
-through the shared catalog without separate provider-specific installers.
+through the shared catalog without separate provider-specific installers. The
+shared chrome contract also exposes Kilix's volume widget in Settings.
 
 ## Release 0.1.2
 
@@ -454,12 +455,12 @@ the host checkout.
 
 The Top bar, Pane buttons, and Games tabs write the non-executable shared source
 of truth at `~/.local/gpu_terminal/settings.conf`. They can independently
-remove and re-add network/Wi-Fi, calendar, date/time, battery, font-size,
+remove and re-add volume, network/Wi-Fi, calendar, date/time, battery, font-size,
 four-way split, maximize, close, and every Kilix game. The same game choices
 are available in the `kilix settings` TUI and with the commands
 `kilix games list`, `kilix games enable`, and `kilix games disable`. The
-network item is immediately left of the calendar and opens NetworkManager's
-`nmtui`.
+volume item opens `pulsemixer` (falling back to `alsamixer`); the network item
+is immediately left of the calendar and opens NetworkManager's `nmtui`.
 
 Form tabs rewrite only managed keys and preserve the rest of the file,
 including comments. The raw `kitty.conf` tab exposes the whole file. Apply
