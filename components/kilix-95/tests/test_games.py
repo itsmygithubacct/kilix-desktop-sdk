@@ -126,6 +126,29 @@ for game, label, icon, ready, ref in (
     icons.get(icon, 16)
     icons.get(icon, 32)
 
+# Kilix Lights is catalog-backed even though its executable lives under bin/.
+assert "kilix-lights" in games.GAMES
+assert games.GAMES["kilix-lights"]["label"] == "Kilix Lights"
+assert games.GAMES["kilix-lights"]["icon"] == "lights"
+lights_spec = games.CONTENT_CATALOG.require("kilix-lights")
+assert lights_spec.binary == "bin/kilix-lights"
+write("")
+assert games.game_ready("kilix-lights") is None
+assert "lights" in icons.ICONS
+icons.get("lights", 16)
+icons.get("lights", 32)
+
+old_catalog_ensure = games._catalog_ensure
+fake_lights = os.path.join(tmp, "games", "kilix-lights", "bin",
+                           "kilix-lights")
+games._catalog_ensure = lambda game, _cp, _report: (
+    fake_lights if game == "kilix-lights" else None)
+try:
+    assert games.ensure("kilix-lights", lambda _message: None) == fake_lights
+    assert games.load().get("kilix-lights", "dir") == os.path.dirname(fake_lights)
+finally:
+    games._catalog_ensure = old_catalog_ensure
+
 # Kitty Brokeout is a first-class Games entry, built from source the same way.
 assert "kitty-brokeout" in games.GAMES
 assert games.GAMES["kitty-brokeout"]["icon"] == "brokeout"

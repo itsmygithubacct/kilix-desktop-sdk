@@ -180,15 +180,14 @@ def dosbox_ready(cp=None):
 def game_ready(game, cp=None):
     """Installed-and-runnable check dispatched by game name (None if not)."""
     cp = cp or load()
-    return {"doom": doom_ready, "dosbox": dosbox_ready,
-            "bashed-earth": bashed_ready, "kilix-jpak": jpak_ready,
-            "kilix-rancher": rancher_ready, "kilix-pong": pong_ready,
-            "joustix": joustix_ready,
-            "chess-bash": chess_bash_ready,
-            "kilix-fishtank": fishtank_ready,
-            "terminal-lander": lander_ready,
-            "kitty-brokeout": brokeout_ready
-            }.get(game, lambda c=None: None)(cp)
+    if game == "doom":
+        return doom_ready(cp)
+    if game == "dosbox":
+        return dosbox_ready(cp)
+    spec = CONTENT_CATALOG.get(game)
+    if spec and spec.kind == "game" and spec.source_type == "git":
+        return _catalog_ready(game, cp)
+    return None
 
 
 def _sha256(path):
@@ -413,6 +412,30 @@ def _repo_ready(cp, section, binary, managed_dir, repo, ref):
         spec, directory=d)
 
 
+def _content_root(spec):
+    return APPS_DIR if spec.kind == "app" else GAMES_DIR
+
+
+def _catalog_ready(content_id, cp=None):
+    cp = cp or load()
+    spec = CONTENT_CATALOG.require(content_id)
+    if spec.source_type != "git" or not cp.has_section(content_id):
+        return None
+    directory = os.path.expanduser(cp.get(content_id, "dir", fallback=""))
+    if not directory:
+        return None
+    return kilix_content.Installer(_content_root(spec)).ready(
+        spec, directory=directory)
+
+
+def _catalog_ensure(content_id, cp, report):
+    spec = CONTENT_CATALOG.require(content_id)
+    if spec.source_type != "git":
+        raise RuntimeError(f"{content_id} does not use the shared Git installer")
+    return (_catalog_ready(content_id, cp)
+            or kilix_content.Installer(_content_root(spec)).ensure(spec, report))
+
+
 def bashed_ready(cp=None):
     return _repo_ready(
         cp or load(), "bashed-earth", "bashed-earth",
@@ -561,45 +584,10 @@ def ensure(game, report=print):
         _audio_check(report)
         cp.set("dosbox", "exe", dosbox)
         payload = (dosbox, conf)
-    elif game == "bashed-earth":
-        exe = ensure_bashed(cp, report)
-        cp.set("bashed-earth", "dir", os.path.dirname(exe))
-        payload = exe
-    elif game == "kilix-jpak":
-        exe = ensure_jpak(cp, report)
-        cp.set("kilix-jpak", "dir", os.path.dirname(exe))
-        payload = exe
-    elif game == "kilix-rancher":
-        exe = ensure_rancher(cp, report)
-        cp.set("kilix-rancher", "dir", os.path.dirname(exe))
-        payload = exe
-    elif game == "kilix-pong":
-        exe = ensure_pong(cp, report)
-        cp.set("kilix-pong", "dir", os.path.dirname(exe))
-        payload = exe
-    elif game == "joustix":
-        exe = ensure_joustix(cp, report)
-        cp.set("joustix", "dir", os.path.dirname(exe))
-        payload = exe
-    elif game == "chess-bash":
-        exe = ensure_chess_bash(cp, report)
-        cp.set("chess-bash", "dir", os.path.dirname(exe))
-        payload = exe
-    elif game == "kilix-fishtank":
-        exe = ensure_fishtank(cp, report)
-        cp.set("kilix-fishtank", "dir", os.path.dirname(exe))
-        payload = exe
-    elif game == "terminal-lander":
-        exe = ensure_lander(cp, report)
-        cp.set("terminal-lander", "dir", os.path.dirname(exe))
-        payload = exe
-    elif game == "kitty-brokeout":
-        exe = ensure_brokeout(cp, report)
-        cp.set("kitty-brokeout", "dir", os.path.dirname(exe))
-        payload = exe
-    elif game == "kilix-amp":
-        exe = ensure_amp(cp, report)
-        cp.set("kilix-amp", "dir", os.path.dirname(exe))
+    elif ((spec := CONTENT_CATALOG.get(game)) is not None
+          and spec.source_type == "git"):
+        exe = _catalog_ensure(game, cp, report)
+        cp.set(game, "dir", os.path.dirname(exe))
         payload = exe
     else:
         raise SystemExit(f"kilix games: unknown game {game!r}")

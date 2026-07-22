@@ -563,8 +563,8 @@ paths, links, devices, and FIFOs.
 
 Games and optional apps currently include Doom/DOSBox paths plus terminal or
 Kitty-graphics projects such as Bashed Earth, Kilix JPAK, Kilix Rancher, Kilix
-Pong, Joustix, Chess Bash, Kilix Fishtank, Terminal Lander, Kitty Brokeout, and
-kilix-amp support.
+Pong, Kilix Lights, Joustix, Chess Bash, Kilix Fishtank, Terminal Lander, Kitty
+Brokeout, and kilix-amp support.
 
 Game readiness checks are conservative. `games.py` first looks for a configured
 working install, then for tools already on `$PATH`, then for previously vendored
