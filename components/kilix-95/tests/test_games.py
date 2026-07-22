@@ -17,6 +17,7 @@ import icons
 tmp = tempfile.mkdtemp(prefix="games-test-")
 games.CONF = os.path.join(tmp, "games.conf")
 games.GAMES_DIR = os.path.join(tmp, "games")   # isolate the vendored-binary scan
+games.APPS_DIR = os.path.join(tmp, "apps")
 
 
 def write(text):
@@ -125,6 +126,29 @@ for game, label, icon, ready, ref in (
     assert icon in icons.ICONS
     icons.get(icon, 16)
     icons.get(icon, 32)
+
+# New compatible terminal games in the shared catalog are picked up without a
+# provider-side dispatcher change. Their configured directory remains the
+# content root even when the executable is nested below it.
+assert "kilix-lights" in games.GAMES
+assert games.GAMES["kilix-lights"]["label"] == "Kilix Lights"
+assert games.GAMES["kilix-lights"]["icon"] == "lights"
+lights_spec = games.CONTENT_CATALOG.require("kilix-lights")
+assert lights_spec.binary == "bin/kilix-lights"
+assert "lights" in icons.ICONS
+icons.get("lights", 16)
+icons.get("lights", 32)
+
+external_lights = os.path.join(tmp, "external-lights")
+lights_exe = os.path.join(external_lights, "bin", "kilix-lights")
+os.makedirs(os.path.dirname(lights_exe))
+with open(lights_exe, "w") as f:
+    f.write("#!/bin/sh\nexit 0\n")
+os.chmod(lights_exe, 0o755)
+write(f"[kilix-lights]\ndir = {external_lights}\n")
+assert games.game_ready("kilix-lights") == lights_exe
+assert games.ensure("kilix-lights", lambda _message: None) == lights_exe
+assert games.load().get("kilix-lights", "dir") == external_lights
 
 # Kitty Brokeout is a first-class Games entry, built from source the same way.
 assert "kitty-brokeout" in games.GAMES

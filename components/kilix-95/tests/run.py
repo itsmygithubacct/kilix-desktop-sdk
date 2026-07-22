@@ -23,6 +23,27 @@ def main():
     if sys.argv[1:]:
         names = [n for n in names if any(a in n for a in sys.argv[1:])]
     failed = []
+    native_sandbox = None
+    state_library = os.environ.get("KILIX_STATE_LIBRARY")
+    if not state_library or not os.path.isfile(state_library):
+        native_sandbox = tempfile.mkdtemp(prefix="kilix95-native-test-")
+        native_storage = os.path.join(native_sandbox, "storage")
+        native_build = os.path.join(native_storage, "build")
+        helper = os.path.join(SOURCE_HOME, "kilix", "scripts",
+                              "build-state-library.sh")
+        native_env = dict(os.environ, KILIX_STORAGE_HOME=native_storage,
+                          KILIX_BUILD_DIRECTORY=native_build)
+        try:
+            result = subprocess.run(
+                [helper, "--print-path"], capture_output=True, text=True,
+                check=True, env=native_env, timeout=30)
+        except (OSError, subprocess.SubprocessError) as error:
+            shutil.rmtree(native_sandbox, ignore_errors=True)
+            print(f"FAIL  native state setup: {error}")
+            if isinstance(error, subprocess.CalledProcessError):
+                print((error.stdout or "") + (error.stderr or ""))
+            return 1
+        state_library = result.stdout.strip()
     for name in names:
         env = dict(os.environ)
         sandbox = tempfile.mkdtemp(prefix="kilix95-test-")
@@ -55,6 +76,7 @@ def main():
             "XDG_STATE_HOME": os.path.join(sandbox, "xdg", "state"),
             "XDG_CACHE_HOME": os.path.join(sandbox, "xdg", "cache"),
             "XDG_DATA_HOME": os.path.join(sandbox, "xdg", "data"),
+            "KILIX_STATE_LIBRARY": state_library,
             "PYTHONDONTWRITEBYTECODE": "1",
         })
         env.pop("KITTY_CONFIG_DIRECTORY", None)
@@ -77,8 +99,10 @@ def main():
             if out.strip():
                 print("  " + out.strip().replace("\n", "\n  "))
     print(f"{len(names) - len(failed)}/{len(names)} passed")
-    sys.exit(1 if failed else 0)
+    if native_sandbox:
+        shutil.rmtree(native_sandbox, ignore_errors=True)
+    return 1 if failed else 0
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

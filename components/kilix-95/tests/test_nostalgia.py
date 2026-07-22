@@ -13,7 +13,7 @@ import screensaver
 import storage
 import themes
 import widgets as W
-from apps import dialup, displayprops, mycomp
+from apps import controlpanel, dialup, displayprops, mycomp
 
 
 def test_00_extras_are_opt_in():
@@ -30,6 +30,10 @@ def test_00_extras_are_opt_in():
                     "Printers", "Dial-Up Networking", "Network Neighborhood",
                     "My Briefcase"} & labels
 
+        props = controlpanel.SystemProperties(d)
+        d.wm.add(props)
+        assert not any(widget.visible for widget in props.device_widgets)
+
         d.shell.set_full_experience(True)
         desktop = {item["label"] for item in d.shell.grid.items}
         assert {"Network Neighborhood", "My Briefcase"} <= desktop
@@ -37,6 +41,13 @@ def test_00_extras_are_opt_in():
         assert {"3½ Floppy (A:)", "Kilix 95 CD-ROM (K:)",
                 "Printers", "Dial-Up Networking", "Network Neighborhood",
                 "My Briefcase"} <= labels
+        assert all(widget.visible for widget in props.device_widgets)
+
+        d.shell.set_full_experience(False)
+        assert not any(widget.visible for widget in props.device_widgets)
+        assert props.focus is props.ok
+        d.shell.set_full_experience(True)
+        assert all(widget.visible for widget in props.device_widgets)
 
 
 def test_storage_and_theme_pack():
@@ -113,6 +124,8 @@ def test_briefcase_non_destructive_sync():
     result = briefcase.synchronize(left, right)
     assert result["copied"] == ["one.txt"]
     assert open(os.path.join(right, "one.txt"), encoding="utf-8").read() == "one"
+    assert open(briefcase.STATE, "rb").read(4) == b"KST1"
+    assert not os.path.exists(briefcase.LEGACY_STATE)
     with open(os.path.join(left, "one.txt"), "w", encoding="utf-8") as stream:
         stream.write("left")
     with open(os.path.join(right, "one.txt"), "w", encoding="utf-8") as stream:

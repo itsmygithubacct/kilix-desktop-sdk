@@ -10,7 +10,6 @@ into new kilix tabs/windows over kitty remote control; X11 apps go through
 system default browser.
 """
 import configparser
-import json
 import os
 import shutil
 import stat
@@ -19,6 +18,7 @@ import subprocess
 from PIL import Image
 
 import icons
+import durable_state
 import nostalgia
 import recycle
 import theme as T
@@ -86,7 +86,11 @@ class Shell:
             or storage.data_dir("desktop"))
         self.dir = os.path.expanduser(self.dir)
         os.makedirs(self.dir, exist_ok=True)
-        self.state_path = os.path.join(self.dir, ".state.json")
+        self.legacy_state_path = os.path.join(self.dir, ".state.json")
+        self.state_store = durable_state.JsonState(
+            "shell.state", legacy_path=self.legacy_state_path,
+            max_payload=256 * 1024)
+        self.state_path = str(self.state_store.path)
         self.state = {"flavor": T.flavor_name(),
                       "wall_color": list(T.DESKTOP), "wall_image": None,
                       "wall_mode": "stretch", "wall_custom": False,
@@ -98,15 +102,10 @@ class Shell:
                       "show_terminals": True,
                       "full_experience": False,
                       "era_profile": "Windows 95 Plus!"}
-        try:
-            with open(self.state_path) as f:
-                loaded = json.load(f)
-            if isinstance(loaded, dict):
-                self.state.update(loaded)
-                if "wall_custom" not in loaded and loaded.get("wall_image"):
-                    self.state["wall_custom"] = True
-        except (OSError, ValueError):
-            pass
+        loaded = self.state_store.load_dict()
+        self.state.update(loaded)
+        if "wall_custom" not in loaded and loaded.get("wall_image"):
+            self.state["wall_custom"] = True
         self._load_flavor()
         self._wall = None             # cached composited wallpaper
         sw, sh = desk.size()
@@ -152,9 +151,8 @@ class Shell:
 
     def _save_state(self):
         try:
-            with open(self.state_path, "w") as f:
-                json.dump(self.state, f, indent=1)
-        except OSError:
+            self.state_store.save_dict(self.state)
+        except durable_state.StateError:
             pass
 
     def full_experience_enabled(self):

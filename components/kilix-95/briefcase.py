@@ -1,15 +1,23 @@
 """Non-destructive two-folder synchronization for My Briefcase."""
 
 import hashlib
-import json
 import os
 import shutil
 
+import durable_state
 import storage
 
 
-STATE = storage.config_dir("briefcase.json")
+LEGACY_STATE = storage.config_dir("briefcase.json")
+STATE = storage.state_dir("briefcase.state")
 MAX_FILES = 5000
+MAX_STATE_PAYLOAD = 2 * 1024 * 1024
+
+
+def _record():
+    return durable_state.JsonState(
+        "briefcase.state", legacy_path=LEGACY_STATE,
+        max_payload=MAX_STATE_PAYLOAD)
 
 
 def _signature(path):
@@ -40,21 +48,13 @@ def _scan(root):
 
 
 def _load():
-    try:
-        with open(STATE, encoding="utf-8") as stream:
-            value = json.load(stream)
-        return value if isinstance(value, dict) else {}
-    except (OSError, ValueError):
-        return {}
+    with _record() as record:
+        return record.load_dict()
 
 
 def _save(value):
-    os.makedirs(os.path.dirname(STATE), mode=0o700, exist_ok=True)
-    temp = STATE + ".tmp"
-    with open(temp, "w", encoding="utf-8") as stream:
-        json.dump(value, stream, indent=2, sort_keys=True)
-        stream.write("\n")
-    os.replace(temp, STATE)
+    with _record() as record:
+        record.save_dict(value)
 
 
 def validate_roots(left, right):

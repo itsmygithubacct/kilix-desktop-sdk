@@ -310,10 +310,37 @@ class XPane(wm.Window):
         try:
             update = self.capture.pump()
         except Exception:
-            self.close()
+            self._fallback_to_ffmpeg()
             return
         if update is not None:
             self._accept_frame(update[0])
+
+    def _fallback_to_ffmpeg(self):
+        """Replace a failed live XDamage feed without closing the application."""
+        try:
+            old_fd = self.capture.fileno()
+        except Exception:
+            old_fd = None
+        if old_fd is not None:
+            self.desk.remove_fd(old_fd)
+
+        try:
+            self.xapp.stop_capture()
+            self.capture = self.ff = None
+            self.buf.clear()
+            started = self.xapp.start_capture(
+                draw_cursor=False, prefer_damage=False)
+            self.capture = self.xapp.capture
+            self.ff = self.xapp.capture_process
+            if self.capture is not None:
+                self.desk.add_fd(self.capture.fileno(), self._pump_damage)
+                self._accept_frame(started.initial_frame)
+            elif self.ff is not None and self.ff.stdout is not None:
+                self.desk.add_fd(self.ff.stdout.fileno(), self._pump)
+            else:
+                raise RuntimeError("capture fallback did not start a backend")
+        except Exception:
+            self.close()
 
     def _pump(self):
         try:
