@@ -149,6 +149,30 @@ try:
 finally:
     games._catalog_ensure = old_catalog_ensure
 
+# Super Kilix is catalog-backed with its executable at the repo root.
+assert "super-kilix" in games.GAMES
+assert games.GAMES["super-kilix"]["label"] == "Super Kilix"
+assert games.GAMES["super-kilix"]["icon"] == "super-kilix"
+super_kilix_spec = games.CONTENT_CATALOG.require("super-kilix")
+assert super_kilix_spec.binary == "super-kilix"
+write("")
+assert games.game_ready("super-kilix") is None
+assert "super-kilix" in icons.ICONS
+icons.get("super-kilix", 16)
+icons.get("super-kilix", 32)
+
+old_catalog_ensure = games._catalog_ensure
+fake_super_kilix = os.path.join(tmp, "games", "super-kilix", "super-kilix")
+games._catalog_ensure = lambda game, _cp, _report: (
+    fake_super_kilix if game == "super-kilix" else None)
+try:
+    assert games.ensure(
+        "super-kilix", lambda _message: None) == fake_super_kilix
+    assert games.load().get(
+        "super-kilix", "dir") == os.path.dirname(fake_super_kilix)
+finally:
+    games._catalog_ensure = old_catalog_ensure
+
 # Kitty Brokeout is a first-class Games entry, built from source the same way.
 assert "kitty-brokeout" in games.GAMES
 assert games.GAMES["kitty-brokeout"]["icon"] == "brokeout"

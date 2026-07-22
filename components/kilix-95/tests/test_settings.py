@@ -171,11 +171,13 @@ with conf("font_size 12\n") as path:
     _, close = win.fields["KILIX_CHROME_BUTTON_CLOSE"]
     _, doom = win.fields["KILIX_GAME_DOOM"]
     _, lights = win.fields["KILIX_GAME_KILIX_LIGHTS"]
+    _, super_kilix = win.fields["KILIX_GAME_SUPER_KILIX"]
     volume.checked = False
     network.checked = False
     close.checked = False
     doom.checked = False
     lights.checked = False
+    super_kilix.checked = False
     win._apply()
 
     shared_text = read(win.shared_path)
@@ -184,6 +186,7 @@ with conf("font_size 12\n") as path:
     assert "KILIX_CHROME_BUTTON_CLOSE=0" in shared_text
     assert "KILIX_GAME_DOOM=0" in shared_text
     assert "KILIX_GAME_KILIX_LIGHTS=0" in shared_text
+    assert "KILIX_GAME_SUPER_KILIX=0" in shared_text
     assert "KILIX_CHROME_NETWORK" not in read(path)
 
 
