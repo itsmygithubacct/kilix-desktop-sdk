@@ -23,11 +23,13 @@ os.environ.pop("KITTY_PID", None)
 def conf(text, binary=False):
     """A temp KITTY_CONFIG_DIRECTORY holding a kitty.conf; yields its path."""
     prev = os.environ.get("KITTY_CONFIG_DIRECTORY")
+    prev_shared = os.environ.get("GPU_TERMINAL_SETTINGS_FILE")
     d = tempfile.mkdtemp(prefix="kilix95-conf-")
     path = os.path.join(d, "kitty.conf")
     with open(path, "wb") as f:
         f.write(text if binary else text.encode())
     os.environ["KITTY_CONFIG_DIRECTORY"] = d
+    os.environ["GPU_TERMINAL_SETTINGS_FILE"] = os.path.join(d, "settings.conf")
     try:
         yield path
     finally:
@@ -35,6 +37,10 @@ def conf(text, binary=False):
             os.environ.pop("KITTY_CONFIG_DIRECTORY", None)
         else:
             os.environ["KITTY_CONFIG_DIRECTORY"] = prev
+        if prev_shared is None:
+            os.environ.pop("GPU_TERMINAL_SETTINGS_FILE", None)
+        else:
+            os.environ["GPU_TERMINAL_SETTINGS_FILE"] = prev_shared
 
 
 def read(path):
@@ -75,10 +81,10 @@ with conf("font_size 12\n") as path:
     win = H.find_window(d, "SettingsWin")
     assert win is not None
 
-    win._switch_tab(2)                       # go to the raw kitty.conf tab
+    win._switch_tab(win.raw_tab)             # go to the raw kitty.conf tab
     win.ta.set_text(win.ta.text() + "map ctrl+j scroll_line_down\n")
     win._switch_tab(0)                       # leave tab 2 …
-    win._switch_tab(2)                       # … and come back
+    win._switch_tab(win.raw_tab)             # … and come back
     assert "map ctrl+j scroll_line_down" in win.ta.text(), \
         "F06: raw edit did not survive a tab roundtrip"
 
@@ -149,6 +155,27 @@ with conf(b"# note: caf\xe9 sync\nfont_size 13\n", binary=True) as path:
     assert win is not None, "F52: Settings failed to open on a non-UTF-8 config"
     kind, wd = win.fields["font_size"]
     assert wd.text == "13", "F52: config was not parsed after tolerant decode"
+
+
+# Top-bar widgets and every pane-title button share one stack-wide file.
+with conf("font_size 12\n") as path:
+    d = H.make_desk()
+    import apps
+    apps.open(d, "settings", None)
+    win = H.find_window(d, "SettingsWin")
+
+    for key in settings.shared_settings.MANAGED_KEYS:
+        assert key in win.fields, f"Kilix 95 Settings is missing {key}"
+    _, network = win.fields["KILIX_CHROME_NETWORK"]
+    _, close = win.fields["KILIX_CHROME_BUTTON_CLOSE"]
+    network.checked = False
+    close.checked = False
+    win._apply()
+
+    shared_text = read(win.shared_path)
+    assert "KILIX_CHROME_NETWORK=0" in shared_text
+    assert "KILIX_CHROME_BUTTON_CLOSE=0" in shared_text
+    assert "KILIX_CHROME_NETWORK" not in read(path)
 
 
 # ── font-size buttons: same setting as the CLI / kitty shortcut path ───────

@@ -3,8 +3,9 @@
 Edits the writable per-user Kilix configuration (normally under
 ``~/.local/gpu_terminal/kilix``; ``$KITTY_CONFIG_DIRECTORY`` overrides it). The
 tracked Kilix ``config/`` tree contains defaults and is never rewritten. Two
-form tabs cover the common knobs;
-the third tab is the raw file in a text editor. Apply writes the file and
+terminal form tabs and two shared-chrome tabs cover the common knobs; the last
+tab is the raw file in a text editor. Clickable-chrome preferences use the
+stack-wide ``~/.local/gpu_terminal/settings.conf`` source of truth. Apply writes the file and
 live-reloads the running kilix via `kitten @ action load_config_file`,
 falling back to SIGUSR1 at $KITTY_PID. Only the managed lines are rewritten
 (last occurrence wins, matching kitty's own semantics); everything else in
@@ -20,6 +21,7 @@ import shell as _shell
 import theme as T
 import widgets as W
 import wm
+from kilix_sdk import settings as shared_settings
 
 MARKER = "# ── kilix desktop settings ──"
 FONT_SIZE_DEFAULT = 11.0
@@ -47,6 +49,24 @@ BEHAVIOR = [
     ("mouse_hide_wait", "Hide mouse after (s)", "text", None),
     ("cursor_blink_interval", "Cursor blink interval", "text", None),
 ]
+TOP_BAR = [
+    ("KILIX_CHROME_NETWORK", "Network / Wi-Fi", "bool", "1"),
+    ("KILIX_CHROME_CALENDAR", "Calendar", "bool", "1"),
+    ("KILIX_CHROME_CLOCK", "Date and time", "bool", "1"),
+    ("KILIX_CHROME_CLOCK_FORMAT", "Clock format", "text", None),
+    ("KILIX_CHROME_BATTERY", "Battery", "bool", "1"),
+]
+PANE_BUTTONS = [
+    ("KILIX_CHROME_BUTTON_FONT_INCREASE", "Increase text size", "bool", "1"),
+    ("KILIX_CHROME_BUTTON_FONT_DECREASE", "Decrease text size", "bool", "1"),
+    ("KILIX_CHROME_BUTTON_SPLIT_LEFT", "Split pane left", "bool", "1"),
+    ("KILIX_CHROME_BUTTON_SPLIT_UP", "Split pane up", "bool", "1"),
+    ("KILIX_CHROME_BUTTON_SPLIT_DOWN", "Split pane down", "bool", "1"),
+    ("KILIX_CHROME_BUTTON_SPLIT_RIGHT", "Split pane right", "bool", "1"),
+    ("KILIX_CHROME_BUTTON_MAXIMIZE", "Maximize / restore pane", "bool", "1"),
+    ("KILIX_CHROME_BUTTON_CLOSE", "Close pane", "bool", "1"),
+]
+FORM_PAGES = [APPEARANCE, BEHAVIOR, TOP_BAR, PANE_BUTTONS]
 
 
 def config_path():
@@ -111,6 +131,10 @@ class SettingsWin(wm.Window):
         super().__init__(desk, "kilix Settings", 500, 420, icon="settings")
         self.min_w, self.min_h = 420, 320
         self.path = config_path()
+        self.shared_path = shared_settings.settings_path()
+        self.shared_values = shared_settings.load(self.shared_path)
+        self.shared_changes = {}
+        self.shared_keys = set(shared_settings.MANAGED_KEYS)
         try:
             with open(self.path, encoding="utf-8", errors="replace") as f:
                 self.buffer = f.read()
@@ -122,16 +146,18 @@ class SettingsWin(wm.Window):
                 if os.path.isfile(defaults) else ""
             )
         cw, ch = self.client_size()
+        self.raw_tab = len(FORM_PAGES)
         self.tabs = self.add(W.TabBar(6, 6, cw - 12,
-                                      ["Appearance", "Behavior", "kitty.conf"],
+                                      ["Appearance", "Behavior", "Top bar",
+                                       "Pane buttons", "kitty.conf"],
                                       cb=self._switch_tab))
         self.fields = {}              # key -> (kind, widget)
-        self.panels = [[], [], []]
+        self.panels = [[] for _ in range(self.raw_tab + 1)]
         opts = list(T.flavor_options())
         self._flavor_keys = [key for key, label in opts]
         self._flavor_labels = [label for key, label in opts]
         self.flavor_dd = None
-        for tab_i, spec in ((0, APPEARANCE), (1, BEHAVIOR)):
+        for tab_i, spec in enumerate(FORM_PAGES):
             y = 44
             if tab_i == 0:
                 lw = self.add(W.Label(18, y + 4, "Desktop flavor:"))
@@ -183,7 +209,7 @@ class SettingsWin(wm.Window):
         self.panels[0].append(note)
         self.ta = self.add(W.TextArea(6, self.tabs.y + W.TabBar.H + 2,
                                       cw - 12, ch - 84, self.buffer))
-        self.panels[2].append(self.ta)
+        self.panels[self.raw_tab].append(self.ta)
         self.b_ok = self.add(W.Button(cw - 244, ch - 33, 72, 23, "OK",
                                       default=True,
                                       cb=lambda: self._apply(close=True)))
@@ -211,16 +237,18 @@ class SettingsWin(wm.Window):
         self.status.y = ch - 28
 
     def draw_client(self, d, img):
-        if self.tabs.active != 2:
+        if self.tabs.active != self.raw_tab:
             cw, ch = self.client_size()
             T.raised(d, 6, self.tabs.y + W.TabBar.H - 2, cw - 7, ch - 44)
             # redraw widgets over the panel face happens in the widget pass;
             # the panel is drawn first because draw_client precedes widgets
 
     def _switch_tab(self, i):
-        if self._cur_tab == 2:
+        if self._cur_tab == self.raw_tab:
             self.buffer = self.ta.text()   # keep raw edits made on the conf tab
-        if i != 2:
+        else:
+            self._form_to_buffer()
+        if i != self.raw_tab:
             self._populate()
         else:
             self._form_to_buffer()
@@ -260,7 +288,8 @@ class SettingsWin(wm.Window):
     def _populate(self):
         self._sync_flavor_widget()
         for key, (kind, wd) in self.fields.items():
-            val = get_key(self.buffer, key)
+            val = (self.shared_values.get(key) if key in self.shared_keys
+                   else get_key(self.buffer, key))
             if kind == "bool":
                 wd.checked = _is_true(val if val is not None
                                       else wd.default_val)
@@ -276,7 +305,9 @@ class SettingsWin(wm.Window):
         # only rewrite a key when its value actually changed, so keys absent
         # from the file stay absent and untouched values keep their formatting
         for key, (kind, wd) in self.fields.items():
-            cur = get_key(self.buffer, key)
+            is_shared = key in self.shared_keys
+            cur = (self.shared_values.get(key) if is_shared
+                   else get_key(self.buffer, key))
             if kind == "bool":
                 v = "yes" if wd.checked else "no"
                 if _is_true(v) == _is_true(cur if cur is not None
@@ -290,7 +321,11 @@ class SettingsWin(wm.Window):
                 v = wd.text.strip()
                 if not v or v == (cur or ""):
                     continue
-            self.buffer = set_key(self.buffer, key, v)
+            if is_shared:
+                self.shared_values[key] = v
+                self.shared_changes[key] = v
+            else:
+                self.buffer = set_key(self.buffer, key, v)
 
     # font size controls ---------------------------------------------------
     def _font_size_field(self):
@@ -315,10 +350,11 @@ class SettingsWin(wm.Window):
 
     # apply ----------------------------------------------------------------
     def _apply(self, close=False):
-        if self.tabs.active == 2:
+        if self.tabs.active == self.raw_tab:
             self.buffer = self.ta.text()
         else:
             self._form_to_buffer()
+        shared_changed = bool(self.shared_changes)
         tmp = None
         try:
             directory = os.path.dirname(self.path)
@@ -341,12 +377,22 @@ class SettingsWin(wm.Window):
                     os.unlink(tmp)
                 except OSError:
                     pass
+        if self.shared_changes:
+            try:
+                shared_settings.update(self.shared_changes, self.shared_path)
+                self.shared_changes.clear()
+            except (OSError, KeyError) as e:
+                wm.msgbox(self.desk, "kilix Settings",
+                          f"Cannot write shared settings:\n{e}", icon="error")
+                return
         changed = self.desk.shell.set_full_experience(
             self.full_experience.checked)
         msg = self._reload_live()
         if changed:
             state = "activated" if self.full_experience.checked else "disabled"
             msg = f"Saved — full experience {state}."
+        elif shared_changed:
+            msg = "Saved — clickable chrome updated."
         self.status.set(msg)
         self.invalidate()
         if close:

@@ -346,7 +346,7 @@ Notable apps:
 | Viewer | image display | opens supported image files through Pillow |
 | Amp | media playback front end | pairs with the sound scheme controls and external media helpers |
 | Sound Control Panel | UI sound scheme editor | saves schemes under user data, not the repo |
-| Settings | Kilix/Kitty configuration editor | writes the active `kitty.conf` and attempts live reload |
+| Settings | Kilix/Kitty configuration editor | writes `kitty.conf` plus shared top-bar/pane-button settings and attempts live reload |
 | Control Panel / Display Properties | classic settings namespace | themes, patterns, pointers, screen savers, compatibility profiles |
 | My Computer | machine namespace | drives, removable media, virtual CD, and system folders |
 | Network Neighborhood / Dial-Up | connection theater and launchers | SSH/local shares plus a browser hand-off; no host network mutation |
@@ -384,6 +384,7 @@ Runtime state is intentionally outside the repo.
 | desktop frames and installer logs | `~/.local/gpu_terminal/kilix-95/session` |
 | Python bytecode cache | `~/.local/gpu_terminal/kilix-95/cache/pycache` |
 | Kitty/Kilix settings | `$KITTY_CONFIG_DIRECTORY/kitty.conf`, else `~/.local/gpu_terminal/kilix/config/kitty.conf` |
+| Shared clickable chrome | `~/.local/gpu_terminal/settings.conf` (`$GPU_TERMINAL_SETTINGS_FILE` overrides it) |
 
 Settings is the most important host mutation: it edits the active Kitty/Kilix
 configuration, not only desktop-local state.
@@ -431,7 +432,8 @@ XP flavor reference:
 
 ## Settings App
 
-The Settings app edits the active `kitty.conf` and desktop preferences.
+The Settings app edits the active `kitty.conf`, desktop preferences, and the
+stack-wide clickable-chrome settings.
 
 It normally writes:
 
@@ -449,6 +451,12 @@ The Kilix launcher creates that user file with a relative include of its
 managed `.kilix-defaults.conf` link. The launcher refreshes the link after a
 checkout move. Settings atomically writes only the user file and never dirties
 the host checkout.
+
+The Top bar and Pane buttons tabs write the non-executable shared source of
+truth at `~/.local/gpu_terminal/settings.conf`. They can independently remove
+and re-add network/Wi-Fi, calendar, date/time, battery, font-size, four-way
+split, maximize, and close controls. The network item is immediately left of
+the calendar and opens NetworkManager's `nmtui`.
 
 Form tabs rewrite only managed keys and preserve the rest of the file,
 including comments. The raw `kitty.conf` tab exposes the whole file. Apply
@@ -469,7 +477,8 @@ The form tabs cover common appearance and behavior settings:
 - cursor shape;
 - tab bar style;
 - scrollback and close-confirmation behavior;
-- audio bell, copy-on-select, mouse-hide timing, and cursor blink timing.
+- audio bell, copy-on-select, mouse-hide timing, and cursor blink timing;
+- every top-bar status item and clickable pane-title button;
 - the default-off **Activate full experience** desktop preference.
 
 The full-experience preference is stored in the desktop `.state.json`; it is
@@ -662,6 +671,7 @@ The full suite is intentionally fast enough to run before every commit.
 | `KILIX_HOME` | host Kilix checkout |
 | `GPU_TERMINAL_SOURCE_HOME` | shared source root (default `~/.local/gpu_terminal/sources`) |
 | `GPU_TERMINAL_HOME` | shared writable root (default `~/.local/gpu_terminal`) |
+| `GPU_TERMINAL_SETTINGS_FILE` | shared clickable-chrome config (default `$GPU_TERMINAL_HOME/settings.conf`) |
 | `KILIX95_STORAGE_HOME` | Kilix 95 writable root override |
 | `KILIX95_CONFIG_HOME`, `KILIX95_STATE_HOME`, `KILIX95_CACHE_HOME`, `KILIX95_DATA_HOME`, `KILIX95_SESSION_HOME` | individual Kilix 95 storage-category overrides |
 | `KILIX_DESKTOP_DIR` | desktop folder override |
