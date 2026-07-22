@@ -157,7 +157,7 @@ with conf(b"# note: caf\xe9 sync\nfont_size 13\n", binary=True) as path:
     assert wd.text == "13", "F52: config was not parsed after tolerant decode"
 
 
-# Top-bar widgets and every pane-title button share one stack-wide file.
+# Top-bar widgets, pane-title buttons, and game availability share one file.
 with conf("font_size 12\n") as path:
     d = H.make_desk()
     import apps
@@ -168,13 +168,16 @@ with conf("font_size 12\n") as path:
         assert key in win.fields, f"Kilix 95 Settings is missing {key}"
     _, network = win.fields["KILIX_CHROME_NETWORK"]
     _, close = win.fields["KILIX_CHROME_BUTTON_CLOSE"]
+    _, doom = win.fields["KILIX_GAME_DOOM"]
     network.checked = False
     close.checked = False
+    doom.checked = False
     win._apply()
 
     shared_text = read(win.shared_path)
     assert "KILIX_CHROME_NETWORK=0" in shared_text
     assert "KILIX_CHROME_BUTTON_CLOSE=0" in shared_text
+    assert "KILIX_GAME_DOOM=0" in shared_text
     assert "KILIX_CHROME_NETWORK" not in read(path)
 
 

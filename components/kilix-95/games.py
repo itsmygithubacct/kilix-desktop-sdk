@@ -34,6 +34,7 @@ GAMES_DIR = storage.data_dir("games")
 APPS_DIR = storage.data_dir("apps")
 KILIX_HOME = kilix_host.find_kilix_home()
 from kilix_sdk import content as kilix_content
+from kilix_sdk import settings as shared_settings
 
 DOOM_URLS = [  # idgames mirrors of id Software's shareware installer
     "https://www.gamers.org/pub/idgames/idstuff/doom/doom19s.zip",
@@ -85,6 +86,21 @@ GAMES = {
     for spec in CONTENT_CATALOG
     if spec.kind == "game" or spec.content_id == "dosbox"
 }
+
+
+def game_enabled(game):
+    """Whether the shared GPU Terminal settings expose ``game``."""
+    return shared_settings.game_enabled(game)
+
+
+def available_games(availability=None):
+    """The enabled registry entries, retaining catalog menu order."""
+    availability = (shared_settings.game_availability()
+                    if availability is None else availability)
+    return {
+        name: meta for name, meta in GAMES.items()
+        if availability[name]
+    }
 
 
 def load():
@@ -632,10 +648,20 @@ def _launch_native(exe):
 
 
 def main():
+    try:
+        shared_settings.ensure_file()
+    except OSError as error:
+        raise SystemExit(
+            f"kilix games: cannot initialize shared settings: {error}")
     args = [a for a in sys.argv[1:]]
     setup_only = "--setup-only" in args
     args = [a for a in args if a != "--setup-only"]
     game = args[0] if args else "doom"
+    if game in GAMES and not game_enabled(game):
+        label = GAMES[game]["label"]
+        raise SystemExit(
+            f"kilix games: {label} is disabled; "
+            f"run 'kilix games enable {game}' to make it available")
     try:
         payload = ensure(game)
     except Exception as e:      # BadZipFile/TarError/configparser.Error too

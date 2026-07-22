@@ -20,6 +20,7 @@ env.update({
     "KILIX95_CACHE_HOME": str(cache_root),
     "PYTHONDONTWRITEBYTECODE": "1",
 })
+env.pop("GPU_TERMINAL_SETTINGS_FILE", None)
 
 
 def run_version():
@@ -36,6 +37,10 @@ try:
     run_version()
     for directory in (storage_root, cache_root, cache_root / "pycache"):
         assert stat.S_IMODE(directory.stat().st_mode) == 0o700, directory
+    shared_config = gpu_root / "settings.conf"
+    assert shared_config.is_file() and not shared_config.is_symlink()
+    assert stat.S_IMODE(shared_config.stat().st_mode) == 0o600
+    assert "KILIX_GAME_DOOM=1" in shared_config.read_text()
 
     # Existing public boundaries from an older launch are reconciled too.
     storage_root.chmod(0o755)

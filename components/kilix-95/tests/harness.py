@@ -16,6 +16,14 @@ _here = os.path.dirname(os.path.abspath(__file__))
 _desktop = os.path.dirname(_here)
 sys.path.insert(0, _desktop)
 
+# Direct Kilix 95 startup creates the shared root settings file. Keep that
+# normal startup behavior inside the harness's disposable test storage.
+_shared_settings_dir = None
+if not os.environ.get("GPU_TERMINAL_SETTINGS_FILE"):
+    _shared_settings_dir = tempfile.mkdtemp(prefix="kilix95-shared-settings-")
+    os.environ["GPU_TERMINAL_SETTINGS_FILE"] = os.path.join(
+        _shared_settings_dir, "settings.conf")
+
 import host as kilix_host
 
 KILIX_HOME = kilix_host.add_kilix_config_path()
@@ -24,7 +32,7 @@ from kilix_sdk import term as kilix_term
 import main as desk_main   # import patches host F-key tables, like the live desk
 import widgets as W
 
-_dirs = []                 # temp desktop dirs owned by this process
+_dirs = [_shared_settings_dir] if _shared_settings_dir else []
 atexit.register(lambda: [shutil.rmtree(d, ignore_errors=True) for d in _dirs])
 
 if "XDG_DATA_HOME" not in os.environ:

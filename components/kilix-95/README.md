@@ -98,10 +98,10 @@ The boundary is:
 - Kilix CLI helpers: `kilix run`, `kilix browse`, `kilix serve`.
 - Kitty remote control: `kitten @ launch` for new tabs and windows.
 
-`provider.json` declares provider API 1, the required `kilix_sdk` 1.1 contract,
+`provider.json` declares provider API 1, the required `kilix_sdk` 1.2 contract,
 and the security behaviors the provider implements. Kilix validates that
 data-only manifest and its implementation markers before executing the
-provider. `main.py` also calls `kilix_sdk.require_compatible("1.1")` as a
+provider. `main.py` also calls `kilix_sdk.require_compatible("1.2")` as a
 defense-in-depth runtime check. Incompatible hosts fail early with a clear
 version error.
 
@@ -378,13 +378,13 @@ Runtime state is intentionally outside the repo.
 | themes and virtual CD | `~/.local/gpu_terminal/kilix-95/data/themes`, `data/virtual-cd` |
 | Briefcase data and sync record | `~/.local/gpu_terminal/kilix-95/data/briefcase`, `config/briefcase.json` |
 | nostalgia/network/printer definitions | `~/.local/gpu_terminal/kilix-95/config/nostalgia.json` |
-| games config | `~/.local/gpu_terminal/kilix-95/config/games.conf` |
+| game install paths | `~/.local/gpu_terminal/kilix-95/config/games.conf` |
 | game/app downloads | `~/.local/gpu_terminal/kilix-95/data/games`, `~/.local/gpu_terminal/kilix-95/data/apps` |
 | Kilix-Amp runtime | `config/app-state`, `data/app-state`, `state/app-state`, and `cache/app-state` below the Kilix 95 storage root |
 | desktop frames and installer logs | `~/.local/gpu_terminal/kilix-95/session` |
 | Python bytecode cache | `~/.local/gpu_terminal/kilix-95/cache/pycache` |
 | Kitty/Kilix settings | `$KITTY_CONFIG_DIRECTORY/kitty.conf`, else `~/.local/gpu_terminal/kilix/config/kitty.conf` |
-| Shared clickable chrome | `~/.local/gpu_terminal/settings.conf` (`$GPU_TERMINAL_SETTINGS_FILE` overrides it) |
+| Shared chrome and game availability | `~/.local/gpu_terminal/settings.conf` (`$GPU_TERMINAL_SETTINGS_FILE` overrides it) |
 
 Settings is the most important host mutation: it edits the active Kitty/Kilix
 configuration, not only desktop-local state.
@@ -452,11 +452,14 @@ managed `.kilix-defaults.conf` link. The launcher refreshes the link after a
 checkout move. Settings atomically writes only the user file and never dirties
 the host checkout.
 
-The Top bar and Pane buttons tabs write the non-executable shared source of
-truth at `~/.local/gpu_terminal/settings.conf`. They can independently remove
-and re-add network/Wi-Fi, calendar, date/time, battery, font-size, four-way
-split, maximize, and close controls. The network item is immediately left of
-the calendar and opens NetworkManager's `nmtui`.
+The Top bar, Pane buttons, and Games tabs write the non-executable shared source
+of truth at `~/.local/gpu_terminal/settings.conf`. They can independently
+remove and re-add network/Wi-Fi, calendar, date/time, battery, font-size,
+four-way split, maximize, close, and every Kilix game. The same game choices
+are available in the `kilix settings` TUI and with the commands
+`kilix games list`, `kilix games enable`, and `kilix games disable`. The
+network item is immediately left of the calendar and opens NetworkManager's
+`nmtui`.
 
 Form tabs rewrite only managed keys and preserve the rest of the file,
 including comments. The raw `kitty.conf` tab exposes the whole file. Apply
@@ -544,6 +547,14 @@ Limitations:
 
 The Games menu is backed by `games.py`. Some entries are built-in desktop games,
 while others are installed on demand under user data directories.
+
+Every entry defaults to enabled. The Games tab in kilix Settings and the
+`kilix settings` TUI select which entries appear. For scripts,
+`kilix games list` shows the current states; use
+`kilix games disable doom kilix-pong` or `kilix games enable doom` to change
+them.
+Those choices live in `~/.local/gpu_terminal/settings.conf`; the separate
+provider-private `games.conf` continues to record only installation paths.
 
 The installers avoid writing into this checkout. Downloaded archives that ship
 with pinned checksums are verified before use, and tar extraction rejects unsafe
@@ -671,7 +682,7 @@ The full suite is intentionally fast enough to run before every commit.
 | `KILIX_HOME` | host Kilix checkout |
 | `GPU_TERMINAL_SOURCE_HOME` | shared source root (default `~/.local/gpu_terminal/sources`) |
 | `GPU_TERMINAL_HOME` | shared writable root (default `~/.local/gpu_terminal`) |
-| `GPU_TERMINAL_SETTINGS_FILE` | shared clickable-chrome config (default `$GPU_TERMINAL_HOME/settings.conf`) |
+| `GPU_TERMINAL_SETTINGS_FILE` | shared chrome/game config (default `$GPU_TERMINAL_HOME/settings.conf`) |
 | `KILIX95_STORAGE_HOME` | Kilix 95 writable root override |
 | `KILIX95_CONFIG_HOME`, `KILIX95_STATE_HOME`, `KILIX95_CACHE_HOME`, `KILIX95_DATA_HOME`, `KILIX95_SESSION_HOME` | individual Kilix 95 storage-category overrides |
 | `KILIX_DESKTOP_DIR` | desktop folder override |

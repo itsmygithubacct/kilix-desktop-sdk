@@ -2,10 +2,10 @@
 
 Edits the writable per-user Kilix configuration (normally under
 ``~/.local/gpu_terminal/kilix``; ``$KITTY_CONFIG_DIRECTORY`` overrides it). The
-tracked Kilix ``config/`` tree contains defaults and is never rewritten. Two
-terminal form tabs and two shared-chrome tabs cover the common knobs; the last
-tab is the raw file in a text editor. Clickable-chrome preferences use the
-stack-wide ``~/.local/gpu_terminal/settings.conf`` source of truth. Apply writes the file and
+tracked Kilix ``config/`` tree contains defaults and is never rewritten. The
+form tabs cover common terminal, chrome, and game-availability knobs; the last
+tab is the raw file in a text editor. Shared preferences use the stack-wide
+``~/.local/gpu_terminal/settings.conf`` source of truth. Apply writes the file and
 live-reloads the running kilix via `kitten @ action load_config_file`,
 falling back to SIGUSR1 at $KITTY_PID. Only the managed lines are rewritten
 (last occurrence wins, matching kitty's own semantics); everything else in
@@ -66,7 +66,11 @@ PANE_BUTTONS = [
     ("KILIX_CHROME_BUTTON_MAXIMIZE", "Maximize / restore pane", "bool", "1"),
     ("KILIX_CHROME_BUTTON_CLOSE", "Close pane", "bool", "1"),
 ]
-FORM_PAGES = [APPEARANCE, BEHAVIOR, TOP_BAR, PANE_BUTTONS]
+GAMES = [
+    (spec.key, spec.label, "bool", "1")
+    for spec in shared_settings.GAME_TOGGLES
+]
+FORM_PAGES = [APPEARANCE, BEHAVIOR, TOP_BAR, PANE_BUTTONS, GAMES]
 
 
 def config_path():
@@ -128,8 +132,8 @@ class _Swatch(W.Widget):
 
 class SettingsWin(wm.Window):
     def __init__(self, desk):
-        super().__init__(desk, "kilix Settings", 500, 420, icon="settings")
-        self.min_w, self.min_h = 420, 320
+        super().__init__(desk, "kilix Settings", 560, 420, icon="settings")
+        self.min_w, self.min_h = 540, 320
         self.path = config_path()
         self.shared_path = shared_settings.settings_path()
         self.shared_values = shared_settings.load(self.shared_path)
@@ -149,7 +153,7 @@ class SettingsWin(wm.Window):
         self.raw_tab = len(FORM_PAGES)
         self.tabs = self.add(W.TabBar(6, 6, cw - 12,
                                       ["Appearance", "Behavior", "Top bar",
-                                       "Pane buttons", "kitty.conf"],
+                                       "Pane buttons", "Games", "kitty.conf"],
                                       cb=self._switch_tab))
         self.fields = {}              # key -> (kind, widget)
         self.panels = [[] for _ in range(self.raw_tab + 1)]
@@ -167,17 +171,26 @@ class SettingsWin(wm.Window):
                     cb=self._pick_flavor))
                 self.panels[tab_i].append(self.flavor_dd)
                 y += 30
-            for key, label, kind, extra in spec:
-                lw = self.add(W.Label(18, y + 4, label + ":"))
+            for item_i, (key, label, kind, extra) in enumerate(spec):
+                # Thirteen games fit comfortably in the original-height dialog
+                # as two columns, including on a 640x480 desktop.
+                if spec is GAMES:
+                    column, game_row = divmod(item_i, 7)
+                    label_x = 18 + column * 270
+                    control_x = 178 + column * 270
+                    y = 44 + game_row * 30
+                else:
+                    label_x, control_x = 18, 200
+                lw = self.add(W.Label(label_x, y + 4, label + ":"))
                 self.panels[tab_i].append(lw)
                 if kind == "choice":
-                    wd = self.add(W.Dropdown(200, y, 180, extra))
+                    wd = self.add(W.Dropdown(control_x, y, 180, extra))
                 elif kind == "bool":
-                    wd = self.add(W.Checkbox(200, y + 3, "enabled"))
+                    wd = self.add(W.Checkbox(control_x, y + 3, "enabled"))
                     wd.default_val = extra
                 else:
                     field_w = 80 if key == "font_size" else 180
-                    wd = self.add(W.TextField(200, y, field_w))
+                    wd = self.add(W.TextField(control_x, y, field_w))
                     if key == "font_size":
                         for bx, bw, txt, cb in (
                             (288, 28, "-", lambda: self._font_size_adjust(-FONT_SIZE_STEP)),
@@ -192,7 +205,12 @@ class SettingsWin(wm.Window):
                         wd.on_change = lambda *_: self.invalidate()
                 self.fields[key] = (kind, wd)
                 self.panels[tab_i].append(wd)
-                y += 30
+                if spec is not GAMES:
+                    y += 30
+        game_note = self.add(W.Label(
+            18, 264, "The Games menu updates the next time Start opens.",
+            font=T.SMALL, color=T.SHADOW))
+        self.panels[FORM_PAGES.index(GAMES)].append(game_note)
         self.full_experience = self.add(W.Checkbox(
             18, 232, "Activate full experience",
             checked=desk.shell.full_experience_enabled()))
@@ -392,7 +410,7 @@ class SettingsWin(wm.Window):
             state = "activated" if self.full_experience.checked else "disabled"
             msg = f"Saved — full experience {state}."
         elif shared_changed:
-            msg = "Saved — clickable chrome updated."
+            msg = "Saved — shared chrome/game settings updated."
         self.status.set(msg)
         self.invalidate()
         if close:

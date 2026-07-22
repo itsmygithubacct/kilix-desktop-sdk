@@ -42,6 +42,7 @@ try:
         "PATH": str(bin_dir) + os.pathsep + "/usr/bin:/bin",
         "PYTHONDONTWRITEBYTECODE": "1",
     })
+    env.pop("GPU_TERMINAL_SETTINGS_FILE", None)
     for name in ("KILIX95_CONFIG_HOME", "KILIX95_STATE_HOME",
                  "KILIX95_CACHE_HOME", "KILIX95_DATA_HOME",
                  "KILIX95_SESSION_HOME"):
@@ -62,6 +63,10 @@ try:
     config = storage_root / "config" / "games.conf"
     assert config.is_file()
     assert stat.S_IMODE(config.stat().st_mode) == 0o600
+    shared_config = gpu_root / "settings.conf"
+    assert shared_config.is_file() and not shared_config.is_symlink()
+    assert stat.S_IMODE(shared_config.stat().st_mode) == 0o600
+    assert "KILIX_GAME_DOSBOX=1" in shared_config.read_text()
     assert (storage_root / "data" / "games" / "dosbox-kilix.conf").is_file()
 
     # A stale config symlink must be replaced, not followed during the next
