@@ -800,3 +800,8 @@ No Microsoft artwork or fonts are bundled. Icons are original pixel art and
 text is DejaVu Sans 11px rendered without antialiasing. If you own period fonts,
 drop `.ttf` or `.otf` files into `assets/fonts/` (gitignored) and they are
 picked up by preference.
+
+## License
+
+Kilix 95 is released under the [GNU General Public License version 3](LICENSE)
+(`GPL-3.0-only`).
