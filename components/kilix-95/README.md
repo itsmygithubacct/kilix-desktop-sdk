@@ -21,8 +21,8 @@ Quit through Start -> Shut Down..., or press `Ctrl+Alt+Q`.
 Version 0.1.3 consumes the Kilix 1.1 provider SDK: the shared immutable
 content catalog drives Games, and `kilix_sdk.xapp.XAppSession` owns private X
 display authentication, app/capture processes, event-driven capture fallback,
-input injection, and teardown. This also adds Kilix JPAK through the shared
-catalog without another provider-specific installer.
+input injection, and teardown. Kilix JPAK, Kilix Rancher, and Kilix Pong arrive
+through the shared catalog without separate provider-specific installers.
 
 ## Release 0.1.2
 
@@ -541,8 +541,9 @@ with pinned checksums are verified before use, and tar extraction rejects unsafe
 paths, links, devices, and FIFOs.
 
 Games and optional apps currently include Doom/DOSBox paths plus terminal or
-Kitty-graphics projects such as Bashed Earth, Joustix, Chess Bash, Kilix
-Fishtank, Terminal Lander, Kitty Brokeout, and kilix-amp support.
+Kitty-graphics projects such as Bashed Earth, Kilix JPAK, Kilix Rancher, Kilix
+Pong, Joustix, Chess Bash, Kilix Fishtank, Terminal Lander, Kitty Brokeout, and
+kilix-amp support.
 
 Game readiness checks are conservative. `games.py` first looks for a configured
 working install, then for tools already on `$PATH`, then for previously vendored

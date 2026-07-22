@@ -98,16 +98,33 @@ assert "fishtank" in icons.ICONS
 icons.get("fishtank", 16)
 icons.get("fishtank", 32)
 
-# Kilix JPAK arrives through the host-owned catalog, without another local
-# registry or installer implementation. A host without its custom icon still
-# gets the normal icon fallback until the provider's artwork is updated.
+# Kilix JPAK arrives through the host-owned catalog and has provider artwork.
 assert "kilix-jpak" in games.GAMES
 assert games.GAMES["kilix-jpak"]["label"] == "Kilix JPAK"
 assert games.CONTENT_CATALOG.require("kilix-jpak").ref == games.JPAK_REF
 write("")
 assert games.jpak_ready(games.load()) is None
 assert games.game_ready("kilix-jpak") is None
-icons.get(games.GAMES["kilix-jpak"]["icon"], 16)
+assert "kilix-jpak" in icons.ICONS
+icons.get("kilix-jpak", 16)
+icons.get("kilix-jpak", 32)
+
+# Rancher and Pong use the same catalog-backed native game contract.
+for game, label, icon, ready, ref in (
+        ("kilix-rancher", "Kilix Rancher", "rancher",
+         games.rancher_ready, games.RANCHER_REF),
+        ("kilix-pong", "Kilix Pong", "pong", games.pong_ready,
+         games.PONG_REF)):
+    assert game in games.GAMES
+    assert games.GAMES[game]["label"] == label
+    assert games.GAMES[game]["icon"] == icon
+    assert games.CONTENT_CATALOG.require(game).ref == ref
+    write("")
+    assert ready(games.load()) is None
+    assert games.game_ready(game) is None
+    assert icon in icons.ICONS
+    icons.get(icon, 16)
+    icons.get(icon, 32)
 
 # Kitty Brokeout is a first-class Games entry, built from source the same way.
 assert "kitty-brokeout" in games.GAMES
@@ -148,7 +165,8 @@ with zipfile.ZipFile(bad_zip) as archive:
         assert "unsafe path" in str(error)
 assert not os.path.exists(os.path.join(root, "zip-escape.txt"))
 
-for ref in (games.BASHED_REF, games.JOUSTIX_REF, games.CHESS_BASH_REF,
+for ref in (games.BASHED_REF, games.JPAK_REF, games.RANCHER_REF,
+            games.PONG_REF, games.JOUSTIX_REF, games.CHESS_BASH_REF,
             games.FISHTANK_REF,
             games.LANDER_REF,
             games.BROKEOUT_REF,

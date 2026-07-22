@@ -327,6 +327,47 @@ def _tank(p):
     p.hline(2, 13, 12, S)
 
 
+def _kilix_jpak(p):
+    # Kilix the starvault cat: pointed ears, cyan visor and boots, pack, tail.
+    p.rect(2, 7, 4, 12, fill=DB, outline=K)
+    p.px(1, 9, DB)
+    p.poly([(4, 5), (4, 1), (7, 4), (10, 4),
+            (13, 1), (13, 11), (11, 13), (5, 13), (3, 10)],
+           fill=R, outline=K)
+    p.px(5, 3, Y); p.px(12, 3, Y)
+    p.rect(6, 5, 11, 8, fill=DB, outline=K)
+    p.rect(7, 6, 10, 7, fill=C)
+    p.px(10, 6, W)
+    p.rect(5, 12, 7, 14, fill=C, outline=K)
+    p.rect(10, 12, 12, 14, fill=C, outline=K)
+    p.px(3, 12, R); p.px(2, 13, R); p.px(1, 12, Y)
+
+
+def _rancher(p):
+    # A bright fire-kitten growing on a small green ranch plot.
+    p.hline(1, 14, 14, DN)
+    p.hline(3, 12, 13, N)
+    p.poly([(4, 6), (4, 2), (7, 5), (9, 5), (12, 2),
+            (12, 10), (10, 12), (6, 12), (3, 9)],
+           fill=R, outline=K)
+    p.px(5, 4, Y); p.px(11, 4, Y)
+    p.rect(5, 6, 6, 7, fill=W); p.px(6, 7, K)
+    p.rect(9, 6, 10, 7, fill=W); p.px(9, 7, K)
+    p.px(7, 9, Y); p.px(8, 10, Y); p.px(9, 9, Y)
+    p.px(7, 2, R); p.px(8, 1, Y); p.px(9, 3, R)
+
+
+def _pong(p):
+    # A midnight paddle-ball court with a center line and speeding ball.
+    p.rect(1, 1, 14, 14, fill=DB, outline=K)
+    for y in (2, 5, 8, 11):
+        p.px(7, y, C)
+    p.rect(2, 5, 3, 10, fill=W)
+    p.rect(12, 3, 13, 8, fill=W)
+    p.px(9, 9, G); p.px(10, 9, Y); p.px(11, 8, W)
+    p.hline(2, 13, 13, T)
+
+
 def _joustix(p):
     # An ostrich-mounted knight with a raised lance (Joustix).
     p.hline(8, 14, 2, DY)                          # lance shaft
@@ -724,6 +765,7 @@ ICONS = {
     "notepad": _notepad, "browser": _browser, "run": _run,
     "shutdown": _shutdown, "flame": _flame, "home": _home,
     "games": _games, "doom": _doom, "dosbox": _dosbox, "tank": _tank,
+    "kilix-jpak": _kilix_jpak, "rancher": _rancher, "pong": _pong,
     "joustix": _joustix, "chess-bash": _chess_bash,
     "fishtank": _fishtank,
     "lander": _lander, "brokeout": _brokeout,

@@ -59,6 +59,8 @@ def _catalog_source(content_id):
 
 BASHED_REPO, BASHED_REF = _catalog_source("bashed-earth")
 JPAK_REPO, JPAK_REF = _catalog_source("kilix-jpak")
+RANCHER_REPO, RANCHER_REF = _catalog_source("kilix-rancher")
+PONG_REPO, PONG_REF = _catalog_source("kilix-pong")
 JOUSTIX_REPO, JOUSTIX_REF = _catalog_source("joustix")
 CHESS_BASH_REPO, CHESS_BASH_REF = _catalog_source("chess-bash")
 FISHTANK_REPO, FISHTANK_REF = _catalog_source("kilix-fishtank")
@@ -164,6 +166,7 @@ def game_ready(game, cp=None):
     cp = cp or load()
     return {"doom": doom_ready, "dosbox": dosbox_ready,
             "bashed-earth": bashed_ready, "kilix-jpak": jpak_ready,
+            "kilix-rancher": rancher_ready, "kilix-pong": pong_ready,
             "joustix": joustix_ready,
             "chess-bash": chess_bash_ready,
             "kilix-fishtank": fishtank_ready,
@@ -419,6 +422,33 @@ def ensure_jpak(cp, report):
         report)
 
 
+def rancher_ready(cp=None):
+    return _repo_ready(
+        cp or load(), "kilix-rancher", "kilix-rancher",
+        os.path.join(GAMES_DIR, "kilix-rancher"),
+        RANCHER_REPO, RANCHER_REF)
+
+
+def ensure_rancher(cp, report):
+    return rancher_ready(cp) or _clone_and_make(
+        RANCHER_REPO, RANCHER_REF,
+        os.path.join(GAMES_DIR, "kilix-rancher"), "kilix-rancher",
+        "needs a C compiler, make, zlib, libm, and pthreads", report)
+
+
+def pong_ready(cp=None):
+    return _repo_ready(
+        cp or load(), "kilix-pong", "kilix-pong",
+        os.path.join(GAMES_DIR, "kilix-pong"), PONG_REPO, PONG_REF)
+
+
+def ensure_pong(cp, report):
+    return pong_ready(cp) or _clone_and_make(
+        PONG_REPO, PONG_REF, os.path.join(GAMES_DIR, "kilix-pong"),
+        "kilix-pong", "needs a C compiler, make, zlib, libm, and pthreads",
+        report)
+
+
 def joustix_ready(cp=None):
     return _repo_ready(
         cp or load(), "joustix", "joustix",
@@ -522,6 +552,14 @@ def ensure(game, report=print):
     elif game == "kilix-jpak":
         exe = ensure_jpak(cp, report)
         cp.set("kilix-jpak", "dir", os.path.dirname(exe))
+        payload = exe
+    elif game == "kilix-rancher":
+        exe = ensure_rancher(cp, report)
+        cp.set("kilix-rancher", "dir", os.path.dirname(exe))
+        payload = exe
+    elif game == "kilix-pong":
+        exe = ensure_pong(cp, report)
+        cp.set("kilix-pong", "dir", os.path.dirname(exe))
         payload = exe
     elif game == "joustix":
         exe = ensure_joustix(cp, report)
