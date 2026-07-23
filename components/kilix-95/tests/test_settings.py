@@ -300,4 +300,21 @@ with storage_conf() as storage_root:
     assert read(unrelated) == "keep me\n"
 
 
+# Tools exposes the optional tmux-cli `tb` alias installer without writing it
+# into kitty.conf or the shared chrome settings document.
+with conf("font_size 12\n"):
+    d = H.make_desk()
+    import apps
+    apps.open(d, "settings", None)
+    win = H.find_window(d, "SettingsWin")
+    tools_tab = settings.FORM_PAGES.index(settings.TOOLS)
+    win._switch_tab(tools_tab)
+    assert win.tb_alias_button.visible
+    called = []
+    d.shell.install_tb_alias = lambda: called.append(True) or True
+    win._install_tb_alias()
+    assert called == [True]
+    assert "new tab" in win.tb_alias_status.text
+
+
 print("ok")

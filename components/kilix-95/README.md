@@ -178,7 +178,7 @@ The Start menu is built in `taskbar.py`.
 Top-level sections:
 
 - **Programs**: built-in accessories, games, browsers, terminals, Kilix Temps,
-  the MS-DOS Prompt/DOSBox caller, user launchers, and discovered XDG apps. PowerToys and
+  Tmux Manager, the MS-DOS Prompt/DOSBox caller, user launchers, and discovered XDG apps. PowerToys and
   the optional classic folders appear when the full experience is active.
 - **Documents**: recently opened files.
 - **Settings**: Control Panel, Kilix settings, display properties, sound
@@ -477,6 +477,12 @@ installer. The volume item opens `pulsemixer` (falling back to
 `alsamixer`); the network item is immediately left of the calendar and opens
 NetworkManager's `nmtui`. Start ▸ Programs ▸ Kilix Temps launches the same
 resolved graphical dashboard.
+
+The Tools tab reports whether tmux-cli's `tb` command is available and offers
+an **Install / repair tb** action. It opens Kilix's immutable tmux-tui/tmux-cli
+installer in a new tab. Start ▸ Programs ▸ **Tmux Manager** likewise opens a
+new tab, preferring the installed manager and otherwise downloading Kilix's
+pinned source closure before launch.
 
 Form tabs rewrite only managed keys and preserve the rest of the file,
 including comments. The raw `kitty.conf` tab exposes the whole file. Apply

@@ -769,6 +769,43 @@ class Shell:
             "installer could be found.", icon="error")
         return False
 
+    @staticmethod
+    def tmux_manager_target():
+        """Installed manager first; the Kilix pinned installer is the fallback."""
+        if executable := shutil.which("tmux-tui"):
+            return [executable]
+        kilix = os.path.join(KILIX_HOME, "kilix")
+        if os.path.isfile(kilix) and os.access(kilix, os.X_OK):
+            return [kilix, "tmux"]
+        return None
+
+    def open_tmux_manager(self):
+        target = self.tmux_manager_target()
+        if target is not None:
+            return self._tab(target, "Tmux Manager", os.path.expanduser("~"))
+        wm.msgbox(
+            self.desk, "Tmux Manager",
+            "Neither an installed Tmux Manager nor the pinned Kilix installer "
+            "could be found.", icon="error")
+        return False
+
+    def install_tb_alias(self):
+        """Open the pinned user-level `tb` alias installer in a visible tab."""
+        kilix = os.path.join(KILIX_HOME, "kilix")
+        if os.path.isfile(kilix) and os.access(kilix, os.X_OK):
+            return self._tab(
+                [kilix, "tmux", "--install-only", "--with-tb"],
+                "Install tb", os.path.expanduser("~"))
+        wm.msgbox(
+            self.desk, "Install tb",
+            "The Kilix pinned Tmux Manager installer could not be found.",
+            icon="error")
+        return False
+
+    @staticmethod
+    def tb_alias_command():
+        return shutil.which("tb")
+
     def open_dos_prompt(self):
         """Authentic Start-menu caller for the managed DOSBox prompt."""
         return self._tab(["python3", os.path.join(_here, "games.py"), "dosbox"],

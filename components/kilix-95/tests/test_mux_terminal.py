@@ -108,10 +108,66 @@ def test_kilix_temps_installed_command_precedes_incomplete_source():
     assert seen["cwd"] is None
 
 
+def test_tmux_manager_opens_in_a_new_tab():
+    d = H.make_desk()
+    seen = {}
+    d.shell._tab = lambda argv, title, cwd=None: seen.update(
+        argv=argv, title=title, cwd=cwd) or True
+    with patch("shell.shutil.which",
+               side_effect=lambda name: "/usr/local/bin/tmux-tui"
+               if name == "tmux-tui" else None):
+        assert d.shell.open_tmux_manager()
+    assert seen == {
+        "argv": ["/usr/local/bin/tmux-tui"],
+        "title": "Tmux Manager",
+        "cwd": os.path.expanduser("~"),
+    }
+
+
+def test_tmux_manager_falls_back_to_pinned_kilix_installer():
+    d = H.make_desk()
+    seen = {}
+    d.shell._tab = lambda argv, title, cwd=None: seen.update(
+        argv=argv, title=title, cwd=cwd) or True
+    with patch("shell.shutil.which", return_value=None):
+        assert d.shell.open_tmux_manager()
+    assert os.path.basename(seen["argv"][0]) == "kilix"
+    assert seen["argv"][1:] == ["tmux"]
+    assert seen["title"] == "Tmux Manager"
+
+
+def test_tb_alias_installer_opens_in_a_new_tab():
+    d = H.make_desk()
+    seen = {}
+    d.shell._tab = lambda argv, title, cwd=None: seen.update(
+        argv=argv, title=title, cwd=cwd) or True
+    assert d.shell.install_tb_alias()
+    assert os.path.basename(seen["argv"][0]) == "kilix"
+    assert seen["argv"][1:] == ["tmux", "--install-only", "--with-tb"]
+    assert seen["title"] == "Install tb"
+
+
+def test_start_menu_names_tmux_manager():
+    d = H.make_desk()
+    seen = []
+    d.shell.open_tmux_manager = lambda: seen.append(True)
+    d.taskbar.open_start_menu()
+    programs = next(
+        item for item in d.menus.stack[0].items if item.label == "Programs")
+    manager = next(
+        item for item in programs.submenu if item.label == "Tmux Manager")
+    manager.action()
+    assert seen == [True]
+
+
 test_mux_icon_renders()
 test_desktop_mux_terminal_launcher()
 test_remote_launch_uses_private_credential()
 test_kilix_temps_launcher_forces_graphical_tab()
 test_kilix_temps_falls_back_to_kilix_installer()
 test_kilix_temps_installed_command_precedes_incomplete_source()
+test_tmux_manager_opens_in_a_new_tab()
+test_tmux_manager_falls_back_to_pinned_kilix_installer()
+test_tb_alias_installer_opens_in_a_new_tab()
+test_start_menu_names_tmux_manager()
 print("ok")

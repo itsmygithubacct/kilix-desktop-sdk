@@ -72,7 +72,8 @@ GAMES = [
     (spec.key, spec.label, "bool", "1")
     for spec in shared_settings.GAME_TOGGLES
 ]
-FORM_PAGES = [APPEARANCE, BEHAVIOR, TOP_BAR, PANE_BUTTONS, GAMES]
+TOOLS = []
+FORM_PAGES = [APPEARANCE, BEHAVIOR, TOP_BAR, PANE_BUTTONS, GAMES, TOOLS]
 
 
 def config_path():
@@ -155,7 +156,8 @@ class SettingsWin(wm.Window):
         self.raw_tab = len(FORM_PAGES)
         self.tabs = self.add(W.TabBar(6, 6, cw - 12,
                                       ["Appearance", "Behavior", "Top bar",
-                                       "Pane buttons", "Games", "kitty.conf"],
+                                       "Pane buttons", "Games", "Tools",
+                                       "kitty.conf"],
                                       cb=self._switch_tab))
         self.fields = {}              # key -> (kind, widget)
         self.panels = [[] for _ in range(self.raw_tab + 1)]
@@ -213,6 +215,30 @@ class SettingsWin(wm.Window):
             18, 264, "The Games menu updates the next time Start opens.",
             font=T.SMALL, color=T.SHADOW))
         self.panels[FORM_PAGES.index(GAMES)].append(game_note)
+        tools_tab = FORM_PAGES.index(TOOLS)
+        tools_title = self.add(W.Label(
+            18, 48, "Tmux Manager", font=T.BOLD))
+        tools_description = self.add(W.Label(
+            18, 78,
+            "The manager uses tmux-cli for sessions, panes, preview, and attach.",
+            font=T.SMALL, color=T.SHADOW))
+        alias = desk.shell.tb_alias_command()
+        alias_text = (
+            f"`tb` command available: {alias}"
+            if alias else "`tb` command alias is not installed.")
+        self.tb_alias_status = self.add(W.Label(
+            18, 112, alias_text, font=T.SMALL, color=T.SHADOW))
+        self.tb_alias_button = self.add(W.Button(
+            18, 142, 132, 24, "Install / repair tb",
+            cb=self._install_tb_alias))
+        tools_note = self.add(W.Label(
+            18, 180,
+            "Installation opens in a new tab and uses Kilix's pinned source closure.",
+            font=T.SMALL, color=T.SHADOW))
+        self.panels[tools_tab].extend([
+            tools_title, tools_description, self.tb_alias_status,
+            self.tb_alias_button, tools_note,
+        ])
         self.full_experience = self.add(W.Checkbox(
             18, 232, "Activate full experience",
             checked=desk.shell.full_experience_enabled()))
@@ -303,6 +329,15 @@ class SettingsWin(wm.Window):
             self.status.set("Desktop flavor saved.")
         else:
             self.status.set("Desktop flavor already active.")
+        self.invalidate()
+
+    def _install_tb_alias(self):
+        if self.desk.shell.install_tb_alias():
+            self.tb_alias_status.set(
+                "Installer opened in a new tab; `tb` will be available "
+                "when it finishes.")
+        else:
+            self.tb_alias_status.set("Could not open the `tb` installer.")
         self.invalidate()
 
     def _populate(self):

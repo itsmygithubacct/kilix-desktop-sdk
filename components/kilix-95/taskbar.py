@@ -525,6 +525,8 @@ class Taskbar:
                    action=shell.open_dos_prompt),
                 MI("Terminal", icon="terminal", action=shell.open_terminal),
                 MI("Mux Terminal", icon="mux", action=shell.open_mux_terminal),
+                MI("Tmux Manager", icon="mux",
+                   action=shell.open_tmux_manager),
                 MI("Web Browser", icon="browser",
                    action=lambda: shell.open_browser("firefox"),
                    context=[
