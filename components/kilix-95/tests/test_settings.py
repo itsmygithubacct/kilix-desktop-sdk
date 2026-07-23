@@ -167,11 +167,14 @@ with conf("font_size 12\n") as path:
     for key in settings.shared_settings.MANAGED_KEYS:
         assert key in win.fields, f"Kilix 95 Settings is missing {key}"
     _, volume = win.fields["KILIX_CHROME_VOLUME"]
+    _, thermal = win.fields["KILIX_CHROME_TEMPERATURE"]
     _, network = win.fields["KILIX_CHROME_NETWORK"]
     _, close = win.fields["KILIX_CHROME_BUTTON_CLOSE"]
     _, doom = win.fields["KILIX_GAME_DOOM"]
     _, lights = win.fields["KILIX_GAME_KILIX_LIGHTS"]
     _, super_kilix = win.fields["KILIX_GAME_SUPER_KILIX"]
+    assert not thermal.checked, "thermal widget should be disabled by default"
+    thermal.checked = True
     volume.checked = False
     network.checked = False
     close.checked = False
@@ -181,6 +184,7 @@ with conf("font_size 12\n") as path:
     win._apply()
 
     shared_text = read(win.shared_path)
+    assert "KILIX_CHROME_TEMPERATURE=1" in shared_text
     assert "KILIX_CHROME_VOLUME=0" in shared_text
     assert "KILIX_CHROME_NETWORK=0" in shared_text
     assert "KILIX_CHROME_BUTTON_CLOSE=0" in shared_text

@@ -742,6 +742,32 @@ class Shell:
         return self._tab([kilix, "serve", session],
                          f"Mux: {session}", cwd or os.path.expanduser("~"))
 
+    @staticmethod
+    def kilix_temps_candidates():
+        source_home = os.environ.get("GPU_TERMINAL_SOURCE_HOME") or \
+            os.path.expanduser("~/.local/gpu_terminal/sources")
+        project = os.path.join(
+            os.path.abspath(os.path.expanduser(source_home)), "kilix-temps")
+        return project, (
+            os.path.join(project, "build", "kilix-temps"),
+            os.path.join(project, "kilix-temps"),
+        )
+
+    def open_kilix_temps(self):
+        project, candidates = self.kilix_temps_candidates()
+        for executable in candidates:
+            if os.path.isfile(executable) and os.access(executable, os.X_OK):
+                return self._tab(
+                    [executable, "--graphics"], "Kilix Temps", project)
+        if executable := shutil.which("kilix-temps"):
+            return self._tab(
+                [executable, "--graphics"], "Kilix Temps", None)
+        wm.msgbox(
+            self.desk, "Kilix Temps",
+            "kilix-temps was not found. Install it in PATH or check it out "
+            "under GPU_TERMINAL_SOURCE_HOME.", icon="error")
+        return False
+
     def open_dos_prompt(self):
         """Authentic Start-menu caller for the managed DOSBox prompt."""
         return self._tab(["python3", os.path.join(_here, "games.py"), "dosbox"],

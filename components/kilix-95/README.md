@@ -169,8 +169,8 @@ The Start menu is built in `taskbar.py`.
 
 Top-level sections:
 
-- **Programs**: built-in accessories, games, browsers, terminals, the MS-DOS
-  Prompt/DOSBox caller, user launchers, and discovered XDG apps. PowerToys and
+- **Programs**: built-in accessories, games, browsers, terminals, Kilix Temps,
+  the MS-DOS Prompt/DOSBox caller, user launchers, and discovered XDG apps. PowerToys and
   the optional classic folders appear when the full experience is active.
 - **Documents**: recently opened files.
 - **Settings**: Control Panel, Kilix settings, display properties, sound
@@ -455,12 +455,16 @@ the host checkout.
 
 The Top bar, Pane buttons, and Games tabs write the non-executable shared source
 of truth at `~/.local/gpu_terminal/settings.conf`. They can independently
-remove and re-add volume, network/Wi-Fi, calendar, date/time, battery, font-size,
+remove and re-add the default-off thermometer, volume, network/Wi-Fi, calendar,
+date/time, battery, font-size,
 four-way split, maximize, close, and every Kilix game. The same game choices
 are available in the `kilix settings` TUI and with the commands
 `kilix games list`, `kilix games enable`, and `kilix games disable`. The
-volume item opens `pulsemixer` (falling back to `alsamixer`); the network item
-is immediately left of the calendar and opens NetworkManager's `nmtui`.
+thermometer shows the hottest sensor in green/yellow/red and opens Kilix Temps
+in a graphical tab. The volume item opens `pulsemixer` (falling back to
+`alsamixer`); the network item is immediately left of the calendar and opens
+NetworkManager's `nmtui`. Start ▸ Programs ▸ Kilix Temps launches the same
+sibling checkout or installed executable directly.
 
 Form tabs rewrite only managed keys and preserve the rest of the file,
 including comments. The raw `kitty.conf` tab exposes the whole file. Apply

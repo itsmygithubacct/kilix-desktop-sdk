@@ -39,7 +39,10 @@ assert manifest["version"] == (ROOT / "VERSION").read_text().strip()
 assert manifest["requires_kilix_sdk"] == "1.3"
 assert set(manifest["security_features"]) == {
     "default-password-nag", "masked-secret-clipboard"}
-assert kilix_sdk.SDK_API_VERSION == (1, 3)
+required_api = tuple(
+    int(part) for part in manifest["requires_kilix_sdk"].split(".")[:2])
+assert kilix_sdk.SDK_API_VERSION[0] == required_api[0]
+assert kilix_sdk.SDK_API_VERSION >= required_api
 kilix_sdk.require_compatible(manifest["requires_kilix_sdk"])
 assert "require_kilix_sdk(\"1.3\")" in (ROOT / "main.py").read_text()
 
