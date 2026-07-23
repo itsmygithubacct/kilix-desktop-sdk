@@ -178,7 +178,8 @@ The Start menu is built in `taskbar.py`.
 Top-level sections:
 
 - **Programs**: built-in accessories, games, browsers, terminals, Kilix Temps,
-  Tmux Manager, the MS-DOS Prompt/DOSBox caller, user launchers, and discovered XDG apps. PowerToys and
+  Kilix Memory, Tmux Manager, the MS-DOS Prompt/DOSBox caller, user launchers,
+  and discovered XDG apps. PowerToys and
   the optional classic folders appear when the full experience is active.
 - **Documents**: recently opened files.
 - **Settings**: Control Panel, Kilix settings, display properties, sound
@@ -466,7 +467,8 @@ the host checkout.
 The Top bar, Pane buttons, and Games tabs write the non-executable shared source
 of truth at `~/.local/gpu_terminal/settings.conf`. They can independently
 remove and re-add the default-off thermometer, volume, network/Wi-Fi, calendar,
-date/time, battery, font-size,
+date/time, battery, the `auto`/`always`/`off` pane-memory chip,
+synchronized-input keyboard button, font-size,
 four-way split, maximize, close, and every Kilix game. The same game choices
 are available in the `kilix settings` TUI and with the commands
 `kilix games list`, `kilix games enable`, and `kilix games disable`. The
@@ -477,6 +479,10 @@ installer. The volume item opens `pulsemixer` (falling back to
 `alsamixer`); the network item is immediately left of the calendar and opens
 NetworkManager's `nmtui`. Start ▸ Programs ▸ Kilix Temps launches the same
 resolved graphical dashboard.
+Start ▸ Programs ▸ Kilix Memory launches the RAM, swap, PSI pressure, paging,
+and per-process dashboard in a graphical tab. The pane memory chip opens the
+same monitor; `auto` shows it above 1 GiB, `always` includes MiB/KiB values,
+and `off` hides it.
 
 The Tools tab reports whether tmux-cli's `tb` command is available and offers
 an **Install / repair tb** action. It opens Kilix's immutable tmux-tui/tmux-cli

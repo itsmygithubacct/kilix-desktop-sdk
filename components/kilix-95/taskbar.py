@@ -553,6 +553,8 @@ class Taskbar:
                    action=lambda: shell.open_app("amp")),
                 MI("Kilix Temps", icon="flame",
                    action=shell.open_kilix_temps),
+                MI("Kilix Memory", icon="memory",
+                   action=shell.open_kilix_memory),
             ]
             if shell.full_experience_enabled():
                 items += [

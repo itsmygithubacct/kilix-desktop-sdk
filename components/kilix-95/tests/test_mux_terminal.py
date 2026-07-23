@@ -10,6 +10,8 @@ import icons
 def test_mux_icon_renders():
     icons.get("mux", 16)
     icons.get("mux", 32)
+    icons.get("memory", 16)
+    icons.get("memory", 32)
 
 
 def test_desktop_mux_terminal_launcher():
@@ -108,6 +110,28 @@ def test_kilix_temps_installed_command_precedes_incomplete_source():
     assert seen["cwd"] is None
 
 
+def test_kilix_memory_launcher_forces_graphical_tab():
+    d = H.make_desk()
+    seen = {}
+    d.shell._tab = lambda argv, title, cwd=None: seen.update(
+        argv=argv, title=title, cwd=cwd) or True
+    with tempfile.TemporaryDirectory() as directory:
+        project = Path(directory) / "kilix-memory"
+        executable = project / "build" / "kilix-memory"
+        executable.parent.mkdir(parents=True)
+        executable.write_text("#!/bin/sh\n")
+        executable.chmod(0o755)
+        with patch.dict(os.environ, {
+                "GPU_TERMINAL_SOURCE_HOME": directory}), \
+                patch("shell.shutil.which", return_value=None):
+            assert d.shell.open_kilix_memory()
+    assert seen == {
+        "argv": [str(executable), "--graphics"],
+        "title": "Kilix Memory",
+        "cwd": str(project),
+    }
+
+
 def test_tmux_manager_opens_in_a_new_tab():
     d = H.make_desk()
     seen = {}
@@ -158,6 +182,7 @@ def test_start_menu_names_tmux_manager():
         item for item in programs.submenu if item.label == "Tmux Manager")
     manager.action()
     assert seen == [True]
+    assert any(item.label == "Kilix Memory" for item in programs.submenu)
 
 
 test_mux_icon_renders()
@@ -166,6 +191,7 @@ test_remote_launch_uses_private_credential()
 test_kilix_temps_launcher_forces_graphical_tab()
 test_kilix_temps_falls_back_to_kilix_installer()
 test_kilix_temps_installed_command_precedes_incomplete_source()
+test_kilix_memory_launcher_forces_graphical_tab()
 test_tmux_manager_opens_in_a_new_tab()
 test_tmux_manager_falls_back_to_pinned_kilix_installer()
 test_tb_alias_installer_opens_in_a_new_tab()

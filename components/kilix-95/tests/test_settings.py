@@ -169,14 +169,20 @@ with conf("font_size 12\n") as path:
     _, volume = win.fields["KILIX_CHROME_VOLUME"]
     _, thermal = win.fields["KILIX_CHROME_TEMPERATURE"]
     _, network = win.fields["KILIX_CHROME_NETWORK"]
+    _, synchronize = win.fields["KILIX_CHROME_BUTTON_SYNCHRONIZE_INPUT"]
+    _, memory_mode = win.fields["KILIX_CHROME_PANE_MEMORY_MODE"]
     _, close = win.fields["KILIX_CHROME_BUTTON_CLOSE"]
     _, doom = win.fields["KILIX_GAME_DOOM"]
     _, lights = win.fields["KILIX_GAME_KILIX_LIGHTS"]
     _, super_kilix = win.fields["KILIX_GAME_SUPER_KILIX"]
     assert not thermal.checked, "thermal widget should be disabled by default"
+    assert synchronize.checked, "synchronized-input button should default on"
+    assert memory_mode.value == "auto", "pane memory chip should default to auto"
     thermal.checked = True
     volume.checked = False
     network.checked = False
+    synchronize.checked = False
+    memory_mode.index = memory_mode.options.index("always")
     close.checked = False
     doom.checked = False
     lights.checked = False
@@ -187,6 +193,8 @@ with conf("font_size 12\n") as path:
     assert "KILIX_CHROME_TEMPERATURE=1" in shared_text
     assert "KILIX_CHROME_VOLUME=0" in shared_text
     assert "KILIX_CHROME_NETWORK=0" in shared_text
+    assert "KILIX_CHROME_BUTTON_SYNCHRONIZE_INPUT=0" in shared_text
+    assert "KILIX_CHROME_PANE_MEMORY_MODE=always" in shared_text
     assert "KILIX_CHROME_BUTTON_CLOSE=0" in shared_text
     assert "KILIX_GAME_DOOM=0" in shared_text
     assert "KILIX_GAME_KILIX_LIGHTS=0" in shared_text

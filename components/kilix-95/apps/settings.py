@@ -59,6 +59,13 @@ TOP_BAR = [
     ("KILIX_CHROME_BATTERY", "Battery", "bool", "1"),
 ]
 PANE_BUTTONS = [
+    (
+        shared_settings.PANE_MEMORY_MODE_KEY,
+        "Pane memory chip",
+        "choice",
+        list(shared_settings.PANE_MEMORY_MODE_CHOICES),
+    ),
+    ("KILIX_CHROME_BUTTON_SYNCHRONIZE_INPUT", "Synchronize keyboard input", "bool", "1"),
     ("KILIX_CHROME_BUTTON_FONT_INCREASE", "Increase text size", "bool", "1"),
     ("KILIX_CHROME_BUTTON_FONT_DECREASE", "Decrease text size", "bool", "1"),
     ("KILIX_CHROME_BUTTON_SPLIT_LEFT", "Split pane left", "bool", "1"),
