@@ -471,10 +471,12 @@ four-way split, maximize, close, and every Kilix game. The same game choices
 are available in the `kilix settings` TUI and with the commands
 `kilix games list`, `kilix games enable`, and `kilix games disable`. The
 thermometer shows the hottest sensor in green/yellow/red and opens Kilix Temps
-in a graphical tab. The volume item opens `pulsemixer` (falling back to
+in a graphical tab. An installed command is preferred over development source;
+on a fresh stack the menu delegates to Kilix's pinned, verified dashboard
+installer. The volume item opens `pulsemixer` (falling back to
 `alsamixer`); the network item is immediately left of the calendar and opens
 NetworkManager's `nmtui`. Start ▸ Programs ▸ Kilix Temps launches the same
-sibling checkout or installed executable directly.
+resolved graphical dashboard.
 
 Form tabs rewrite only managed keys and preserve the rest of the file,
 including comments. The raw `kitty.conf` tab exposes the whole file. Apply
