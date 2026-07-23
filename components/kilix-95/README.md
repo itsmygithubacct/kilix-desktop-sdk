@@ -16,6 +16,13 @@ kilix desktop
 
 Quit through Start -> Shut Down..., or press `Ctrl+Alt+Q`.
 
+## Release 0.1.4
+
+Version 0.1.4 consumes the Kilix 1.4 provider SDK and stores internal shell and
+Briefcase records through `kilix_sdk.state`, backed by the host-pinned
+`kilix-state-py` binding and native `kilix-state` library. Existing JSON records
+are imported when a native record is absent and retained as recovery copies.
+
 ## Release 0.1.3
 
 Version 0.1.3 consumes the Kilix 1.3 provider SDK: the shared immutable
@@ -96,13 +103,14 @@ The boundary is:
 
 - `kilix_sdk.term`: raw mode and terminal input parsing.
 - `kilix_sdk.graphics`: inline Kitty graphics for streamed sessions.
+- `kilix_sdk.state`: bounded, CRC-checked, crash-safe internal state records.
 - Kilix CLI helpers: `kilix run`, `kilix browse`, `kilix serve`.
 - Kitty remote control: `kitten @ launch` for new tabs and windows.
 
-`provider.json` declares provider API 1, the required `kilix_sdk` 1.2 contract,
+`provider.json` declares provider API 1, the required `kilix_sdk` 1.4 contract,
 and the security behaviors the provider implements. Kilix validates that
 data-only manifest and its implementation markers before executing the
-provider. `main.py` also calls `kilix_sdk.require_compatible("1.2")` as a
+provider. `main.py` also calls `kilix_sdk.require_compatible("1.4")` as a
 defense-in-depth runtime check. Incompatible hosts fail early with a clear
 version error.
 
@@ -373,11 +381,11 @@ Runtime state is intentionally outside the repo.
 | data | default location |
 |---|---|
 | desktop folder | `~/.local/gpu_terminal/kilix-95/data/desktop` |
-| desktop state | `.state.json` inside the desktop folder |
+| desktop state | `~/.local/gpu_terminal/kilix-95/state/shell.state` |
 | recycle bin | `$KILIX_RECYCLE_DIR`, beside `$KILIX_DESKTOP_DIR`, or `~/.local/gpu_terminal/kilix-95/data/recycled` |
 | generated/bundled sound cache | `~/.local/gpu_terminal/kilix-95/data/sounds` |
 | themes and virtual CD | `~/.local/gpu_terminal/kilix-95/data/themes`, `data/virtual-cd` |
-| Briefcase data and sync record | `~/.local/gpu_terminal/kilix-95/data/briefcase`, `config/briefcase.json` |
+| Briefcase data and sync record | `~/.local/gpu_terminal/kilix-95/data/briefcase`, `state/briefcase.state` |
 | nostalgia/network/printer definitions | `~/.local/gpu_terminal/kilix-95/config/nostalgia.json` |
 | game install paths | `~/.local/gpu_terminal/kilix-95/config/games.conf` |
 | game/app downloads | `~/.local/gpu_terminal/kilix-95/data/games`, `~/.local/gpu_terminal/kilix-95/data/apps` |
@@ -392,8 +400,10 @@ configuration, not only desktop-local state.
 
 Most user data can be reset independently:
 
-- Delete the desktop `.state.json` to reset desktop layout, flavor, recent
-  documents, first-run Help state, volume, and wallpaper choices.
+- Delete `state/shell.state` to reset desktop layout, flavor, recent
+  documents, first-run Help state, volume, and wallpaper choices. After an
+  upgrade, also remove the retained desktop `.state.json` recovery copy if you
+  do not want it imported again.
 - Remove or point `KILIX_DESKTOP_DIR` elsewhere to test with a fresh desktop
   folder.
 - Empty the recycle directory only when you intentionally want to permanently

@@ -296,13 +296,24 @@ class SystemProperties(wm.Window):
         ]
         for index, line in enumerate(lines):
             self.add(W.Label(30, 34 + index * 17, line))
-        if desk.shell.full_experience_enabled():
-            self.add(W.GroupBox(12, 138, cw - 24, 78, "Device management"))
+        self.device_widgets = [
+            self.add(W.GroupBox(
+                12, 138, cw - 24, 78, "Device management")),
             self.add(W.Button(
                 30, 166, 150, 23, "Device Manager…", icon="hardware",
-                cb=lambda: desk.shell.open_app("devicemanager")))
+                cb=lambda: desk.shell.open_app("devicemanager"))),
             self.add(W.Button(
                 196, 166, 150, 23, "Disk Defragmenter…", icon="defrag",
-                cb=lambda: desk.shell.open_app("defrag")))
-        self.add(W.Button(cw - 84, ch - 33, 72, 23, "OK", default=True,
-                          cb=self.close))
+                cb=lambda: desk.shell.open_app("defrag"))),
+        ]
+        self.ok = self.add(W.Button(
+            cw - 84, ch - 33, 72, 23, "OK", default=True, cb=self.close))
+        self.refresh_full_experience()
+
+    def refresh_full_experience(self):
+        visible = self.desk.shell.full_experience_enabled()
+        for widget in self.device_widgets:
+            widget.visible = visible
+        if not visible and self.focus in self.device_widgets:
+            self.set_focus(self.ok)
+        self.invalidate()

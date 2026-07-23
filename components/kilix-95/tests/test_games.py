@@ -17,6 +17,7 @@ import icons
 tmp = tempfile.mkdtemp(prefix="games-test-")
 games.CONF = os.path.join(tmp, "games.conf")
 games.GAMES_DIR = os.path.join(tmp, "games")   # isolate the vendored-binary scan
+games.APPS_DIR = os.path.join(tmp, "apps")
 
 
 def write(text):
@@ -126,7 +127,9 @@ for game, label, icon, ready, ref in (
     icons.get(icon, 16)
     icons.get(icon, 32)
 
-# Kilix Lights is catalog-backed even though its executable lives under bin/.
+# New compatible terminal games in the shared catalog are picked up without a
+# provider-side dispatcher change. Their configured directory remains the
+# content root even when the executable is nested below it.
 assert "kilix-lights" in games.GAMES
 assert games.GAMES["kilix-lights"]["label"] == "Kilix Lights"
 assert games.GAMES["kilix-lights"]["icon"] == "lights"
@@ -138,16 +141,16 @@ assert "lights" in icons.ICONS
 icons.get("lights", 16)
 icons.get("lights", 32)
 
-old_catalog_ensure = games._catalog_ensure
-fake_lights = os.path.join(tmp, "games", "kilix-lights", "bin",
-                           "kilix-lights")
-games._catalog_ensure = lambda game, _cp, _report: (
-    fake_lights if game == "kilix-lights" else None)
-try:
-    assert games.ensure("kilix-lights", lambda _message: None) == fake_lights
-    assert games.load().get("kilix-lights", "dir") == os.path.dirname(fake_lights)
-finally:
-    games._catalog_ensure = old_catalog_ensure
+external_lights = os.path.join(tmp, "external-lights")
+lights_exe = os.path.join(external_lights, "bin", "kilix-lights")
+os.makedirs(os.path.dirname(lights_exe))
+with open(lights_exe, "w") as f:
+    f.write("#!/bin/sh\nexit 0\n")
+os.chmod(lights_exe, 0o755)
+write(f"[kilix-lights]\ndir = {external_lights}\n")
+assert games.game_ready("kilix-lights") == lights_exe
+assert games.ensure("kilix-lights", lambda _message: None) == lights_exe
+assert games.load().get("kilix-lights", "dir") == external_lights
 
 # Super Kilix is catalog-backed with its executable at the repo root.
 assert "super-kilix" in games.GAMES
@@ -161,17 +164,16 @@ assert "super-kilix" in icons.ICONS
 icons.get("super-kilix", 16)
 icons.get("super-kilix", 32)
 
-old_catalog_ensure = games._catalog_ensure
-fake_super_kilix = os.path.join(tmp, "games", "super-kilix", "super-kilix")
-games._catalog_ensure = lambda game, _cp, _report: (
-    fake_super_kilix if game == "super-kilix" else None)
-try:
-    assert games.ensure(
-        "super-kilix", lambda _message: None) == fake_super_kilix
-    assert games.load().get(
-        "super-kilix", "dir") == os.path.dirname(fake_super_kilix)
-finally:
-    games._catalog_ensure = old_catalog_ensure
+external_super = os.path.join(tmp, "external-super-kilix")
+super_exe = os.path.join(external_super, "super-kilix")
+os.makedirs(external_super)
+with open(super_exe, "w") as f:
+    f.write("#!/bin/sh\nexit 0\n")
+os.chmod(super_exe, 0o755)
+write(f"[super-kilix]\ndir = {external_super}\n")
+assert games.game_ready("super-kilix") == super_exe
+assert games.ensure("super-kilix", lambda _message: None) == super_exe
+assert games.load().get("super-kilix", "dir") == external_super
 
 # Kitty Brokeout is a first-class Games entry, built from source the same way.
 assert "kitty-brokeout" in games.GAMES

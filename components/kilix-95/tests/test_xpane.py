@@ -86,6 +86,69 @@ pane._tick(0.0)
 assert log == ["kept"], "a healthy pane must not close"
 
 
+# A live XDamage backend can fail after startup (for example after an extension
+# or shared-memory error). Keep the app open and replace only its capture feed
+# with the host SDK's ffmpeg fallback.
+class BrokenDamage:
+    def __init__(self, fd):
+        self.fd = fd
+
+    def fileno(self):
+        return self.fd
+
+    def pump(self):
+        raise RuntimeError("fixture XDamage failure")
+
+
+class FallbackXApp:
+    def __init__(self, damage, ff):
+        self.capture = damage
+        self.capture_process = None
+        self.ff = ff
+        self.stopped = 0
+        self.starts = []
+
+    def stop_capture(self):
+        self.stopped += 1
+        self.capture = None
+        self.capture_process = None
+
+    def start_capture(self, **kwargs):
+        self.starts.append(kwargs)
+        self.capture = None
+        self.capture_process = self.ff
+        return type("Started", (), {"initial_frame": None})()
+
+
+d = H.make_desk()
+damage_rfd, damage_wfd = os.pipe()
+ff_rfd, ff_wfd = os.pipe()
+os.set_blocking(ff_rfd, False)
+damage = BrokenDamage(damage_rfd)
+fallback_ff = FakeProc(fd=ff_rfd)
+fallback_xapp = FallbackXApp(damage, fallback_ff)
+pane = object.__new__(xpane.XPane)
+pane.desk = d
+pane.capture = damage
+pane.ff = None
+pane.xapp = fallback_xapp
+pane.buf = bytearray(b"partial old frame")
+closed = []
+pane.close = lambda: closed.append(True)
+d.add_fd(damage_rfd, pane._pump_damage)
+pane._pump_damage()
+assert not closed, "a recoverable XDamage failure closed the application"
+assert damage_rfd not in d.fd_hooks
+assert d.fd_hooks[ff_rfd] == pane._pump
+assert pane.capture is None and pane.ff is fallback_ff
+assert pane.buf == bytearray()
+assert fallback_xapp.stopped == 1
+assert fallback_xapp.starts == [
+    {"draw_cursor": False, "prefer_damage": False}]
+for fd in (damage_rfd, damage_wfd, ff_rfd, ff_wfd):
+    os.close(fd)
+
+
 # ── F38: byte-identical frames must not invalidate — otherwise an idle media
 # player forces a full-desktop recomposite/retransmit at capture fps ─────────
 d = H.make_desk()

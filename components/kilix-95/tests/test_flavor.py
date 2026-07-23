@@ -1,5 +1,4 @@
 """Desktop flavor switching: Start -> Settings -> Desktop Flavor."""
-import json
 import os
 import tempfile
 
@@ -47,8 +46,9 @@ with H.desktop_dir() as desktop:
     assert sounds._active_name == sounds.XP_SCHEME
     assert sounds.events(generate=False)[0][2] == \
         sounds.path_for("startup", "xp")
-    with open(os.path.join(desktop, ".state.json")) as f:
-        assert json.load(f)["flavor"] == "xp"
+    assert d.shell.state_store.load_dict()["flavor"] == "xp"
+    assert d.shell.state_path != os.path.join(desktop, ".state.json")
+    assert open(d.shell.state_path, "rb").read(4) == b"KST1"
 
     d.menus.close_all()
     d.taskbar.open_start_menu()

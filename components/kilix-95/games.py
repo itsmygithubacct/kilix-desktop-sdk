@@ -79,12 +79,26 @@ def _menu_entry(spec):
     }
 
 
+_INSTALLABLE_SOURCES = frozenset({"git", "archive"})
+
+
+def _catalog_game_supported(spec):
+    """Whether this desktop knows how to install and launch a catalog entry."""
+    if spec.content_id in ("doom", "dosbox"):
+        return True
+    return (spec.kind == "game"
+            and spec.source_type in _INSTALLABLE_SOURCES
+            and spec.launch_mode == "terminal")
+
+
 # The Start-menu registry is a view of the host-owned content catalog. DOSBox
 # remains in Games even though the catalog classifies the prompt as an app.
+# Do not advertise entries whose source/launch contract this provider cannot
+# satisfy: a host catalog may grow independently of Kilix 95.
 GAMES = {
     spec.content_id: _menu_entry(spec)
     for spec in CONTENT_CATALOG
-    if spec.kind == "game" or spec.content_id == "dosbox"
+    if _catalog_game_supported(spec)
 }
 
 
@@ -185,7 +199,7 @@ def game_ready(game, cp=None):
     if game == "dosbox":
         return dosbox_ready(cp)
     spec = CONTENT_CATALOG.get(game)
-    if spec and spec.kind == "game" and spec.source_type == "git":
+    if spec is not None and _catalog_game_supported(spec):
         return _catalog_ready(game, cp)
     return None
 
@@ -416,24 +430,39 @@ def _content_root(spec):
     return APPS_DIR if spec.kind == "app" else GAMES_DIR
 
 
+def _configured_content_dir(cp, content_id):
+    if not cp.has_section(content_id):
+        return None
+    directory = os.path.expanduser(
+        cp.get(content_id, "dir", fallback=""))
+    return directory or None
+
+
 def _catalog_ready(content_id, cp=None):
     cp = cp or load()
     spec = CONTENT_CATALOG.require(content_id)
-    if spec.source_type != "git" or not cp.has_section(content_id):
+    if spec.source_type not in _INSTALLABLE_SOURCES:
         return None
-    directory = os.path.expanduser(cp.get(content_id, "dir", fallback=""))
-    if not directory:
+    directory = _configured_content_dir(cp, content_id)
+    if directory is None:
         return None
     return kilix_content.Installer(_content_root(spec)).ready(
         spec, directory=directory)
 
 
 def _catalog_ensure(content_id, cp, report):
+    """Return the executable and the install root to persist in config."""
     spec = CONTENT_CATALOG.require(content_id)
-    if spec.source_type != "git":
-        raise RuntimeError(f"{content_id} does not use the shared Git installer")
-    return (_catalog_ready(content_id, cp)
-            or kilix_content.Installer(_content_root(spec)).ensure(spec, report))
+    if spec.source_type not in _INSTALLABLE_SOURCES:
+        raise RuntimeError(
+            f"{content_id} does not use a shared installable source")
+    installer = kilix_content.Installer(_content_root(spec))
+    directory = _configured_content_dir(cp, content_id)
+    ready = (installer.ready(spec, directory=directory)
+             if directory is not None else None)
+    if ready:
+        return ready, directory
+    return installer.ensure(spec, report), installer.destination(spec)
 
 
 def bashed_ready(cp=None):
@@ -585,9 +614,9 @@ def ensure(game, report=print):
         cp.set("dosbox", "exe", dosbox)
         payload = (dosbox, conf)
     elif ((spec := CONTENT_CATALOG.get(game)) is not None
-          and spec.source_type == "git"):
-        exe = _catalog_ensure(game, cp, report)
-        cp.set(game, "dir", os.path.dirname(exe))
+          and spec.source_type in _INSTALLABLE_SOURCES):
+        exe, directory = _catalog_ensure(game, cp, report)
+        cp.set(game, "dir", directory)
         payload = exe
     else:
         raise SystemExit(f"kilix games: unknown game {game!r}")

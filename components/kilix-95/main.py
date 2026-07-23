@@ -83,12 +83,14 @@ try:
     from kilix_sdk import require_compatible as require_kilix_sdk
 except ImportError as exc:
     raise RuntimeError(
-        "Kilix 95 requires kilix_sdk 1.3; update the Kilix host checkout"
+        "Kilix 95 requires kilix_sdk 1.4; update the Kilix host checkout "
+        "and initialize its submodules"
     ) from exc
 from kilix_sdk import graphics as kilix_graphics
 from kilix_sdk import settings as shared_settings
+from kilix_sdk import state as kilix_state
 from kilix_sdk import term as kilix_term
-require_kilix_sdk("1.3")
+require_kilix_sdk("1.4")
 try:
     shared_settings.ensure_file()
 except OSError as exc:
@@ -96,6 +98,7 @@ except OSError as exc:
         "Kilix 95 cannot initialize shared settings at "
         f"{shared_settings.settings_path()}"
     ) from exc
+kilix_state.default_library()  # Fail before UI setup if the host build is absent.
 import icons
 import shell as shell_mod
 import taskbar as taskbar_mod

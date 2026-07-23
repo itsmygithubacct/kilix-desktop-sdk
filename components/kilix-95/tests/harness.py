@@ -41,13 +41,21 @@ if "XDG_DATA_HOME" not in os.environ:
     os.environ["XDG_DATA_HOME"] = _xdg
 
 
+def _isolated_state_home(desktop, base):
+    if base:
+        return os.path.join(base, ".tests", os.path.basename(desktop))
+    return os.path.join(desktop, ".kilix95-state")
+
+
 @contextlib.contextmanager
 def desktop_dir():
     """Fresh temp dir exported as KILIX_DESKTOP_DIR for the with-block."""
     prev = os.environ.get("KILIX_DESKTOP_DIR")
+    prev_state = os.environ.get("KILIX95_STATE_HOME")
     d = tempfile.mkdtemp(prefix="kilix95-test-")
     _dirs.append(d)
     os.environ["KILIX_DESKTOP_DIR"] = d
+    os.environ["KILIX95_STATE_HOME"] = _isolated_state_home(d, prev_state)
     try:
         yield d
     finally:
@@ -55,15 +63,21 @@ def desktop_dir():
             os.environ.pop("KILIX_DESKTOP_DIR", None)
         else:
             os.environ["KILIX_DESKTOP_DIR"] = prev
+        if prev_state is None:
+            os.environ.pop("KILIX95_STATE_HOME", None)
+        else:
+            os.environ["KILIX95_STATE_HOME"] = prev_state
 
 
 def make_desk(size=(1024, 768)):
     """Offscreen Desk; KILIX_DESKTOP_DIR always points at a harness temp dir
     (a fresh one unless a desktop_dir() block is active)."""
     if os.environ.get("KILIX_DESKTOP_DIR") not in _dirs:
+        state_root = os.environ.get("KILIX95_STATE_HOME")
         d = tempfile.mkdtemp(prefix="kilix95-test-")
         _dirs.append(d)
         os.environ["KILIX_DESKTOP_DIR"] = d
+        os.environ["KILIX95_STATE_HOME"] = _isolated_state_home(d, state_root)
     return desk_main.Desk(term=None, size=size)
 
 
