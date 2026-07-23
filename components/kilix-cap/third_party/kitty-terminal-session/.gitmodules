@@ -1,0 +1,6 @@
+[submodule "third_party/kitty-framebuffer"]
+	path = third_party/kitty-framebuffer
+	url = https://github.com/itsmygithubacct/kitty-framebuffer.git
+[submodule "third_party/kitty_keyboard"]
+	path = third_party/kitty_keyboard
+	url = https://github.com/itsmygithubacct/kitty-keyboard.git
