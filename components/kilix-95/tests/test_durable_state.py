@@ -34,6 +34,21 @@ def test_legacy_import_only_when_native_record_is_absent():
         assert record.load_dict() == {"flavor": "xp"}
 
 
+def test_surrogateescaped_posix_paths_round_trip_and_migrate():
+    directory = tempfile.mkdtemp(prefix="kilix95-state-surrogate-")
+    legacy = os.path.join(directory, ".state.json")
+    path = "/tmp/non-utf8-\udcff"
+    with open(legacy, "w", encoding="utf-8") as stream:
+        json.dump({"recent": [path]}, stream)
+
+    with durable_state.JsonState(
+            "surrogate.state", legacy_path=legacy) as record:
+        assert record.load_dict() == {"recent": [path]}
+        record.save_dict({"recent": [path, path + "-again"]})
+        assert record.load_dict() == {"recent": [path, path + "-again"]}
+        assert open(record.path, "rb").read(4) == b"KST1"
+
+
 def test_corruption_does_not_fall_back_to_stale_legacy():
     directory = tempfile.mkdtemp(prefix="kilix95-state-corrupt-")
     legacy = os.path.join(directory, "legacy.json")

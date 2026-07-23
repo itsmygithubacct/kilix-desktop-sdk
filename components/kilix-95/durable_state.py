@@ -93,7 +93,10 @@ class JsonState:
         envelope = {"schema_version": SCHEMA_VERSION, "data": value}
         payload = json.dumps(
             envelope, sort_keys=True, separators=(",", ":"),
-            ensure_ascii=False).encode("utf-8")
+            # ASCII escaping preserves Python's surrogateescape representation
+            # of POSIX filenames containing non-UTF-8 bytes.  The previous
+            # legacy JSON writer used the same safe representation.
+            ensure_ascii=True).encode("utf-8")
         self.store.save(payload)
 
     def close(self):
