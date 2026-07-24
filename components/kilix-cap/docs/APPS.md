@@ -66,12 +66,22 @@ Kilix returns the new numeric window ID. Kilix Cap accepts only a bounded
 all-digit nonzero ID. The helper starts Firefox with a unique temporary profile
 and `--new-instance --new-window VALIDATED_WEB_HOME`, preventing an unrelated
 Firefox instance from consuming the URL. Kilix Cap keeps the tab hidden until
-the app-stream log records `content-frames=1`, emitted only for a changed
-capture after the blank startup snapshot. Kilix's event-driven XDamage capture
-atomically extracts the server's accumulated damage through an XFixes region
-and checks python-xlib's in-process event queue before sleeping, so a
-network-driven repaint cannot be cleared or queued unseen. After a short
-frame-settle interval and the final zoom frame, Kilix Cap invokes:
+the app-stream log reports capture readiness. Kilix 0.1.4 and newer record
+`content-ready=changed` for the first changed capture after the startup
+snapshot. If no changed capture arrives, it records
+`content-ready=initial-grace` after an initial capture has been emitted and the
+three-second grace has elapsed. The grace path accommodates applications that
+completed a static first paint before capture began; it is a capture-handoff
+heuristic, not proof that network navigation finished. Kilix Cap also accepts
+the legacy `content-frames=1` changed-frame marker, including the timestamped
+record produced by pre-0.1.4 Kilix versions, which do not provide the grace
+path.
+
+Kilix's event-driven XDamage capture atomically extracts the server's
+accumulated damage through an XFixes region and checks python-xlib's in-process
+event queue before sleeping, so a network-driven repaint cannot be cleared or
+queued unseen. After a 0.75-second frame-settle interval and the final zoom
+frame, Kilix Cap invokes:
 
 ~~~text
 /absolute/kitten @ --password-file /absolute/rc-password \

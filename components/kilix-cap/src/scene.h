@@ -69,8 +69,8 @@ void scene_set_game_catalog(const GameCatalogEntry *entries, int count,
 bool scene_take_launch_request(LaunchAppId *app);
 bool scene_take_tool_request(LaunchToolId *tool);
 /* The Web launcher starts its hidden tab first. The scene owns the monitor
- * boot, waits for the streamer's first changed browser content frame, then
- * zooms and emits one focus request at its final presented frame. */
+ * boot, waits for the launcher's validated capture-readiness signal, then zooms
+ * and emits one focus request at its final presented frame. */
 bool scene_begin_web_boot(void);
 bool scene_web_boot_active(void);
 void scene_mark_web_ready(void);

@@ -53,10 +53,11 @@ The Computer creates the browser tab with Kilix `--keep-focus`, so startup
 work happens behind the Study. A monitor-scale 3x5 phosphor font shows ROM,
 memory, video, network, DNS, X11, and Firefox startup without oversized UI
 lettering. The sequence remains on `WAITING FRAME` until Kilix's app streamer
-records its first emitted Firefox frame. It then uses a 0.8-second smooth
-pixel-preserving zoom from the complete room into the physical screen. Only
-after that final frame is presented does Kilix Cap focus the numeric window ID
-returned by the original launch.
+reports capture readiness from either a changed capture or the three-second
+initial-frame grace path. Kilix Cap waits another 0.75 seconds for settling,
+then uses a 0.8-second smooth pixel-preserving zoom from the complete room into
+the physical screen. Only after that final frame is presented does Kilix Cap
+focus the numeric window ID returned by the original launch.
 
 Firefox ESR receives `https://news.ycombinator.com/` through an explicit
 `--new-window` argument by default. Each streamed instance gets a private

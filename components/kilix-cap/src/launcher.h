@@ -61,9 +61,8 @@ const char *launcher_config_directory(void);
 bool        launcher_save_mail_target(const char *target);
 bool        launcher_open(LaunchAppId id);
 /* The Study computer uses a two-phase launch: create an exact hidden Kilix
- * browser tab first, wait for Kilix to emit its first changed content frame
- * after the startup snapshot, then focus that exact window after the room
- * animation. */
+ * browser tab first, wait for an exact changed-capture or initial-grace
+ * readiness marker, then focus that exact window after the room animation. */
 typedef enum LauncherWebStatus {
     LAUNCHER_WEB_WAITING = 0,
     LAUNCHER_WEB_READY,

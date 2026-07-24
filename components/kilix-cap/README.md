@@ -90,9 +90,12 @@ The Computer defaults to `https://news.ycombinator.com/`. Its click creates a
 Firefox ESR tab in the background with an isolated temporary profile and an
 explicit `--new-window` start page. A compact green boot sequence runs on the
 physical Study monitor while Kilix captures the browser. The glass zoom begins
-only after Kilix reports a changed content frame beyond the blank startup
-snapshot, and only then does the exact captured tab receive focus. Override the
-start page by adding a single strict URL line to the private config:
+only after Kilix reports capture readiness: either a changed capture after the
+startup snapshot or, with Kilix 0.1.4 or newer, an emitted initial capture
+after three seconds without a change. The grace path is a handoff heuristic,
+not proof that the requested page finished loading. Only then does the exact
+captured tab receive focus. Override the start page by adding a single strict
+URL line to the private config:
 
 ~~~text
 web_home=https://example.org/

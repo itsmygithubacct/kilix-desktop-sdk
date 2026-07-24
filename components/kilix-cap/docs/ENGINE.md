@@ -114,12 +114,13 @@ Web is a staged variant of that boundary. Main first asks the launcher to
 create a background browser tab and capture its numeric window ID. Only then
 does `scene_begin_web_boot` lock scene input and begin the minimum 2.8-second
 monitor boot. The boot waits at `WAITING FRAME`; the launcher's private Kilix
-run log must record its first emitted GUI frame before main calls
-`scene_mark_web_ready`. A 30-second no-frame timeout aborts the handoff and
-returns control to the Study. A valid signal starts the 0.8-second zoom. The
-final frame queues one `scene_take_web_focus_request`; main presents that frame
-before asking the launcher to focus the captured window. The scene never sees
-the URL, password, readiness path, or window ID, and the launcher never draws.
+run log must record a supported capture-readiness marker before main calls
+`scene_mark_web_ready`. The launcher gives that marker 0.75 seconds to settle.
+A 30-second no-readiness timeout aborts the handoff and returns control to the
+Study. A valid signal starts the 0.8-second zoom. The final frame queues one
+`scene_take_web_focus_request`; main presents that frame before asking the
+launcher to focus the captured window. The scene never sees the URL, password,
+readiness path, or window ID, and the launcher never draws.
 
 The house map dispatches direct room transitions. Lamp is the only local map
 toggle.
@@ -146,10 +147,14 @@ checks python-xlib's in-process queue before `select()`, covering notifications
 consumed while a synchronous X reply drains the kernel socket.
 The checkout-local Python helper gives `firefox-esr` a fresh temporary profile
 and passes the validated `web_home` through `--new-window`. The launch response
-must be one bounded nonzero decimal window ID; the log must contain Kilix's
-exact post-snapshot content-frame marker before the post-animation focus plan
-matches only that ID. `web_home` defaults to Hacker News and accepts only an
-`http(s)` URL from the private local config.
+must be one bounded nonzero decimal window ID. The private log must contain an
+exact complete `content-ready=changed` or `content-ready=initial-grace` line
+before the post-animation focus plan matches only that ID. The legacy
+`content-frames=1` marker, including the strictly parsed timestamped record from
+older Kilix versions, remains accepted for changed-frame readiness. The grace
+reason is a capture-handoff heuristic rather than a page-load assertion.
+`web_home` defaults to Hacker News and accepts only an `http(s)` URL from the
+private local config.
 
 Monitor and Housekeeping plans use Kilix's authenticated control interface:
 

@@ -44,6 +44,13 @@ typedef struct LaunchPlan {
     const char *program;
 } LaunchPlan;
 
+typedef enum WebReadyReason {
+    WEB_READY_REASON_NONE = 0,
+    WEB_READY_REASON_CHANGED,
+    WEB_READY_REASON_INITIAL_GRACE,
+    WEB_READY_REASON_LEGACY_CHANGED
+} WebReadyReason;
+
 static pid_t children[CHILD_MAX];
 static int child_count;
 static bool enabled;
@@ -54,13 +61,13 @@ static char web_home[WEB_HOME_MAX + 1];
 static char web_window_id[32];
 static char web_ready_path[PATH_MAX];
 static double web_started_at;
-static double web_frame_at;
-static bool web_frame_seen;
+static double web_ready_at;
+static bool web_ready_seen;
 static char last_program[64];
 static char last_error[128];
 
 static const char default_web_home[] = "https://news.ycombinator.com/";
-static const double web_frame_settle_seconds = 0.75;
+static const double web_ready_settle_seconds = 0.75;
 static const double web_launch_timeout_seconds = 30.0;
 
 static const char *const app_titles[LAUNCH_APP_COUNT] = {
@@ -352,8 +359,8 @@ static void clear_web_tracking(bool remove_log)
     web_window_id[0] = '\0';
     web_ready_path[0] = '\0';
     web_started_at = 0.0;
-    web_frame_at = 0.0;
-    web_frame_seen = false;
+    web_ready_at = 0.0;
+    web_ready_seen = false;
 }
 
 static bool prepare_web_ready_log(void)
@@ -1496,11 +1503,81 @@ bool launcher_begin_web(void)
     return true;
 }
 
+static bool web_log_line_is(const char *line, size_t length,
+                            const char *expected)
+{
+    size_t expected_length = strlen(expected);
+    return length == expected_length &&
+           memcmp(line, expected, expected_length) == 0;
+}
+
+static bool web_log_is_timestamped_legacy(const char *line, size_t length)
+{
+    static const char suffix[] = "] content-frames=1";
+    const size_t suffix_length = sizeof suffix - 1u;
+    const size_t suffix_at = length >= suffix_length
+                                 ? length - suffix_length
+                                 : 0u;
+    size_t decimal_at = 0u;
+
+    if (suffix_at <= 1u || line[0] != '[' ||
+        memcmp(line + suffix_at, suffix, suffix_length) != 0)
+        return false;
+    for (size_t i = 1u; i < suffix_at; i++) {
+        if (line[i] >= '0' && line[i] <= '9') continue;
+        if (line[i] == '.' && decimal_at == 0u) {
+            decimal_at = i;
+            continue;
+        }
+        return false;
+    }
+    return decimal_at > 1u && suffix_at - decimal_at == 4u;
+}
+
+static WebReadyReason web_ready_reason(const char *contents)
+{
+    const char *line = contents;
+    if (contents == NULL) return WEB_READY_REASON_NONE;
+    while (*line != '\0') {
+        const char *end = line;
+        size_t length;
+        while (*end != '\0' && *end != '\n' && *end != '\r') end++;
+        length = (size_t)(end - line);
+        if (web_log_line_is(line, length, "content-ready=changed"))
+            return WEB_READY_REASON_CHANGED;
+        if (web_log_line_is(line, length, "content-ready=initial-grace"))
+            return WEB_READY_REASON_INITIAL_GRACE;
+        if (web_log_line_is(line, length, "content-frames=1") ||
+            web_log_is_timestamped_legacy(line, length))
+            return WEB_READY_REASON_LEGACY_CHANGED;
+        if (*end == '\0') break;
+        line = end + 1;
+        if (*end == '\r' && *line == '\n') line++;
+    }
+    return WEB_READY_REASON_NONE;
+}
+
+static LauncherWebStatus web_wait_status(double now, double started_at,
+                                         bool ready_seen, double ready_at)
+{
+    if (ready_seen) {
+        if (now <= 0.0 || ready_at <= 0.0 ||
+            now - ready_at >= web_ready_settle_seconds)
+            return LAUNCHER_WEB_READY;
+        return LAUNCHER_WEB_WAITING;
+    }
+    if (now > 0.0 && started_at > 0.0 &&
+        now - started_at >= web_launch_timeout_seconds)
+        return LAUNCHER_WEB_FAILED;
+    return LAUNCHER_WEB_WAITING;
+}
+
 LauncherWebStatus launcher_web_status(void)
 {
     char contents[WEB_LOG_MAX];
     struct stat st;
     double now;
+    LauncherWebStatus status;
     size_t used = 0;
     int fd;
 
@@ -1509,16 +1586,13 @@ LauncherWebStatus launcher_web_status(void)
         return LAUNCHER_WEB_FAILED;
     }
     now = monotonic_seconds();
-    if (web_frame_seen) {
-        if (now <= 0.0 || web_frame_at <= 0.0 ||
-            now - web_frame_at >= web_frame_settle_seconds)
-            return LAUNCHER_WEB_READY;
-        return LAUNCHER_WEB_WAITING;
-    }
+    if (web_ready_seen)
+        return web_wait_status(now, web_started_at,
+                               web_ready_seen, web_ready_at);
     fd = open(web_ready_path, O_RDONLY | O_CLOEXEC | O_NOFOLLOW);
     if (fd < 0) {
         if (errno == ENOENT)
-            set_error("Firefox exited before its first frame was ready.");
+            set_error("Firefox exited before capture readiness was reported.");
         else
             set_error("The browser readiness channel could not be read.");
         return LAUNCHER_WEB_FAILED;
@@ -1546,24 +1620,17 @@ LauncherWebStatus launcher_web_status(void)
     }
     close(fd);
     contents[used] = '\0';
-    for (char *hit = contents;
-         (hit = strstr(hit, "content-frames=1")) != NULL;
-         hit++) {
-        const char after = hit[16];
-        if (after == '\0' || after == '\n' || after == '\r') {
-            web_frame_seen = true;
-            web_frame_at = now;
-            return web_frame_settle_seconds <= 0.0
-                       ? LAUNCHER_WEB_READY
-                       : LAUNCHER_WEB_WAITING;
-        }
+    if (web_ready_reason(contents) != WEB_READY_REASON_NONE) {
+        web_ready_seen = true;
+        web_ready_at = now;
+        return web_wait_status(now, web_started_at,
+                               web_ready_seen, web_ready_at);
     }
-    if (now > 0.0 && web_started_at > 0.0 &&
-        now - web_started_at >= web_launch_timeout_seconds) {
-        set_error("Firefox did not render a frame within 30 seconds.");
-        return LAUNCHER_WEB_FAILED;
-    }
-    return LAUNCHER_WEB_WAITING;
+    status = web_wait_status(now, web_started_at,
+                             web_ready_seen, web_ready_at);
+    if (status == LAUNCHER_WEB_FAILED)
+        set_error("Firefox did not report capture readiness within 30 seconds.");
+    return status;
 }
 
 bool launcher_focus_web(void)
@@ -1953,6 +2020,39 @@ static bool web_plan_selftest(void)
                                  "/fixture/password", &plan);
 }
 
+static bool web_readiness_selftest(void)
+{
+    return web_ready_reason("content-ready=changed\n") ==
+               WEB_READY_REASON_CHANGED &&
+           web_ready_reason("noise\r\ncontent-ready=initial-grace\r\n") ==
+               WEB_READY_REASON_INITIAL_GRACE &&
+           web_ready_reason("content-frames=1") ==
+               WEB_READY_REASON_LEGACY_CHANGED &&
+           web_ready_reason("[123.456] content-frames=1\n") ==
+               WEB_READY_REASON_LEGACY_CHANGED &&
+           web_ready_reason("") == WEB_READY_REASON_NONE &&
+           web_ready_reason("xcontent-ready=changed\n") ==
+               WEB_READY_REASON_NONE &&
+           web_ready_reason("content-ready=changed-extra\n") ==
+               WEB_READY_REASON_NONE &&
+           web_ready_reason("content-ready=unknown\n") ==
+               WEB_READY_REASON_NONE &&
+           web_ready_reason("prefix content-frames=1\n") ==
+               WEB_READY_REASON_NONE &&
+           web_ready_reason("[time] content-frames=1\n") ==
+               WEB_READY_REASON_NONE &&
+           web_ready_reason("[123.45] content-frames=1\n") ==
+               WEB_READY_REASON_NONE &&
+           web_wait_status(10.74, 1.0, true, 10.0) ==
+               LAUNCHER_WEB_WAITING &&
+           web_wait_status(10.75, 1.0, true, 10.0) ==
+               LAUNCHER_WEB_READY &&
+           web_wait_status(30.99, 1.0, false, 0.0) ==
+               LAUNCHER_WEB_WAITING &&
+           web_wait_status(31.0, 1.0, false, 0.0) ==
+               LAUNCHER_WEB_FAILED;
+}
+
 bool launcher_selftest(void)
 {
     static const struct {
@@ -2003,7 +2103,7 @@ bool launcher_selftest(void)
     fixture_tel_handler = false;
     fixture_text_editor_handler = false;
     if (!game_plan_selftest() || !tool_plan_selftest() ||
-        !web_plan_selftest())
+        !web_plan_selftest() || !web_readiness_selftest())
         goto done;
     for (int i = 0; i < LAUNCH_APP_COUNT; i++) {
         const char *first = expected[i].first;
