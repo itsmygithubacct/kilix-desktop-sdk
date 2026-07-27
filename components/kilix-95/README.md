@@ -177,9 +177,9 @@ The Start menu is built in `taskbar.py`.
 
 Top-level sections:
 
-- **Programs**: built-in accessories, games, browsers, terminals, Kilix Temps,
-  Kilix Memory, Tmux Manager, the MS-DOS Prompt/DOSBox caller, user launchers,
-  and discovered XDG apps. PowerToys and
+- **Programs**: built-in accessories, games, browsers, terminals, PTY Sessions,
+  Kilix Temps, Kilix Memory, Tmux Manager, the MS-DOS Prompt/DOSBox caller,
+  user launchers, and discovered XDG apps. PowerToys and
   the optional classic folders appear when the full experience is active.
 - **Documents**: recently opened files.
 - **Settings**: Control Panel, Kilix settings, display properties, sound
@@ -483,6 +483,11 @@ Start ▸ Programs ▸ Kilix Memory launches the RAM, swap, PSI pressure, paging
 and per-process dashboard in a graphical tab. The pane memory chip opens the
 same monitor; `auto` shows it above 1 GiB, `always` includes MiB/KiB values,
 and `off` hides it.
+
+Start ▸ Programs ▸ **PTY Sessions** opens Kilix's persistent-pane TUI in an
+unbrokered manager tab, so the manager does not list or attach to itself. It can
+attach detached panes, refresh their status, or terminate one after explicit
+confirmation.
 
 The Tools tab reports whether tmux-cli's `tb` command is available and offers
 an **Install / repair tb** action. It opens Kilix's immutable tmux-tui/tmux-cli

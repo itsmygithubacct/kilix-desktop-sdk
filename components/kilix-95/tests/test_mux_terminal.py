@@ -148,6 +148,19 @@ def test_tmux_manager_opens_in_a_new_tab():
     }
 
 
+def test_pty_manager_uses_kilix_without_brokering_itself():
+    d = H.make_desk()
+    seen = {}
+    d.shell._tab = lambda argv, title, cwd=None, env=None: seen.update(
+        argv=argv, title=title, cwd=cwd, env=env) or True
+    assert d.shell.open_pty_manager()
+    assert os.path.basename(seen["argv"][0]) == "kilix"
+    assert seen["argv"][1:] == ["pty"]
+    assert seen["title"] == "PTY Sessions"
+    assert seen["cwd"] == os.path.expanduser("~")
+    assert seen["env"] == {"KITTY_PTY_BROKER_BYPASS": "1"}
+
+
 def test_tmux_manager_falls_back_to_pinned_kilix_installer():
     d = H.make_desk()
     seen = {}
@@ -175,13 +188,17 @@ def test_start_menu_names_tmux_manager():
     d = H.make_desk()
     seen = []
     d.shell.open_tmux_manager = lambda: seen.append(True)
+    d.shell.open_pty_manager = lambda: seen.append("pty")
     d.taskbar.open_start_menu()
     programs = next(
         item for item in d.menus.stack[0].items if item.label == "Programs")
     manager = next(
         item for item in programs.submenu if item.label == "Tmux Manager")
     manager.action()
-    assert seen == [True]
+    pty = next(
+        item for item in programs.submenu if item.label == "PTY Sessions")
+    pty.action()
+    assert seen == [True, "pty"]
     assert any(item.label == "Kilix Memory" for item in programs.submenu)
 
 
@@ -193,6 +210,7 @@ test_kilix_temps_falls_back_to_kilix_installer()
 test_kilix_temps_installed_command_precedes_incomplete_source()
 test_kilix_memory_launcher_forces_graphical_tab()
 test_tmux_manager_opens_in_a_new_tab()
+test_pty_manager_uses_kilix_without_brokering_itself()
 test_tmux_manager_falls_back_to_pinned_kilix_installer()
 test_tb_alias_installer_opens_in_a_new_tab()
 test_start_menu_names_tmux_manager()

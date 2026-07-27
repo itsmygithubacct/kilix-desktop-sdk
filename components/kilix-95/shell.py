@@ -799,6 +799,29 @@ class Shell:
         return False
 
     @staticmethod
+    def pty_manager_target():
+        """Use Kilix so the manager shares its private, pinned broker runtime."""
+        kilix = os.path.join(KILIX_HOME, "kilix")
+        if os.path.isfile(kilix) and os.access(kilix, os.X_OK):
+            return [kilix, "pty"]
+        return None
+
+    def open_pty_manager(self):
+        target = self.pty_manager_target()
+        if target is not None:
+            return self._tab(
+                target,
+                "PTY Sessions",
+                os.path.expanduser("~"),
+                env={"KITTY_PTY_BROKER_BYPASS": "1"},
+            )
+        wm.msgbox(
+            self.desk, "PTY Sessions",
+            "The Kilix persistent-session manager could not be found.",
+            icon="error")
+        return False
+
+    @staticmethod
     def tmux_manager_target():
         """Installed manager first; the Kilix pinned installer is the fallback."""
         if executable := shutil.which("tmux-tui"):
