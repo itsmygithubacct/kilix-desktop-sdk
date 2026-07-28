@@ -331,7 +331,7 @@
       "format": "P6",
       "width": 480,
       "height": 256,
-      "sha256": "34dea6c3d85e227353210217f8de517e0c2c470e2efc03ed855204422c9ba5c5"
+      "sha256": "5e5c023baa16bd1f34f0a1690c0ab63834ff3daabbb2a52c7ac418e75d0c27a1"
     },
     {
       "path": "assets/art/workdesk-items-mask.ppm",
@@ -339,7 +339,7 @@
       "format": "P6",
       "width": 480,
       "height": 256,
-      "sha256": "91e8d6138d35e9bad59ceff578a62860acd24fac71ea203c901a280a755f7720"
+      "sha256": "5a9f41d558320d2ee93446b625d0285a732e61a2abb23ef9a8f94d37a0502cb8"
     },
     {
       "path": "assets/art/workdesk-items-hit.ppm",
@@ -347,7 +347,7 @@
       "format": "P6",
       "width": 480,
       "height": 256,
-      "sha256": "efbd55029a92465f2b2d378764013e993c8685748d5c07cc90cabd23f5a6f721"
+      "sha256": "f7b46fa759ef1c0307379946e48032fbfb7da7d24264a70a8064c4f86533719b"
     },
     {
       "path": "assets/art/hallway-room.png",
@@ -578,10 +578,11 @@
     "item_tool": "tools/prepare_workdesk_items.py",
     "item_operations": [
       "prepare the preserved Desk composite at 480x256 using full-RGB Lanczos resampling",
-      "tighten physical-object silhouettes at 4x resolution and downsample them with Lanczos to make an anti-aliased visual coverage mask",
+      "tighten physical-object silhouettes at 4x resolution on one coverage layer per prop, then union and downsample them with Lanczos to make an anti-aliased visual coverage mask",
       "crop and premultiplied-alpha resize the generated telephone, then composite it at the Desk's corrected phone location while excluding all malformed source-phone remnants",
+      "trace the calculator's complete silhouette and hit region, including its raised display housing, while stopping source-phone cleanup above it",
       "copy source pixels only where coverage is nonzero into a black-backed RGB overlay",
-      "encode zero for background and IconId values 1 through 13 for semantic object-only hit testing",
+      "encode zero for background and IconId values 1 through 13 for semantic object-only hit testing, crediting each pixel to the front-most prop whose own silhouette covers it within that prop's declared bounds",
       "write the overlay, coverage mask, and semantic ID map as binary P6"
     ],
     "chroma_tool": "imagegen skill scripts/remove_chroma_key.py",

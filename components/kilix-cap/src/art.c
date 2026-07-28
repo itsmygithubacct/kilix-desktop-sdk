@@ -48,7 +48,7 @@ static const DeskSprite desk_sprites[] = {
     {ICON_CABINET,    319, 143, 45, 44},
     {ICON_PHONE,      340, 146, 92, 53},
     {ICON_STATIONERY, 296, 184, 54, 31},
-    {ICON_TOOLBOX,    347, 204, 45, 29},
+    {ICON_TOOLBOX,    343, 200, 52, 37},
     {ICON_GLOBE,      187, 105, 89, 73}
 };
 

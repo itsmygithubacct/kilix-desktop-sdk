@@ -220,31 +220,15 @@ static void build_desk(void)
         {"Computer", "Web", ICON_GLOBE, LAUNCH_WEB}
     };
 
-    /* Fallback bounds match the generated item atlas.  art.c remains the
-     * source of truth when the layered bundle is loaded. */
-    static const UiRect props[DESK_ITEMS] = {
-        {140, 140, 45, 41}, /* clock       */
-        { 71, 150, 70, 25}, /* upper tray  */
-        { 71, 169, 70, 30}, /* lower tray  */
-        { 55, 195, 58, 28}, /* envelope    */
-        {250, 194, 25, 17}, /* name card   */
-        {139, 192, 53, 34}, /* notebook    */
-        {280,  96, 35, 43}, /* desk calendar */
-        {277, 149, 42, 35}, /* card file   */
-        {319, 143, 45, 44}, /* file drawers*/
-        {340, 146, 92, 53}, /* telephone   */
-        {296, 184, 54, 31}, /* paper stack */
-        {347, 204, 45, 29}, /* calculator  */
-        {187, 105, 89, 73}  /* monitor     */
-    };
-
+    /* art.c is the sole source of truth for Desk prop geometry. Its
+     * desk_sprites table is compile-time data rather than part of the
+     * loadable bundle, so these bounds resolve with or without the atlas and
+     * a second copy here would only be a table to forget to update. */
     for (int i = 0; i < DESK_ITEMS; i++) {
-        UiRect visual = props[i];
-        int x, y, w, h;
-        if (art_workdesk_item_bounds(items[i].icon, &x, &y, &w, &h))
-            visual = ui_rect(x, y, w, h);
+        int x = 0, y = 0, w = 0, h = 0;
+        if (!art_workdesk_item_bounds(items[i].icon, &x, &y, &w, &h)) continue;
         set_object(&desk_objs[i], items[i].name, items[i].label, OBJ_PROGRAM,
-                   items[i].icon, visual, items[i].app, false);
+                   items[i].icon, ui_rect(x, y, w, h), items[i].app, false);
     }
     set_object(&desk_objs[DESK_ITEMS], "Hallway door", "Hall", OBJ_DOOR,
                ICON_NONE, ui_rect(386, 44, 50, 150), SCENE_HALLWAY, true);
