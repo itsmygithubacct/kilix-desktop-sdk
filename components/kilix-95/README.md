@@ -16,14 +16,32 @@ kilix desktop
 
 Quit through Start -> Shut Down..., or press `Ctrl+Alt+Q`.
 
-## Release 0.1.4
+## Release 0.1.5
+
+Version 0.1.5 is the coordinated stack release covering everything since 0.1.2,
+shared with [Kilix](https://github.com/itsmygithubacct/kilix),
+[Pleb](https://github.com/itsmygithubacct/pleb), and
+[Plebian-OS](https://github.com/itsmygithubacct/plebian-os). It adds the pane
+memory controls and monitor launcher, the Tmux Manager and PTY Sessions Start
+menu entries, and Kilix Temps controls, on top of the shared-SDK adoption below.
+Settings gains a **Session logs** tab for Kilix's default-on pane transcripts,
+consuming the SDK 1.5 session-logging contract.
+Release tags for this repository are created only by the coordinated release
+procedure — see Plebian-OS's
+[RELEASING.md](https://github.com/itsmygithubacct/plebian-os/blob/main/RELEASING.md).
+
+> The `0.1.3` and `0.1.4` sections below are **component milestones**, not
+> shipped stack releases: they mark which Kilix provider SDK this desktop
+> consumed. No Plebian-OS image was ever built or published for either.
+
+## 0.1.4 — consumes SDK 1.4
 
 Version 0.1.4 consumes the Kilix 1.4 provider SDK and stores internal shell and
 Briefcase records through `kilix_sdk.state`, backed by the host-pinned
 `kilix-state-py` binding and native `kilix-state` library. Existing JSON records
 are imported when a native record is absent and retained as recovery copies.
 
-## Release 0.1.3
+## 0.1.3 — consumes SDK 1.3
 
 Version 0.1.3 consumes the Kilix 1.3 provider SDK: the shared immutable
 content catalog drives Games, and `kilix_sdk.xapp.XAppSession` owns private X
@@ -107,10 +125,10 @@ The boundary is:
 - Kilix CLI helpers: `kilix run`, `kilix browse`, `kilix serve`.
 - Kitty remote control: `kitten @ launch` for new tabs and windows.
 
-`provider.json` declares provider API 1, the required `kilix_sdk` 1.4 contract,
+`provider.json` declares provider API 1, the required `kilix_sdk` 1.5 contract,
 and the security behaviors the provider implements. Kilix validates that
 data-only manifest and its implementation markers before executing the
-provider. `main.py` also calls `kilix_sdk.require_compatible("1.4")` as a
+provider. `main.py` also calls `kilix_sdk.require_compatible("1.5")` as a
 defense-in-depth runtime check. Incompatible hosts fail early with a clear
 version error.
 
@@ -464,12 +482,21 @@ managed `.kilix-defaults.conf` link. The launcher refreshes the link after a
 checkout move. Settings atomically writes only the user file and never dirties
 the host checkout.
 
-The Top bar, Pane buttons, and Games tabs write the non-executable shared source
+The Top bar, Pane buttons, Session logs, and Games tabs write the
+non-executable shared source
 of truth at `~/.local/gpu_terminal/settings.conf`. They can independently
 remove and re-add the default-off thermometer, volume, network/Wi-Fi, calendar,
 date/time, battery, the `auto`/`always`/`off` pane-memory chip,
 synchronized-input keyboard button, font-size,
-four-way split, maximize, close, and every Kilix game. The same game choices
+four-way split, maximize, close, and every Kilix game.
+
+The **Session logs** tab controls Kilix's default-on pane transcripts: whether
+output is recorded at all, whether kitty graphics payloads are elided to a
+marker or kept verbatim, and the per-pane size budget (`2M`/`8M`/`32M`/`128M`).
+The same three settings are available as `kilix settings --set transcript=off`,
+`--set transcript_graphics=keep`, and `--set transcript_size=32M`, and in the
+`kilix settings` TUI under Session logging. Recorded panes are listed with
+`kilix transcript`. The same game choices
 are available in the `kilix settings` TUI and with the commands
 `kilix games list`, `kilix games enable`, and `kilix games disable`. The
 thermometer shows the hottest sensor in green/yellow/red and opens Kilix Temps

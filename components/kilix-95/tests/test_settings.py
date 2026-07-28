@@ -325,4 +325,36 @@ with conf("font_size 12\n"):
     assert "new tab" in win.tb_alias_status.text
 
 
+# Session logs edits the same shared document as the kilix CLI and TUI, and
+# never writes its controls into kitty.conf.
+with conf("font_size 12\n") as target:
+    d = H.make_desk()
+    import apps
+    apps.open(d, "settings", None)
+    win = H.find_window(d, "SettingsWin")
+    log_tab = settings.FORM_PAGES.index(settings.SESSION_LOG)
+    win._switch_tab(log_tab)
+
+    # Defaults arrive from the shared SDK: recording on, graphics elided.
+    assert win.fields["KILIX_TRANSCRIPT"][1].checked
+    shared_settings = settings.shared_settings
+    graphics = win.fields[shared_settings.TRANSCRIPT_GRAPHICS_KEY][1]
+    size = win.fields[shared_settings.TRANSCRIPT_LIMIT_KEY][1]
+    assert graphics.value == "elide", graphics.value
+    assert size.value == "8M", size.value
+
+    win.fields["KILIX_TRANSCRIPT"][1].checked = False
+    graphics.index = graphics.options.index("keep")
+    size.index = size.options.index("32M")
+    win._apply()
+
+    shared_text = read(win.shared_path)
+    assert "KILIX_TRANSCRIPT=0" in shared_text, shared_text
+    assert f"{shared_settings.TRANSCRIPT_GRAPHICS_KEY}=keep" in shared_text
+    assert f"{shared_settings.TRANSCRIPT_LIMIT_KEY}=32M" in shared_text
+    assert "KILIX_TRANSCRIPT" not in read(target)
+    assert not shared_settings.transcript_enabled(win.shared_path)
+    assert shared_settings.transcript_limit(win.shared_path) == 32 * 1024 * 1024
+
+
 print("ok")

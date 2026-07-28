@@ -75,12 +75,29 @@ PANE_BUTTONS = [
     ("KILIX_CHROME_BUTTON_MAXIMIZE", "Maximize / restore pane", "bool", "1"),
     ("KILIX_CHROME_BUTTON_CLOSE", "Close pane", "bool", "1"),
 ]
+SESSION_LOG = [
+    ("KILIX_TRANSCRIPT", "Record pane session logs", "bool", "1"),
+    (
+        shared_settings.TRANSCRIPT_GRAPHICS_KEY,
+        "Graphics in logs",
+        "choice",
+        list(shared_settings.TRANSCRIPT_GRAPHICS_CHOICES),
+    ),
+    (
+        shared_settings.TRANSCRIPT_LIMIT_KEY,
+        "Log size per pane",
+        "choice",
+        list(shared_settings.TRANSCRIPT_LIMIT_CHOICES),
+    ),
+]
 GAMES = [
     (spec.key, spec.label, "bool", "1")
     for spec in shared_settings.GAME_TOGGLES
 ]
 TOOLS = []
-FORM_PAGES = [APPEARANCE, BEHAVIOR, TOP_BAR, PANE_BUTTONS, GAMES, TOOLS]
+FORM_PAGES = [
+    APPEARANCE, BEHAVIOR, TOP_BAR, PANE_BUTTONS, SESSION_LOG, GAMES, TOOLS,
+]
 
 
 def config_path():
@@ -163,8 +180,8 @@ class SettingsWin(wm.Window):
         self.raw_tab = len(FORM_PAGES)
         self.tabs = self.add(W.TabBar(6, 6, cw - 12,
                                       ["Appearance", "Behavior", "Top bar",
-                                       "Pane buttons", "Games", "Tools",
-                                       "kitty.conf"],
+                                       "Pane buttons", "Session logs",
+                                       "Games", "Tools", "kitty.conf"],
                                       cb=self._switch_tab))
         self.fields = {}              # key -> (kind, widget)
         self.panels = [[] for _ in range(self.raw_tab + 1)]
@@ -222,6 +239,16 @@ class SettingsWin(wm.Window):
             18, 264, "The Games menu updates the next time Start opens.",
             font=T.SMALL, color=T.SHADOW))
         self.panels[FORM_PAGES.index(GAMES)].append(game_note)
+        for offset, text in enumerate((
+            "Each pane's output is recorded under the Kilix state directory,",
+            "readable only by you. Typed input appears only where the pane",
+            "echoes it, so hidden password prompts are not recorded.",
+            "'elide' replaces image data with a marker; 'keep' records it raw.",
+        )):
+            note = self.add(W.Label(
+                18, 140 + offset * 18, text,
+                font=T.SMALL, color=T.SHADOW))
+            self.panels[FORM_PAGES.index(SESSION_LOG)].append(note)
         tools_tab = FORM_PAGES.index(TOOLS)
         tools_title = self.add(W.Label(
             18, 48, "Tmux Manager", font=T.BOLD))
