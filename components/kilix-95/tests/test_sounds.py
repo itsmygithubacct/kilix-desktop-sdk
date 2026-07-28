@@ -196,7 +196,10 @@ assert time.time() - t0 < 0.5
 sounds.reset()
 
 
-# ── character: open/close are short clicks; startup/shutdown are warm chimes ──
+# ── character: open/close are short clicks; startup/shutdown are chimes ──────
+# The marquee cues are short musical excerpts cut from a generated suite, so
+# they are seconds rather than fractions of a second, and bounded at ten so a
+# login or shutdown is never held up by the sound.
 def _dur(name, flavor):
     with wave.open(sounds.ensure(name, flavor), "rb") as w:
         return w.getnframes() / w.getframerate()
@@ -204,8 +207,8 @@ def _dur(name, flavor):
 for flavor in ("95", "xp"):
     assert _dur("open", flavor) < 0.45, "open must be a short UI cue"
     assert _dur("close", flavor) < 0.45, "close must be a short UI cue"
-    assert 1.8 < _dur("startup", flavor) < 2.7, "startup should be a warm chime"
-    assert 1.6 < _dur("shutdown", flavor) < 2.4, "shutdown should be a warm chime"
+    assert 1.0 < _dur("startup", flavor) <= 10.0, "startup should be a chime"
+    assert 1.0 < _dur("shutdown", flavor) <= 10.0, "shutdown should be a chime"
 
 
 # ── a stale synth-version stamp wipes + regenerates the cached wavs ──────────

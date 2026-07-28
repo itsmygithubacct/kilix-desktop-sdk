@@ -65,6 +65,35 @@ def _seed_sample(amp_dir):
         pass
 
 
+def _seed_chimes():
+    """Copy the bundled startup/shutdown chimes into ~/Music/Kilix so they can
+    be played in the media player, not only heard at boot and shutdown.
+
+    Only these short cues are placed here. They are the same files the desktop
+    already ships, so this adds a convenience copy rather than distributing
+    anything new.
+    """
+    cues = (
+        ("95", "startup", "Kilix 95 Startup.wav"),
+        ("95", "shutdown", "Kilix 95 Shutdown.wav"),
+        ("xp", "startup", "Kilix XP Startup.wav"),
+        ("xp", "shutdown", "Kilix XP Shutdown.wav"),
+    )
+    try:
+        import shutil
+
+        import sounds
+        folder = os.path.join(os.path.expanduser("~/Music"), "Kilix")
+        os.makedirs(folder, exist_ok=True)
+        for flavor, cue, title in cues:
+            src = sounds._asset_path(cue, flavor)
+            dst = os.path.join(folder, title)
+            if os.path.isfile(src) and not os.path.exists(dst):
+                shutil.copyfile(src, dst)
+    except Exception:
+        pass
+
+
 def _spawn(desk, exe, path=None):
     if not exe:
         wm.msgbox(desk, "Media Player",
@@ -74,6 +103,7 @@ def _spawn(desk, exe, path=None):
         return
     d = os.path.dirname(exe)
     _seed_sample(d)
+    _seed_chimes()
     cmd = [exe] + ([os.path.abspath(os.path.expanduser(path))] if path
                    else [])
     try:

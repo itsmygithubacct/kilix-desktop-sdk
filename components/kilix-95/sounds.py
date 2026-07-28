@@ -23,7 +23,7 @@ import wave
 import storage
 
 RATE = 44100
-SYNTH_VERSION = 3          # bump when bundled/synth cues change so caches refresh
+SYNTH_VERSION = 5          # bump when bundled/synth cues change so caches refresh
 _PLAYERS = ("paplay", "aplay", "ffplay", "play")     # WAV players
 _MEDIA_PLAYERS = ("ffplay", "mpv", "cvlc")           # non-WAV (kilix-amp formats)
 _AUDIO_EXT = (".wav", ".mp3", ".flac", ".ogg", ".oga", ".opus", ".m4a",
