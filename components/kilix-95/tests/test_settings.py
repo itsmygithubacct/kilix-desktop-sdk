@@ -343,6 +343,14 @@ with conf("font_size 12\n") as target:
     assert graphics.value == "elide", graphics.value
     assert size.value == "8M", size.value
 
+    # The directory budgets bound the whole transcript tree, not one pane, so
+    # a long-running desktop cannot fill the disk with dead panes' logs.
+    total = win.fields[shared_settings.TRANSCRIPT_TOTAL_KEY][1]
+    archive = win.fields[shared_settings.TRANSCRIPT_ARCHIVE_KEY][1]
+    assert total.value == shared_settings.TRANSCRIPT_TOTAL_DEFAULT, total.value
+    assert archive.value == shared_settings.TRANSCRIPT_ARCHIVE_DEFAULT, archive.value
+    assert "off" in archive.options, archive.options
+
     win.fields["KILIX_TRANSCRIPT"][1].checked = False
     graphics.index = graphics.options.index("keep")
     size.index = size.options.index("32M")

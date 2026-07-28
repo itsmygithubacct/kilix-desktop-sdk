@@ -57,6 +57,9 @@ TOP_BAR = [
     ("KILIX_CHROME_CLOCK", "Date and time", "bool", "1"),
     ("KILIX_CHROME_CLOCK_FORMAT", "Clock format", "text", None),
     ("KILIX_CHROME_BATTERY", "Battery", "bool", "1"),
+    # Declared by the shared SDK, so the provider has to offer it: the contract
+    # test asserts every shared chrome key is reachable from this app.
+    ("KILIX_CHROME_WINDOWS", "Native window taskbar (Pleb)", "bool", "1"),
 ]
 PANE_BUTTONS = [
     (
@@ -88,6 +91,18 @@ SESSION_LOG = [
         "Log size per pane",
         "choice",
         list(shared_settings.TRANSCRIPT_LIMIT_CHOICES),
+    ),
+    (
+        shared_settings.TRANSCRIPT_TOTAL_KEY,
+        "Recent logs (zstd -3)",
+        "choice",
+        list(shared_settings.TRANSCRIPT_TOTAL_CHOICES),
+    ),
+    (
+        shared_settings.TRANSCRIPT_ARCHIVE_KEY,
+        "Older logs (zstd -9)",
+        "choice",
+        list(shared_settings.TRANSCRIPT_ARCHIVE_CHOICES),
     ),
 ]
 GAMES = [

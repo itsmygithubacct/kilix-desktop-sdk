@@ -25,7 +25,10 @@ shared with [Kilix](https://github.com/itsmygithubacct/kilix),
 memory controls and monitor launcher, the Tmux Manager and PTY Sessions Start
 menu entries, and Kilix Temps controls, on top of the shared-SDK adoption below.
 Settings gains a **Session logs** tab for Kilix's default-on pane transcripts,
-consuming the SDK 1.5 session-logging contract.
+consuming the SDK 1.5 session-logging contract, including the two directory
+budgets that bound the transcript tree: dead-pane logs are compressed
+promptly, and the oldest are recompressed more densely before any history
+is dropped.
 Release tags for this repository are created only by the coordinated release
 procedure — see Plebian-OS's
 [RELEASING.md](https://github.com/itsmygithubacct/plebian-os/blob/main/RELEASING.md).
