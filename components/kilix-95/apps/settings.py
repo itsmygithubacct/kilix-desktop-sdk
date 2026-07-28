@@ -90,13 +90,86 @@ SESSION_LOG = [
         list(shared_settings.TRANSCRIPT_LIMIT_CHOICES),
     ),
 ]
+# Read-aloud first, then dictation, matching the order the shared file writes
+# them in. The two device names sit with the reading half only because they
+# are the one audio path both widgets contend for, not because they belong
+# to reading.
+VOICE = [
+    ("KILIX_CHROME_SPEAK", "Read pane aloud", "bool", "1"),
+    (
+        shared_settings.VOICE_TTS_ENGINE_KEY,
+        "Speech engine",
+        "choice",
+        list(shared_settings.VOICE_TTS_ENGINE_CHOICES),
+    ),
+    (shared_settings.VOICE_TTS_VOICE_KEY, "Voice", "text", None),
+    (
+        shared_settings.VOICE_TTS_RATE_KEY,
+        "Speech rate (wpm)",
+        "choice",
+        list(shared_settings.VOICE_TTS_RATE_CHOICES),
+    ),
+    (
+        shared_settings.VOICE_TTS_EXTENT_KEY,
+        "Read extent",
+        "choice",
+        list(shared_settings.VOICE_TTS_EXTENT_CHOICES),
+    ),
+    (
+        shared_settings.VOICE_TTS_MAX_CHARS_KEY,
+        "Maximum characters",
+        "choice",
+        list(shared_settings.VOICE_TTS_MAX_CHARS_CHOICES),
+    ),
+    (shared_settings.VOICE_DEVICE_OUT_KEY, "Output device", "text", None),
+    (shared_settings.VOICE_DEVICE_IN_KEY, "Input device", "text", None),
+    ("KILIX_CHROME_DICTATE", "Dictate to pane", "bool", "1"),
+    (
+        shared_settings.VOICE_STT_ENGINE_KEY,
+        "Recognition engine",
+        "choice",
+        list(shared_settings.VOICE_STT_ENGINE_CHOICES),
+    ),
+    (
+        shared_settings.VOICE_STT_MODEL_KEY,
+        "Recognition model",
+        "choice",
+        list(shared_settings.VOICE_STT_MODEL_CHOICES),
+    ),
+    (
+        shared_settings.VOICE_STT_SUBMIT_KEY,
+        "Submit dictation",
+        "choice",
+        list(shared_settings.VOICE_STT_SUBMIT_CHOICES),
+    ),
+    (
+        shared_settings.VOICE_STT_MAX_SECONDS_KEY,
+        "Maximum seconds",
+        "choice",
+        list(shared_settings.VOICE_STT_MAX_SECONDS_CHOICES),
+    ),
+    (
+        shared_settings.VOICE_STT_SILENCE_MS_KEY,
+        "Trailing silence (ms)",
+        "choice",
+        list(shared_settings.VOICE_STT_SILENCE_MS_CHOICES),
+    ),
+    (shared_settings.VOICE_PUNCTUATION_KEY, "Spoken punctuation", "bool", "1"),
+    (
+        shared_settings.VOICE_HISTORY_KEY,
+        "Dictation history",
+        "choice",
+        list(shared_settings.VOICE_HISTORY_CHOICES),
+    ),
+]
 GAMES = [
     (spec.key, spec.label, "bool", "1")
     for spec in shared_settings.GAME_TOGGLES
 ]
 TOOLS = []
 FORM_PAGES = [
-    APPEARANCE, BEHAVIOR, TOP_BAR, PANE_BUTTONS, SESSION_LOG, GAMES, TOOLS,
+    APPEARANCE, BEHAVIOR, TOP_BAR, PANE_BUTTONS, SESSION_LOG, VOICE, GAMES,
+    TOOLS,
 ]
 
 
@@ -159,7 +232,10 @@ class _Swatch(W.Widget):
 
 class SettingsWin(wm.Window):
     def __init__(self, desk):
-        super().__init__(desk, "kilix Settings", 560, 420, icon="settings")
+        # Sized for the tab strip, which neither wraps nor scrolls: a header
+        # past the right edge is unreachable, not merely clipped. Still well
+        # inside a 640x480 desktop.
+        super().__init__(desk, "kilix Settings", 620, 420, icon="settings")
         self.min_w, self.min_h = 540, 320
         self.path = config_path()
         self.shared_path = shared_settings.settings_path()
@@ -180,7 +256,7 @@ class SettingsWin(wm.Window):
         self.raw_tab = len(FORM_PAGES)
         self.tabs = self.add(W.TabBar(6, 6, cw - 12,
                                       ["Appearance", "Behavior", "Top bar",
-                                       "Pane buttons", "Session logs",
+                                       "Pane buttons", "Session logs", "Voice",
                                        "Games", "Tools", "kitty.conf"],
                                       cb=self._switch_tab))
         self.fields = {}              # key -> (kind, widget)
@@ -200,24 +276,37 @@ class SettingsWin(wm.Window):
                 self.panels[tab_i].append(self.flavor_dd)
                 y += 30
             for item_i, (key, label, kind, extra) in enumerate(spec):
-                # Thirteen games fit comfortably in the original-height dialog
-                # as two columns, including on a 640x480 desktop.
+                control_w = 180
+                # The catalog keeps growing, so rows per column have to give
+                # before the column count does: a third column does not fit a
+                # 640x480 desktop, and the dialog has the height for eight.
                 if spec is GAMES:
-                    column, game_row = divmod(item_i, 7)
+                    column, game_row = divmod(item_i, 8)
                     label_x = 18 + column * 270
                     control_x = 178 + column * 270
                     y = 44 + game_row * 30
+                elif spec is VOICE:
+                    # Sixteen settings need two columns too, split reading from
+                    # dictation. Narrower controls than elsewhere so both
+                    # columns fit; the longest value ('vibevoice-asr-bitnet')
+                    # still renders in full, and a dropdown ellipsizes rather
+                    # than overflowing anyway.
+                    column, voice_row = divmod(item_i, 8)
+                    label_x = 18 + column * 300
+                    control_x = 152 + column * 300
+                    control_w = 145
+                    y = 44 + voice_row * 30
                 else:
                     label_x, control_x = 18, 200
                 lw = self.add(W.Label(label_x, y + 4, label + ":"))
                 self.panels[tab_i].append(lw)
                 if kind == "choice":
-                    wd = self.add(W.Dropdown(control_x, y, 180, extra))
+                    wd = self.add(W.Dropdown(control_x, y, control_w, extra))
                 elif kind == "bool":
                     wd = self.add(W.Checkbox(control_x, y + 3, "enabled"))
                     wd.default_val = extra
                 else:
-                    field_w = 80 if key == "font_size" else 180
+                    field_w = 80 if key == "font_size" else control_w
                     wd = self.add(W.TextField(control_x, y, field_w))
                     if key == "font_size":
                         for bx, bw, txt, cb in (
@@ -233,10 +322,10 @@ class SettingsWin(wm.Window):
                         wd.on_change = lambda *_: self.invalidate()
                 self.fields[key] = (kind, wd)
                 self.panels[tab_i].append(wd)
-                if spec is not GAMES:
+                if spec is not GAMES and spec is not VOICE:
                     y += 30
         game_note = self.add(W.Label(
-            18, 264, "The Games menu updates the next time Start opens.",
+            18, 280, "The Games menu updates the next time Start opens.",
             font=T.SMALL, color=T.SHADOW))
         self.panels[FORM_PAGES.index(GAMES)].append(game_note)
         for offset, text in enumerate((
@@ -249,6 +338,19 @@ class SettingsWin(wm.Window):
                 18, 140 + offset * 18, text,
                 font=T.SMALL, color=T.SHADOW))
             self.panels[FORM_PAGES.index(SESSION_LOG)].append(note)
+        # A microphone that appears in the tab bar by default has to say what
+        # it does before it is trusted, and this tab is where a suspicious
+        # user looks first.
+        for offset, text in enumerate((
+            "The microphone opens when you click the microphone button and",
+            "closes when you click it again; nothing is captured before",
+            "that. Speech is synthesised and recognised on this machine,",
+            "nothing is sent anywhere, and dictation never presses Enter.",
+        )):
+            note = self.add(W.Label(
+                18, 280 + offset * 18, text,
+                font=T.SMALL, color=T.SHADOW))
+            self.panels[FORM_PAGES.index(VOICE)].append(note)
         tools_tab = FORM_PAGES.index(TOOLS)
         tools_title = self.add(W.Label(
             18, 48, "Tmux Manager", font=T.BOLD))

@@ -841,6 +841,51 @@ class Shell:
             "could be found.", icon="error")
         return False
 
+    @staticmethod
+    def kilix_tts_target():
+        """Installed TUI first, then the Kilix pinned installer — the same order
+        the tab-bar voice widgets resolve in, so a Start-menu launch and a click
+        on the widget can never end up running different kilix-voice builds."""
+        if executable := shutil.which("kilix-tts"):
+            return [executable]
+        kilix = os.path.join(KILIX_HOME, "kilix")
+        if os.path.isfile(kilix) and os.access(kilix, os.X_OK):
+            return [kilix, "tts"]
+        return None
+
+    def open_kilix_tts(self):
+        target = self.kilix_tts_target()
+        if target is not None:
+            return self._tab(target, "Read Aloud", os.path.expanduser("~"))
+        wm.msgbox(
+            self.desk, "Read Aloud",
+            "Neither an installed Kilix read-aloud TUI nor the pinned Kilix "
+            "installer could be found.", icon="error")
+        return False
+
+    @staticmethod
+    def kilix_stt_target():
+        """Installed TUI first; the Kilix pinned installer is the fallback."""
+        if executable := shutil.which("kilix-stt"):
+            return [executable]
+        kilix = os.path.join(KILIX_HOME, "kilix")
+        if os.path.isfile(kilix) and os.access(kilix, os.X_OK):
+            return [kilix, "stt"]
+        return None
+
+    def open_kilix_stt(self):
+        """The TUI is dictation's settings and diagnostics surface — device,
+        model, level meter. It opens no microphone: capture is click-to-talk
+        and only ever starts from an explicit press."""
+        target = self.kilix_stt_target()
+        if target is not None:
+            return self._tab(target, "Dictation", os.path.expanduser("~"))
+        wm.msgbox(
+            self.desk, "Dictation",
+            "Neither an installed Kilix dictation TUI nor the pinned Kilix "
+            "installer could be found.", icon="error")
+        return False
+
     def install_tb_alias(self):
         """Open the pinned user-level `tb` alias installer in a visible tab."""
         kilix = os.path.join(KILIX_HOME, "kilix")
