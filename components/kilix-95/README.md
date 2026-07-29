@@ -519,9 +519,10 @@ Start ▸ Programs ▸ **BitNet Models** opens the Kilix Bonsai model store: the
 what is already on disk. It resolves an installed `kilix-bonsai` first and
 otherwise delegates to `kilix bonsai`, which installs the pinned closure, so
 the menu entry and the command can never run different builds — and neither
-prefers a source checkout over the pin. Opening it with nothing downloaded is the normal
-case — the first screen prices each model and offers to fetch one. One of them
-is the dictation engine, and both it and Dictation read the same copy.
+prefers a source checkout over the pin. Opening it with nothing downloaded is
+the normal case — the first screen prices each model and offers to fetch one.
+One of them is the dictation engine, and both it and Dictation read the same
+copy.
 
 Start ▸ Programs ▸ **PTY Sessions** opens Kilix's persistent-pane TUI in an
 unbrokered manager tab, so the manager does not list or attach to itself. It can
