@@ -14,7 +14,6 @@ import os
 import shutil
 import stat
 import subprocess
-import sys
 
 from PIL import Image
 
@@ -889,21 +888,15 @@ class Shell:
 
     @staticmethod
     def kilix_bonsai_target():
-        """Installed command first, then a source checkout, then Kilix.
+        """Installed command first; the Kilix pinned installer is the fallback.
 
-        Same order as the Kilix CLI's own resolver, so a Start-menu launch and
-        a `kilix bonsai` in a pane can never end up running different builds.
-        The middle branch only matches on a machine with a source tree, so it
-        cannot shadow an installed command."""
+        Exactly the two branches the Kilix CLI resolves, and for the same
+        reason: a Start-menu launch and a `kilix bonsai` typed in a pane must
+        not be able to run different builds of the tool that downloads
+        multi-gigabyte weights. A source checkout is deliberately not one of
+        them — a working tree is not the pinned closure."""
         if executable := shutil.which("kilix-bonsai"):
             return [executable]
-        source_home = os.environ.get("GPU_TERMINAL_SOURCE_HOME") or \
-            os.path.expanduser("~/.local/gpu_terminal/sources")
-        entry = os.path.join(
-            os.path.abspath(os.path.expanduser(source_home)), "kilix-bonsai",
-            "tools", "kilix-bonsai", "main.py")
-        if os.path.isfile(entry):
-            return [sys.executable, entry]
         kilix = os.path.join(KILIX_HOME, "kilix")
         if os.path.isfile(kilix) and os.access(kilix, os.X_OK):
             return [kilix, "bonsai"]

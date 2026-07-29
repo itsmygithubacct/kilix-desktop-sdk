@@ -1,15 +1,14 @@
 """Programs ▸ BitNet Models launches Kilix Bonsai, and its icon exists.
 
 Two things worth pinning. The entry has to resolve the *same* way the Kilix CLI
-resolves it — installed command, then a source checkout, then `kilix bonsai` —
-or a Start-menu launch and a `kilix bonsai` typed in a pane could end up running
+resolves it — an installed command, otherwise the pinned installer — or a
+Start-menu launch and a `kilix bonsai` typed in a pane could end up running
 different builds of a tool that downloads gigabytes. And the model store must
 open with nothing downloaded, because that is its normal first run: the entry
 must not gate itself on weights being present.
 """
 import os
 import shutil
-import sys
 
 import harness as H
 import icons
@@ -52,8 +51,10 @@ assert len(opened) == 1, opened
 argv, title = opened[0]
 assert title == "BitNet Models", title
 
-# Resolution order: an installed command wins; without one, a source checkout;
-# without either, the Kilix CLI. Never a hard-coded path.
+# Exactly two branches, the same two the Kilix CLI resolves: an installed
+# command wins, and otherwise the Kilix launcher runs the pinned installer.
+# A source checkout is deliberately not consulted — a working tree is not the
+# pinned closure, and this is the tool that downloads gigabytes.
 saved_which = shutil.which
 try:
     shutil.which = lambda name: "/opt/bin/kilix-bonsai" \
@@ -61,16 +62,17 @@ try:
     assert d.shell.kilix_bonsai_target() == ["/opt/bin/kilix-bonsai"]
 
     shutil.which = lambda name: None
+    target = d.shell.kilix_bonsai_target()
+    assert target is not None, "no fallback at all"
+    assert target[-1] == "bonsai" and target[0].endswith("kilix"), target
+
+    # Even with a source checkout present and importable, it must not win.
     source_home = os.environ.get("GPU_TERMINAL_SOURCE_HOME") or \
         os.path.expanduser("~/.local/gpu_terminal/sources")
     checkout = os.path.join(source_home, "kilix-bonsai", "tools",
                             "kilix-bonsai", "main.py")
-    target = d.shell.kilix_bonsai_target()
-    assert target is not None, "no fallback at all"
     if os.path.isfile(checkout):
-        assert target == [sys.executable, checkout], target
-    else:
-        assert target[-1] == "bonsai" and target[0].endswith("kilix"), target
+        assert checkout not in target, target
 finally:
     shutil.which = saved_which
 
