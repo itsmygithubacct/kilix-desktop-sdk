@@ -529,6 +529,8 @@ class Taskbar:
                    action=shell.open_pty_manager),
                 MI("Tmux Manager", icon="mux",
                    action=shell.open_tmux_manager),
+                MI("Kilix TUI", icon="terminal",
+                   action=shell.open_kilix_tui),
                 MI("Read Aloud", icon="speak",
                    action=shell.open_kilix_tts),
                 MI("Dictation", icon="microphone",

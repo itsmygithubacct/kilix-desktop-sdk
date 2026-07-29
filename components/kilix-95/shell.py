@@ -919,6 +919,36 @@ class Shell:
             "checkout could be found.", icon="error")
         return False
 
+    @staticmethod
+    def kilix_tui_target():
+        """Installed command first; the Kilix launcher is the fallback.
+
+        The same two branches as the model store, for the same reason: a
+        Start-menu launch and a `kilix kilix-tui` typed in a pane must run the
+        same build of the desktop. A source checkout is deliberately not one
+        of them — a working tree is not the pinned closure."""
+        if executable := shutil.which("kilix-tui"):
+            return [executable]
+        kilix = os.path.join(KILIX_HOME, "kilix")
+        if os.path.isfile(kilix) and os.access(kilix, os.X_OK):
+            return [kilix, "kilix-tui"]
+        return None
+
+    def open_kilix_tui(self):
+        """The text-native desktop, in a tab of its own.
+
+        Kilix 95 keeps running — this opens the sibling desktop beside it, the
+        way a second terminal would, so the two can be compared and the TUI can
+        be reached without changing the session's provider."""
+        target = self.kilix_tui_target()
+        if target is not None:
+            return self._tab(target, "Kilix TUI", os.path.expanduser("~"))
+        wm.msgbox(
+            self.desk, "Kilix TUI",
+            "Neither an installed Kilix TUI desktop nor its pinned "
+            "installer could be found.", icon="error")
+        return False
+
     def install_tb_alias(self):
         """Open the pinned user-level `tb` alias installer in a visible tab."""
         kilix = os.path.join(KILIX_HOME, "kilix")
