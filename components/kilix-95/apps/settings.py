@@ -181,7 +181,19 @@ GAMES = [
     (spec.key, spec.label, "bool", "1")
     for spec in shared_settings.GAME_TOGGLES
 ]
-TOOLS = []
+# Whether a coding agent resumed from kilix-rollout-resume starts with its own
+# approval prompts turned off. It lives here rather than in that tool because
+# it decides whether an agent asks before it acts, which the user should be
+# able to find and audit next to every other stack-wide preference.
+CODING = [
+    (
+        shared_settings.CODING_YOLO_KEY,
+        "Skip agent approval prompts (YOLO)",
+        "choice",
+        list(shared_settings.CODING_YOLO_CHOICES),
+    ),
+]
+TOOLS = CODING
 FORM_PAGES = [
     APPEARANCE, BEHAVIOR, TOP_BAR, PANE_BUTTONS, SESSION_LOG, VOICE, GAMES,
     TOOLS,
@@ -343,6 +355,15 @@ class SettingsWin(wm.Window):
             18, 280, "The Games menu updates the next time Start opens.",
             font=T.SMALL, color=T.SHADOW))
         self.panels[FORM_PAGES.index(GAMES)].append(game_note)
+        for offset, text in enumerate((
+            "Applies to sessions resumed with kilix-rollout-resume.",
+            "'on' starts Claude Code with --dangerously-skip-permissions and",
+            "Codex and Kimi Code with --yolo, so the agent runs commands",
+            "without asking. Leave it off unless this machine is disposable.",
+        )):
+            note = self.add(W.Label(18, 90 + offset * 18, text,
+                                    font=T.SMALL, color=T.SHADOW))
+            self.panels[FORM_PAGES.index(TOOLS)].append(note)
         for offset, text in enumerate((
             "Each pane's output is recorded under the Kilix state directory,",
             "readable only by you. Typed input appears only where the pane",
