@@ -18,7 +18,7 @@ Quit through Start -> Shut Down..., or press `Ctrl+Alt+Q`.
 
 ## Release 0.1.6
 
-Version 0.1.5 is the coordinated stack release covering everything since 0.1.2,
+Version 0.1.6 is the coordinated stack release covering everything since 0.1.2,
 shared with [Kilix](https://github.com/itsmygithubacct/kilix),
 [Pleb](https://github.com/itsmygithubacct/pleb), and
 [Plebian-OS](https://github.com/itsmygithubacct/plebian-os). It adds the pane
@@ -29,13 +29,23 @@ consuming the SDK 1.5 session-logging contract, including the two directory
 budgets that bound the transcript tree: dead-pane logs are compressed
 promptly, and the oldest are recompressed more densely before any history
 is dropped.
-Release tags for this repository are created only by the coordinated release
-procedure — see Plebian-OS's
+
+Settings also gains a **Voice** tab over SDK 1.6's shared speech contract —
+read-aloud and dictation engines, voice, rate, extent, devices, and a dictation
+history that stays off unless it is turned on — with matching Start menu
+entries. The **Tools** tab pairs the Tmux Manager with SDK 1.7's coding-agent
+policy: one setting deciding whether a resumed coding agent starts with its own
+approval prompts disabled, spelled out on screen because it is the one knob here
+that makes an agent act without asking. This desktop now requires **Kilix SDK
+1.7**. Release tags for this repository are created only by the coordinated
+release procedure — see Plebian-OS's
 [RELEASING.md](https://github.com/itsmygithubacct/plebian-os/blob/main/RELEASING.md).
 
 > The `0.1.3` and `0.1.4` sections below are **component milestones**, not
 > shipped stack releases: they mark which Kilix provider SDK this desktop
 > consumed. No Plebian-OS image was ever built or published for either.
+> `0.1.5` was prepared as a coordinated release and never cut; its work ships
+> here as 0.1.6.
 
 ## 0.1.4 — consumes SDK 1.4
 

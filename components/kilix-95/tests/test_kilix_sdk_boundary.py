@@ -46,4 +46,36 @@ assert kilix_sdk.SDK_API_VERSION >= required_api
 kilix_sdk.require_compatible(requirement)
 assert f'require_kilix_sdk("{requirement}")' in (ROOT / "main.py").read_text()
 
+# The version gate above compares a declared number. It cannot notice a
+# provider reaching for a shared-settings symbol that the host SDK does not
+# actually export — which is how a provider ends up importable against the
+# version it claims and broken against the version it gets. Check the symbols
+# themselves, not just the number.
+from kilix_sdk import settings as shared_settings
+
+referenced = set()
+for source in sorted(ROOT.glob("*.py")) + sorted(ROOT.glob("apps/*.py")):
+    tree = ast.parse(source.read_text(), filename=str(source))
+    # Resolve whatever this file binds `kilix_sdk.settings` to, so a local
+    # variable that happens to be called `settings` is not mistaken for it.
+    aliases = {
+        alias.asname or alias.name
+        for node in ast.walk(tree)
+        if isinstance(node, ast.ImportFrom) and node.module == "kilix_sdk"
+        for alias in node.names if alias.name == "settings"
+    }
+    if not aliases:
+        continue
+    for node in ast.walk(tree):
+        if (isinstance(node, ast.Attribute)
+                and isinstance(node.value, ast.Name)
+                and node.value.id in aliases):
+            referenced.add(node.attr)
+
+missing = sorted(name for name in referenced if not hasattr(shared_settings, name))
+assert not missing, (
+    "provider uses shared-settings symbols this Kilix SDK does not export: "
+    f"{missing}. Either the host is older than requires_kilix_sdk claims, or "
+    "adding them should have bumped SDK_API_VERSION.")
+
 print("ok")
