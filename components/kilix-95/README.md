@@ -16,7 +16,7 @@ kilix desktop
 
 Quit through Start -> Shut Down..., or press `Ctrl+Alt+Q`.
 
-## Release 0.1.5
+## Release 0.1.6
 
 Version 0.1.5 is the coordinated stack release covering everything since 0.1.2,
 shared with [Kilix](https://github.com/itsmygithubacct/kilix),
