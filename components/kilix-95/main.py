@@ -83,7 +83,7 @@ try:
     from kilix_sdk import require_compatible as require_kilix_sdk
 except ImportError as exc:
     raise RuntimeError(
-        "Kilix 95 requires kilix_sdk 1.6; update the Kilix host checkout "
+        "Kilix 95 requires kilix_sdk 1.7; update the Kilix host checkout "
         "and initialize its submodules"
     ) from exc
 from kilix_sdk import graphics as kilix_graphics

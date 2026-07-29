@@ -44,7 +44,12 @@ assert len(required_api) == 2
 assert kilix_sdk.SDK_API_VERSION[0] == required_api[0]
 assert kilix_sdk.SDK_API_VERSION >= required_api
 kilix_sdk.require_compatible(requirement)
-assert f'require_kilix_sdk("{requirement}")' in (ROOT / "main.py").read_text()
+main_text = (ROOT / "main.py").read_text()
+assert f'require_kilix_sdk("{requirement}")' in main_text
+# The ImportError path names the required version in prose. It is the message a
+# user acts on when the host is too old, so it must not drift from the manifest.
+assert f"requires kilix_sdk {requirement};" in main_text, (
+    f"main.py's ImportError message does not name kilix_sdk {requirement}")
 
 # The version gate above compares a declared number. It cannot notice a
 # provider reaching for a shared-settings symbol that the host SDK does not
