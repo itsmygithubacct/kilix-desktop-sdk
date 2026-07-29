@@ -325,11 +325,23 @@ with conf("font_size 12\n"):
     tools_tab = settings.FORM_PAGES.index(settings.TOOLS)
     win._switch_tab(tools_tab)
     assert win.tb_alias_button.visible
+    yolo_key = settings.shared_settings.CODING_YOLO_KEY
+    yolo = win.fields[yolo_key][1]
+    assert yolo.options == ["off", "on"], yolo.options
+    assert yolo.value == "off", yolo.value
+    assert win.coding_title.y > win.tools_note.y + win.tools_note.h
+    assert yolo.y > win.coding_title.y + win.coding_title.h
+    assert all(note.y > yolo.y + yolo.h for note in win.coding_notes)
     called = []
     d.shell.install_tb_alias = lambda: called.append(True) or True
     win._install_tb_alias()
     assert called == [True]
     assert "new tab" in win.tb_alias_status.text
+    yolo.index = yolo.options.index("on")
+    win._apply()
+    assert settings.shared_settings.coding_yolo(win.shared_path)
+    assert yolo_key not in read(win.path), \
+        "shared coding policy reached kitty.conf"
 
 
 # Session logs edits the same shared document as the kilix CLI and TUI, and

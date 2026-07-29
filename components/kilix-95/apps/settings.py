@@ -188,7 +188,7 @@ GAMES = [
 CODING = [
     (
         shared_settings.CODING_YOLO_KEY,
-        "Skip agent approval prompts (YOLO)",
+        "Skip coding-agent approval prompts",
         "choice",
         list(shared_settings.CODING_YOLO_CHOICES),
     ),
@@ -323,6 +323,13 @@ class SettingsWin(wm.Window):
                     control_x = 152 + column * 300
                     control_w = 145
                     y = 44 + voice_row * 30
+                elif spec is TOOLS:
+                    # This tab already owns the tmux manager. Keep the coding
+                    # policy below that complete block instead of laying the
+                    # generic first form row over its title and controls.
+                    label_x, control_x = 18, 310
+                    control_w = 100
+                    y = 244 + item_i * 30
                 else:
                     label_x, control_x = 18, 200
                 lw = self.add(W.Label(label_x, y + 4, label + ":"))
@@ -355,15 +362,21 @@ class SettingsWin(wm.Window):
             18, 280, "The Games menu updates the next time Start opens.",
             font=T.SMALL, color=T.SHADOW))
         self.panels[FORM_PAGES.index(GAMES)].append(game_note)
+        tools_tab = FORM_PAGES.index(TOOLS)
+        self.coding_title = self.add(W.Label(
+            18, 216, "Coding agents", font=T.BOLD))
+        self.panels[tools_tab].append(self.coding_title)
+        self.coding_notes = []
         for offset, text in enumerate((
             "Applies to sessions resumed with kilix-rollout-resume.",
             "'on' starts Claude Code with --dangerously-skip-permissions and",
             "Codex and Kimi Code with --yolo, so the agent runs commands",
             "without asking. Leave it off unless this machine is disposable.",
         )):
-            note = self.add(W.Label(18, 90 + offset * 18, text,
+            note = self.add(W.Label(18, 280 + offset * 18, text,
                                     font=T.SMALL, color=T.SHADOW))
-            self.panels[FORM_PAGES.index(TOOLS)].append(note)
+            self.panels[tools_tab].append(note)
+            self.coding_notes.append(note)
         for offset, text in enumerate((
             "Each pane's output is recorded under the Kilix state directory,",
             "readable only by you. Typed input appears only where the pane",
@@ -387,7 +400,6 @@ class SettingsWin(wm.Window):
                 18, 280 + offset * 18, text,
                 font=T.SMALL, color=T.SHADOW))
             self.panels[FORM_PAGES.index(VOICE)].append(note)
-        tools_tab = FORM_PAGES.index(TOOLS)
         tools_title = self.add(W.Label(
             18, 48, "Tmux Manager", font=T.BOLD))
         tools_description = self.add(W.Label(
@@ -403,13 +415,13 @@ class SettingsWin(wm.Window):
         self.tb_alias_button = self.add(W.Button(
             18, 142, 132, 24, "Install / repair tb",
             cb=self._install_tb_alias))
-        tools_note = self.add(W.Label(
+        self.tools_note = self.add(W.Label(
             18, 180,
             "Installation opens in a new tab and uses Kilix's pinned source closure.",
             font=T.SMALL, color=T.SHADOW))
         self.panels[tools_tab].extend([
             tools_title, tools_description, self.tb_alias_status,
-            self.tb_alias_button, tools_note,
+            self.tb_alias_button, self.tools_note,
         ])
         self.full_experience = self.add(W.Checkbox(
             18, 232, "Activate full experience",
