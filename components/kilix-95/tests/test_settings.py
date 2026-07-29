@@ -10,6 +10,7 @@ import stat
 import tempfile
 
 import harness as H
+import shell as shell_mod
 import theme as T
 from apps import settings
 
@@ -17,6 +18,12 @@ from apps import settings
 # never SIGUSR1 a real process or shell out to a kitten.
 os.environ.pop("KITTY_LISTEN_ON", None)
 os.environ.pop("KITTY_PID", None)
+
+# Each conf() block starts from a shared file that does not exist yet, and
+# creating one migrates any exported managed key into it. A developer's own
+# kilix.env would otherwise decide what this suite believes the defaults are.
+for _key in settings.shared_settings.MANAGED_KEYS:
+    os.environ.pop(_key, None)
 
 
 @contextlib.contextmanager
@@ -363,6 +370,137 @@ with conf("font_size 12\n") as target:
     assert "KILIX_TRANSCRIPT" not in read(target)
     assert not shared_settings.transcript_enabled(win.shared_path)
     assert shared_settings.transcript_limit(win.shared_path) == 32 * 1024 * 1024
+
+
+# Voice sits after Session logs, so every section ahead of it keeps the numeric
+# position the CLI and the TUI derive from this same order. Its controls are
+# shared settings; none of them belongs in kitty.conf.
+with conf("font_size 12\n") as target:
+    d = H.make_desk()
+    import apps
+    apps.open(d, "settings", None)
+    win = H.find_window(d, "SettingsWin")
+    shared_settings = settings.shared_settings
+    voice_tab = settings.FORM_PAGES.index(settings.VOICE)
+    assert win.tabs.tabs[:voice_tab] == [
+        "Appearance", "Behavior", "Top bar", "Pane buttons", "Session logs",
+    ], win.tabs.tabs
+    assert win.tabs.tabs[voice_tab] == "Voice", win.tabs.tabs
+    assert win.tabs.tabs[voice_tab + 1] == "Games", win.tabs.tabs
+    win._switch_tab(voice_tab)
+
+    for key, _label, _kind, _extra in settings.VOICE:
+        assert key in win.shared_keys, \
+            f"{key} would be written to kitty.conf, where nothing reads it"
+
+    # Choices and defaults come from the SDK rather than being retyped here: a
+    # form that disagrees with the vocabulary the fork reads is a silent bug,
+    # since an unrecognised value reads back as the default without saying so.
+    for key, (default, choices) in shared_settings.VOICE_CHOICE_SPECS.items():
+        _kind, wd = win.fields[key]
+        assert wd.options == list(choices), (key, wd.options)
+        assert wd.value == default, (key, wd.value)
+    for key, (default, _pattern) in shared_settings.VOICE_TOKEN_SPECS.items():
+        assert win.fields[key][1].text == default, key
+    for key in ("KILIX_CHROME_SPEAK", "KILIX_CHROME_DICTATE",
+                shared_settings.VOICE_PUNCTUATION_KEY):
+        assert win.fields[key][1].checked, f"{key} should ship enabled"
+
+    engine = win.fields[shared_settings.VOICE_TTS_ENGINE_KEY][1]
+    engine.index = engine.options.index("mbrola")
+    rate = win.fields[shared_settings.VOICE_TTS_RATE_KEY][1]
+    rate.index = rate.options.index("240")
+    history = win.fields[shared_settings.VOICE_HISTORY_KEY][1]
+    history.index = history.options.index("on")
+    win.fields[shared_settings.VOICE_TTS_VOICE_KEY][1].set("mb-us1")
+    win.fields["KILIX_CHROME_DICTATE"][1].checked = False
+    win._apply()
+
+    shared_text = read(win.shared_path)
+    assert f"{shared_settings.VOICE_TTS_ENGINE_KEY}=mbrola" in shared_text
+    assert f"{shared_settings.VOICE_TTS_RATE_KEY}=240" in shared_text
+    assert f"{shared_settings.VOICE_TTS_VOICE_KEY}=mb-us1" in shared_text
+    assert f"{shared_settings.VOICE_HISTORY_KEY}=on" in shared_text
+    assert "KILIX_CHROME_DICTATE=0" in shared_text
+    assert "KILIX_VOICE" not in read(target), "voice keys reached kitty.conf"
+    assert shared_settings.tts_rate(win.shared_path) == 240
+    assert shared_settings.voice_history(win.shared_path)
+
+
+# The submit policy is the safety-relevant control on this tab: dictation that
+# presses Enter on its own behalf turns a misrecognition into a command. The
+# two values are written out rather than read from the SDK, so that widening
+# the vocabulary fails here even if every other assertion still agrees.
+with conf("font_size 12\n"):
+    d = H.make_desk()
+    import apps
+    apps.open(d, "settings", None)
+    win = H.find_window(d, "SettingsWin")
+    _, submit = win.fields[shared_settings.VOICE_STT_SUBMIT_KEY]
+    assert submit.options == ["never", "confirm"], submit.options
+    assert submit.value == "never", submit.value
+    for key, _label, _kind, _extra in settings.VOICE:
+        assert "always" not in getattr(win.fields[key][1], "options", ()), key
+
+    submit.index = submit.options.index("confirm")
+    win._apply()
+    assert shared_settings.stt_submit(win.shared_path) == "confirm"
+
+    # Asking first is the most a settings file can request. A hand-written
+    # third policy is not honoured — the accessor validates and falls back.
+    with open(win.shared_path, "a", encoding="utf-8") as stream:
+        stream.write(f"{shared_settings.VOICE_STT_SUBMIT_KEY}=always\n")
+    assert shared_settings.stt_submit(win.shared_path) == "never"
+
+
+# Start ▸ Programs carries both voice TUIs. Each prefers an installed command
+# over the pinned Kilix installer, and an entry that resolves to nothing says
+# so: a missing speech engine degrades the feature, it never swallows a click.
+with conf("font_size 12\n") as target:
+    d = H.make_desk()
+    d.taskbar.open_start_menu()
+    programs = next(item for item in d.menus.stack[0].items
+                    if item.label == "Programs")
+    entries = {item.label: item for item in programs.submenu}
+    assert entries["Read Aloud"].icon == "speak"
+    assert entries["Dictation"].icon == "microphone"
+
+    opened = []
+    d.shell._tab = lambda argv, title, cwd=None: opened.append(
+        (argv, title, cwd)) or True
+    real_which = shell_mod.shutil.which
+    shell_mod.shutil.which = lambda name: (
+        f"/usr/local/bin/{name}" if name in ("kilix-tts", "kilix-stt")
+        else real_which(name))
+    try:
+        entries["Read Aloud"].action()
+        entries["Dictation"].action()
+    finally:
+        shell_mod.shutil.which = real_which
+    home = os.path.expanduser("~")
+    assert opened == [
+        (["/usr/local/bin/kilix-tts"], "Read Aloud", home),
+        (["/usr/local/bin/kilix-stt"], "Dictation", home),
+    ], opened
+
+    messages = []
+    real_msgbox = shell_mod.wm.msgbox
+    real_kilix_home = shell_mod.KILIX_HOME
+    shell_mod.wm.msgbox = lambda desk, title, text, **kw: messages.append(
+        (title, text, kw))
+    shell_mod.KILIX_HOME = os.path.dirname(target)   # holds no kilix launcher
+    shell_mod.shutil.which = lambda name: None
+    try:
+        assert entries["Read Aloud"].action() is False
+        assert entries["Dictation"].action() is False
+    finally:
+        shell_mod.wm.msgbox = real_msgbox
+        shell_mod.KILIX_HOME = real_kilix_home
+        shell_mod.shutil.which = real_which
+    assert [title for title, _text, _kw in messages] == \
+        ["Read Aloud", "Dictation"], messages
+    assert all(kw.get("icon") == "error" for _t, _m, kw in messages), messages
+    assert len(opened) == 2, "an unresolved target still opened a tab"
 
 
 print("ok")

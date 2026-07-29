@@ -529,6 +529,10 @@ class Taskbar:
                    action=shell.open_pty_manager),
                 MI("Tmux Manager", icon="mux",
                    action=shell.open_tmux_manager),
+                MI("Read Aloud", icon="speak",
+                   action=shell.open_kilix_tts),
+                MI("Dictation", icon="microphone",
+                   action=shell.open_kilix_stt),
                 MI("Web Browser", icon="browser",
                    action=lambda: shell.open_browser("firefox"),
                    context=[

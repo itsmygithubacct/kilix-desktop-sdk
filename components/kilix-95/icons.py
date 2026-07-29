@@ -165,6 +165,45 @@ def _memory(p):
         p.px(x, 13, Y)
 
 
+def _speak(p):
+    """A head with speech waves — the read-aloud tool. Deliberately the same
+    subject as the tab-bar widget's md-account_voice glyph, so the desktop
+    entry and the top-bar button read as one feature."""
+    # the head is an octagon, not a rect: a square one on a trapezoid bust
+    # reads as the _computer monitor at 16 px
+    p.poly([(3, 2), (7, 2), (8, 3), (8, 7), (7, 8), (3, 8), (2, 7), (2, 3)],
+           fill=S, outline=K)
+    p.vline(3, 4, 6, W)                            # cheek highlight
+    p.px(4, 4, K)
+    p.px(6, 4, K)                                  # eyes
+    p.hline(4, 6, 6, DR)                           # open mouth
+    p.px(5, 7, DR)
+    p.rect(4, 8, 6, 9, fill=S)                     # neck, breaking the chin
+    p.poly([(0, 14), (1, 12), (3, 10), (7, 10), (9, 12), (10, 14)],
+           fill=DB, outline=K)                     # shoulders
+    p.px(10, 4, B)                                 # speech waves
+    p.vline(11, 5, 7, B)
+    p.px(10, 8, B)
+    p.px(13, 2, B)
+    p.vline(14, 3, 9, B)
+    p.px(13, 10, B)
+
+
+def _microphone(p):
+    """A cradled studio mic — dictation. Drawn idle, with no recording tally:
+    the microphone only opens on a click, and an icon that looks live would
+    say otherwise."""
+    p.rect(5, 1, 10, 8, fill=S, outline=K)         # capsule
+    p.vline(6, 2, 7, W)                            # left bevel
+    for y in (3, 5, 7):
+        p.hline(7, 9, y, G)                        # grille slots
+    p.vline(3, 5, 8, K)                            # cradle arms
+    p.vline(12, 5, 8, K)
+    p.hline(3, 12, 9, K)
+    p.rect(7, 10, 8, 11, fill=G)                   # stem
+    p.rect(4, 12, 11, 14, fill=S, outline=K)       # base
+
+
 def _dosbox(p):
     p.rect(1, 1, 14, 10, fill=S, outline=K)        # beige monitor shell
     p.rect(3, 2, 12, 8, fill=K)                    # black CRT
@@ -802,6 +841,7 @@ ICONS = {
     "doc": _doc, "doc_text": _doc_text, "doc_image": _doc_image,
     "doc_audio": _doc_audio,
     "exe": _exe, "terminal": _terminal, "mux": _mux, "memory": _memory,
+    "speak": _speak, "microphone": _microphone,
     "settings": _settings,
     "notepad": _notepad, "browser": _browser, "run": _run,
     "shutdown": _shutdown, "flame": _flame, "home": _home,

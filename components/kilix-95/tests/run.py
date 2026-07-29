@@ -45,7 +45,14 @@ def main():
             return 1
         state_library = result.stdout.strip()
     for name in names:
-        env = dict(os.environ)
+        # A running Kilix session exports live paths, flavor, chrome settings,
+        # and Kitty control variables. None of those may decide the behavior of
+        # an offscreen test: retain the ordinary process environment, then add
+        # back only the stack variables rooted in this test's sandbox.
+        env = {
+            key: value for key, value in os.environ.items()
+            if not key.startswith(("GPU_TERMINAL_", "KILIX", "KITTY_"))
+        }
         sandbox = tempfile.mkdtemp(prefix="kilix95-test-")
         home = os.path.join(sandbox, "home")
         data_root = os.path.join(sandbox, "gpu-terminal-data")
@@ -56,6 +63,8 @@ def main():
             "HOME": home,
             "GPU_TERMINAL_SOURCE_HOME": SOURCE_HOME,
             "GPU_TERMINAL_HOME": data_root,
+            "GPU_TERMINAL_SETTINGS_FILE": os.path.join(
+                data_root, "settings.conf"),
             "KILIX_HOME": os.path.join(SOURCE_HOME, "kilix"),
             "KILIX_STORAGE_HOME": kilix_root,
             "KILIX_CONFIG_HOME": os.path.join(kilix_root, "config"),
@@ -79,7 +88,6 @@ def main():
             "KILIX_STATE_LIBRARY": state_library,
             "PYTHONDONTWRITEBYTECODE": "1",
         })
-        env.pop("KITTY_CONFIG_DIRECTORY", None)
         t0 = time.time()
         try:
             p = subprocess.run([sys.executable, os.path.join(HERE, name)],
