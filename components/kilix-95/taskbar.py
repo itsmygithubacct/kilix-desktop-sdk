@@ -533,6 +533,10 @@ class Taskbar:
                    action=shell.open_kilix_tts),
                 MI("Dictation", icon="microphone",
                    action=shell.open_kilix_stt),
+                # Next to Dictation on purpose: the speech model it needs is
+                # one of the models this downloads, and they share one copy.
+                MI("BitNet Models", icon="bonsai",
+                   action=shell.open_kilix_bonsai),
                 MI("Web Browser", icon="browser",
                    action=lambda: shell.open_browser("firefox"),
                    context=[

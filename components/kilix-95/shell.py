@@ -14,6 +14,7 @@ import os
 import shutil
 import stat
 import subprocess
+import sys
 
 from PIL import Image
 
@@ -884,6 +885,45 @@ class Shell:
             self.desk, "Dictation",
             "Neither an installed Kilix dictation TUI nor the pinned Kilix "
             "installer could be found.", icon="error")
+        return False
+
+    @staticmethod
+    def kilix_bonsai_target():
+        """Installed command first, then a source checkout, then Kilix.
+
+        Same order as the Kilix CLI's own resolver, so a Start-menu launch and
+        a `kilix bonsai` in a pane can never end up running different builds.
+        The middle branch only matches on a machine with a source tree, so it
+        cannot shadow an installed command."""
+        if executable := shutil.which("kilix-bonsai"):
+            return [executable]
+        source_home = os.environ.get("GPU_TERMINAL_SOURCE_HOME") or \
+            os.path.expanduser("~/.local/gpu_terminal/sources")
+        entry = os.path.join(
+            os.path.abspath(os.path.expanduser(source_home)), "kilix-bonsai",
+            "tools", "kilix-bonsai", "main.py")
+        if os.path.isfile(entry):
+            return [sys.executable, entry]
+        kilix = os.path.join(KILIX_HOME, "kilix")
+        if os.path.isfile(kilix) and os.access(kilix, os.X_OK):
+            return [kilix, "bonsai"]
+        return None
+
+    def open_kilix_bonsai(self):
+        """The BitNet model store: browse, download, and verify local models.
+
+        It opens with nothing downloaded on purpose — the TUI's first screen is
+        a setup screen that prices each model — so this launches unconditionally
+        rather than checking for weights first. One of those models is the
+        dictation engine, which is why this and Dictation sit near each other in
+        the menu."""
+        target = self.kilix_bonsai_target()
+        if target is not None:
+            return self._tab(target, "BitNet Models", os.path.expanduser("~"))
+        wm.msgbox(
+            self.desk, "BitNet Models",
+            "Neither an installed Kilix Bonsai model store nor its source "
+            "checkout could be found.", icon="error")
         return False
 
     def install_tb_alias(self):

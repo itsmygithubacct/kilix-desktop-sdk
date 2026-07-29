@@ -199,8 +199,8 @@ The Start menu is built in `taskbar.py`.
 Top-level sections:
 
 - **Programs**: built-in accessories, games, browsers, terminals, PTY Sessions,
-  Kilix Temps, Kilix Memory, Tmux Manager, the MS-DOS Prompt/DOSBox caller,
-  user launchers, and discovered XDG apps. PowerToys and
+  Kilix Temps, Kilix Memory, Tmux Manager, BitNet Models, the MS-DOS
+  Prompt/DOSBox caller, user launchers, and discovered XDG apps. PowerToys and
   the optional classic folders appear when the full experience is active.
 - **Documents**: recently opened files.
 - **Settings**: Control Panel, Kilix settings, display properties, sound
@@ -513,6 +513,14 @@ Start ▸ Programs ▸ Kilix Memory launches the RAM, swap, PSI pressure, paging
 and per-process dashboard in a graphical tab. The pane memory chip opens the
 same monitor; `auto` shows it above 1 GiB, `always` includes MiB/KiB values,
 and `off` hides it.
+
+Start ▸ Programs ▸ **BitNet Models** opens the Kilix Bonsai model store: the
+1-bit and 1.58-bit models this stack can run, what each costs to download, and
+what is already on disk. It resolves an installed `kilix-bonsai` first, then a
+source checkout, then `kilix bonsai`, so the menu entry and the command can
+never run different builds. Opening it with nothing downloaded is the normal
+case — the first screen prices each model and offers to fetch one. One of them
+is the dictation engine, and both it and Dictation read the same copy.
 
 Start ▸ Programs ▸ **PTY Sessions** opens Kilix's persistent-pane TUI in an
 unbrokered manager tab, so the manager does not list or attach to itself. It can

@@ -351,6 +351,43 @@ def _games(p):
     p.hline(2, 13, 5, W)
 
 
+def _bonsai(p):
+    """A bonsai in a shallow pot — the BitNet model store.
+
+    A tree rather than a chip or a database: these are small models grown down
+    from large ones, and the name the whole family carries is the tree's.
+    Authored as a black silhouette with the fill inset, the way the other
+    organic icons here are, because outlining each shape separately at 16 px
+    leaves more outline than shape."""
+    CANOPY = ((0, 5, 10), (1, 3, 12), (2, 2, 13), (3, 2, 13), (4, 3, 12))
+    for y, x0, x1 in CANOPY:                       # silhouette
+        p.hline(x0, x1, y, K)
+    p.hline(4, 6, 5, K)                            # the two lower lobes
+    p.hline(9, 11, 5, K)
+    for y, x0, x1 in ((1, 5, 10), (2, 3, 12), (3, 3, 12), (4, 4, 11)):
+        p.hline(x0, x1, y, DN)                     # foliage
+    p.hline(5, 8, 1, N)                            # light from the upper left
+    p.hline(3, 7, 2, N)
+    p.px(5, 5, DN)
+    p.px(10, 5, DN)
+    for y in range(5, 10):                         # trunk, outlined both sides
+        p.px(6, y, K)
+        p.hline(7, 8, y, DR)
+        p.px(9, y, K)
+    p.hline(1, 14, 10, K)                          # pot: rim, then the taper
+    p.hline(1, 14, 11, K)
+    p.hline(2, 13, 12, K)
+    p.hline(3, 12, 13, K)
+    p.hline(4, 11, 14, K)
+    p.hline(2, 13, 10, S)
+    p.hline(2, 13, 11, S)
+    p.hline(3, 12, 10, W)                          # rim highlight
+    p.hline(3, 12, 12, DR)
+    p.hline(4, 11, 13, DR)
+    p.hline(5, 10, 14, DR)
+    p.hline(4, 7, 12, R)                           # glazed side
+
+
 def _amp(p):
     # a little Winamp-style player: title strip, scope window, lightning
     p.rect(1, 2, 14, 13, fill=G, outline=K)
@@ -851,7 +888,7 @@ ICONS = {
     "fishtank": _fishtank,
     "lander": _lander, "brokeout": _brokeout, "lights": _lights,
     "super-kilix": _super_kilix,
-    "amp": _amp,
+    "amp": _amp, "bonsai": _bonsai,
     "question": _question, "info": _info, "warn": _warn, "error": _error,
     "back": _arrow_left, "forward": _arrow_right, "up": _arrow_up,
     "calc": _calc, "cards": _cards, "charmap": _charmap, "help": _help,
