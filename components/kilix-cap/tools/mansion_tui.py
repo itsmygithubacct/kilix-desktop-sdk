@@ -187,62 +187,62 @@ def put(
 
 
 def initialize_colors() -> dict[str, int]:
+    # The one Kilix palette: blue carries structure and selection, red warns,
+    # white speaks, and grey supports.
     colors = {
-        "green": curses.A_NORMAL,
-        "bright": curses.A_BOLD,
-        "amber": curses.A_BOLD,
-        "red": curses.A_BOLD,
-        "dim": curses.A_DIM,
-        "reverse": curses.A_REVERSE,
+        "text": curses.A_NORMAL,
+        "title": curses.A_BOLD,
+        "accent": curses.A_BOLD,
+        "alert": curses.A_BOLD,
+        "muted": curses.A_DIM,
+        "selected": curses.A_REVERSE,
     }
     if not curses.has_colors():
         return colors
     curses.start_color()
     curses.use_default_colors()
-    curses.init_pair(1, curses.COLOR_GREEN, -1)
-    curses.init_pair(2, curses.COLOR_CYAN, -1)
-    curses.init_pair(3, curses.COLOR_YELLOW, -1)
-    curses.init_pair(4, curses.COLOR_RED, -1)
+    curses.init_pair(1, curses.COLOR_WHITE, -1)
+    curses.init_pair(2, curses.COLOR_BLUE, -1)
+    curses.init_pair(3, curses.COLOR_RED, -1)
+    curses.init_pair(4, curses.COLOR_WHITE, curses.COLOR_BLUE)
     colors.update(
-        green=curses.color_pair(1),
-        bright=curses.color_pair(2) | curses.A_BOLD,
-        amber=curses.color_pair(3) | curses.A_BOLD,
-        red=curses.color_pair(4) | curses.A_BOLD,
-        dim=curses.color_pair(1) | curses.A_DIM,
-        reverse=curses.color_pair(1) | curses.A_REVERSE,
+        text=curses.color_pair(1),
+        title=curses.color_pair(1) | curses.A_BOLD,
+        accent=curses.color_pair(2),
+        alert=curses.color_pair(3) | curses.A_BOLD,
+        muted=curses.color_pair(1) | curses.A_DIM,
+        selected=curses.color_pair(4) | curses.A_BOLD,
     )
     return colors
 
 
 def draw_frame(
-    screen: curses.window, title: str, colors: dict[str, int], now: float
+    screen: curses.window, title: str, colors: dict[str, int], _now: float
 ) -> tuple[int, int]:
     screen.erase()
     height, width = screen.getmaxyx()
-    if height < 8 or width < 48:
-        put(
-            screen,
-            0,
-            0,
-            "Enlarge this tab to at least 48x8.  q exits.",
-            width,
-            colors["amber"],
-        )
+    if height <= 0 or width <= 0:
         return height, width
-    pulse = "01"[(int(now * 2) % 2)]
-    border = (pulse + "·") * (width // 2 + 1)
-    put(screen, 0, 0, border, width, colors["dim"])
-    put(screen, 1, 2, f"KILIX MANOR // {title}", width - 4, colors["bright"])
+    left = 1 if width > 2 else 0
+    put(screen, 0, left, "KILIX TUI", max(0, width - left),
+        colors["title"])
+    strap = f"Kilix Cap · {title.title()}"
+    if width - len(strap) - 1 > left + len("KILIX TUI"):
+        put(screen, 0, width - len(strap) - 1, strap, len(strap),
+            colors["muted"])
+    put(screen, 1, left, "▶1 Overview ", max(0, width - left),
+        colors["selected"])
+    put(screen, 2, 0, "─" * max(0, width - 1), width, colors["muted"])
     put(
         screen,
-        2,
-        2,
-        time.strftime("%Y-%m-%d  %H:%M:%S") + "    [r] refresh  [q] close",
-        width - 4,
-        colors["green"],
+        3,
+        left,
+        time.strftime("%Y-%m-%d %H:%M:%S") + " · live system console",
+        max(0, width - left),
+        colors["muted"],
     )
-    put(screen, 3, 0, "─" * width, width, colors["green"])
-    put(screen, height - 1, 0, border, width, colors["dim"])
+    put(screen, height - 1, left, "r refresh · q close",
+        max(0, width - left), colors["muted"])
     return height, width
 
 
@@ -260,13 +260,12 @@ def draw_section(
 ) -> None:
     if height < 2 or width < 4:
         return
-    style = colors["red"] if warning else colors["amber"]
-    put(screen, y, x, f"┌─ {title} ", width, style)
-    put(screen, y, x + min(width - 1, len(title) + 4), "─" * width, width, style)
+    style = colors["alert"] if warning else colors["accent"]
+    put(screen, y, x, title.upper(), width, style)
     for index, line in enumerate(lines):
         if index >= height - 1:
             break
-        put(screen, y + 1 + index, x + 1, line, width - 2, colors["green"])
+        put(screen, y + 1 + index, x, line, width, colors["text"])
 
 
 def monitor_loop(
@@ -563,7 +562,7 @@ def cleanup_loop(screen: curses.window, focus: str) -> None:
             2,
             "Bounded cleanup stations · privileged jobs use the desktop auth prompt",
             width - 4,
-            colors["amber"],
+            colors["accent"],
         )
         if focus != "all":
             put(
@@ -572,17 +571,17 @@ def cleanup_loop(screen: curses.window, focus: str) -> None:
                 2,
                 f"Room station selected: {focus.upper()}",
                 width - 4,
-                colors["bright"],
+                colors["title"],
             )
         start = 7
         for index, action in enumerate(actions):
             selected = pending == action
-            style = colors["reverse"] if selected else colors["green"]
+            style = colors["selected"] if selected else colors["text"]
             put(
                 screen,
                 start + index * 2,
                 3,
-                f"[{action.key}] {action.title}",
+                f"{'▶' if selected else ' '} [{action.key}] {action.title}",
                 max(1, width // 3),
                 style,
             )
@@ -592,7 +591,7 @@ def cleanup_loop(screen: curses.window, focus: str) -> None:
                 max(28, width // 3),
                 action.summary(),
                 width - max(30, width // 3),
-                colors["dim"],
+                colors["muted"],
             )
         footer_y = min(height - 3, start + len(actions) * 2 + 1)
         if pending:
@@ -600,9 +599,9 @@ def cleanup_loop(screen: curses.window, focus: str) -> None:
                 f"Confirm {pending.title}?  [y] yes  [n] cancel. "
                 "Only the described target is affected."
             )
-            put(screen, footer_y, 2, message, width - 4, colors["red"])
+            put(screen, footer_y, 2, message, width - 4, colors["alert"])
         else:
-            put(screen, footer_y, 2, status, width - 4, colors["bright"])
+            put(screen, footer_y, 2, status, width - 4, colors["accent"])
         screen.refresh()
         key = screen.getch()
         if key in (ord("q"), ord("Q"), 27):
@@ -644,7 +643,33 @@ def parse_args() -> argparse.Namespace:
 def main() -> int:
     args = parse_args()
     if args.mode == "selftest":
+        class TestScreen:
+            def __init__(self) -> None:
+                self.lines = [" " * 100 for _ in range(24)]
+
+            def erase(self) -> None:
+                self.lines = [" " * 100 for _ in range(24)]
+
+            def getmaxyx(self) -> tuple[int, int]:
+                return 24, 100
+
+            def addnstr(
+                self, row: int, column: int, text: str, count: int, style: int
+            ) -> None:
+                del style
+                clipped = text[:count][:100 - column]
+                line = self.lines[row]
+                self.lines[row] = (
+                    line[:column] + clipped + line[column + len(clipped):]
+                )
+
         actions = cleanup_actions()
+        screen = TestScreen()
+        test_colors = {
+            name: 0 for name in
+            ("text", "title", "accent", "alert", "muted", "selected")
+        }
+        draw_frame(screen, "ACTIVITY", test_colors, 0.0)
         if (
             [action.key for action in actions] != ["1", "2", "3", "4", "5"]
             or any(not action.title or not action.summary() for action in actions)
@@ -653,6 +678,11 @@ def main() -> int:
             or not system_logs(3)
             or not system_alerts(3)
             or not system_mail(3)
+            or "KILIX TUI" not in screen.lines[0]
+            or "Kilix Cap · Activity" not in screen.lines[0]
+            or "▶1 Overview" not in screen.lines[1]
+            or not screen.lines[2].startswith("─")
+            or " // " in "\n".join(screen.lines)
         ):
             print("mansion_tui: selftest failed")
             return 1
