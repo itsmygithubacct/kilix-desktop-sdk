@@ -1,9 +1,9 @@
 # kilix-cap
 
-kilix-cap 3.0.0 is a graphical mansion interface for terminals that support
-the Kitty graphics protocol. It renders a true-RGB 480×320 logical canvas and
-presents it at an integer scale so the room art, physical objects, and bitmap
-type remain crisp.
+kilix-cap 3.0.0 is a full graphical desktop provider, alongside Kilix 95, Kilix
+TUI, and Kilix Land, for terminals that support the Kitty graphics protocol.
+It renders a true-RGB 480×320 logical canvas and presents it at an integer scale
+so the room art, physical objects, and bitmap type remain crisp.
 
 The mansion has eight connected, full-color rooms:
 
@@ -51,6 +51,19 @@ make
 
 Run it in Kitty, Kilix, Ghostty, WezTerm, or another terminal implementing the
 Kitty graphics protocol. With no modal surface open, `q` or Escape exits.
+
+Inside Kilix, any of these selects the desktop:
+
+~~~sh
+kilix cap
+kilix desktop kilix-cap
+KILIX_DESKTOP_PROVIDER=cap kilix desktop
+~~~
+
+Kilix owns the immutable first-install source pin, builds a missing checkout,
+and launches the resulting executable through its native `cap` provider path.
+Kilix Cap is therefore part of the selected Kilix dependency closure, but it is
+not one of the four independently tagged Plebian-OS release-core repositories.
 
 The bottom strip is a direct **house map**: Study, Gallery, Store, Server,
 Games, and Clean navigate immediately; Lamp toggles the room-light accent.
@@ -150,7 +163,8 @@ second. Each current title becomes one generated CD case, floppy disk, or
 manual carrying that title's original Kilix 95 pixel icon. Hover reveals the
 full title; click launches it in a fresh authenticated Kilix terminal tab.
 
-By default the checkout is the `kilix-95` sibling of this project.
+By default the checkout is the `kilix-95` sibling of this project inside
+`kilix-desktops`.
 `KILIX95_PROJECT_HOME` can select another absolute checkout. Catalog discovery
 is read-only. A selected game's normal Kilix 95 installer may download and
 persist its pinned content after that explicit launch.
