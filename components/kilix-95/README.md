@@ -67,8 +67,8 @@ shared chrome contract also exposes Kilix's volume widget in Settings.
 
 Version 0.1.2 includes:
 
-- canonical source discovery under `~/.local/gpu_terminal/sources` and Kilix 95-owned runtime
-  state under `~/.local/gpu_terminal/kilix-95`;
+- canonical desktop source discovery under `~/.local/gpu_terminal/sources/kilix-desktops` and
+  Kilix 95-owned runtime state under `~/.local/gpu_terminal/kilix-95`;
 - private session frames and ephemeral installer logs, plus a fully isolated
   test environment;
 - a larger classic shell with Control Panel applets, Display Properties,
@@ -103,7 +103,7 @@ kilix desktop
 For local development from this checkout:
 
 ```bash
-cd ~/.local/gpu_terminal/sources/kilix-95
+cd ~/.local/gpu_terminal/sources/kilix-desktops/kilix-95
 KILIX_HOME=~/.local/gpu_terminal/sources/kilix python3 main.py
 ```
 
@@ -127,8 +127,8 @@ by Kilix. The copy bundled in Kilix is a compatibility fallback; the launcher
 reports which one it selected instead of silently preferring a divergent tree.
 The Kilix launcher passes `KILIX_HOME` so this repo can use the host SDK and
 launch helpers. If `KILIX_HOME` is unset, `host.py` checks
-`${GPU_TERMINAL_SOURCE_HOME:-~/.local/gpu_terminal/sources}/kilix`, then the sibling
-`../kilix` checkout. Its final fallback is the canonical source-root path.
+`${GPU_TERMINAL_SOURCE_HOME:-~/.local/gpu_terminal/sources}/kilix`, then the workspace sibling
+`../../kilix` checkout. Its final fallback is the canonical source-root path.
 
 The boundary is:
 

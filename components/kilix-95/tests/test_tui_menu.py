@@ -59,8 +59,8 @@ try:
     # Even with a source checkout present, it must not win.
     source_home = os.environ.get("GPU_TERMINAL_SOURCE_HOME") or \
         os.path.expanduser("~/.local/gpu_terminal/sources")
-    checkout = os.path.join(source_home, "kilix-tui-utils", "kilix-tui",
-                            "main.py")
+    checkout = os.path.join(source_home, "kilix-desktops", "kilix-tui-utils",
+                            "kilix-tui", "main.py")
     if os.path.isfile(checkout):
         assert checkout not in target, target
 finally:

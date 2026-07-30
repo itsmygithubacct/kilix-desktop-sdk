@@ -69,8 +69,8 @@ try:
     # Even with a source checkout present and importable, it must not win.
     source_home = os.environ.get("GPU_TERMINAL_SOURCE_HOME") or \
         os.path.expanduser("~/.local/gpu_terminal/sources")
-    checkout = os.path.join(source_home, "kilix-bonsai", "tools",
-                            "kilix-bonsai", "main.py")
+    checkout = os.path.join(source_home, "kilix-apps", "kilix-bonsai",
+                            "tools", "kilix-bonsai", "main.py")
     if os.path.isfile(checkout):
         assert checkout not in target, target
 finally:
