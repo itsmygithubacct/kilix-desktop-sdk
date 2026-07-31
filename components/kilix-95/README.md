@@ -41,8 +41,10 @@ entries. The **Tools** tab pairs the Tmux Manager with SDK 1.7's coding-agent
 policy: one setting deciding whether a resumed coding agent starts with its own
 approval prompts disabled, spelled out on screen because it is the one knob here
 that makes an agent act without asking. This desktop now requires **Kilix SDK
-1.7**. Release tags for this repository are created only by the coordinated
-release procedure — see Plebian-OS's
+1.7**. Web links now use Kilix's canonical browser dispatcher, which prefers an
+installed browser and retains the in-pane renderer as a fallback. Release tags
+for this repository are created only by the coordinated release procedure —
+see Plebian-OS's
 [RELEASING.md](https://github.com/itsmygithubacct/plebian-os/blob/main/RELEASING.md).
 
 > The `0.1.3` and `0.1.4` sections below are **component milestones**, not
