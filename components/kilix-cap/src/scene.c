@@ -354,8 +354,8 @@ static const GameCatalogEntry default_game_entries[] = {
     {"joustix", "Joustix", GAME_LAUNCH_KILIX95, {0}},
     {"chess-bash", "Chess Bash", GAME_LAUNCH_KILIX95, {0}},
     {"kilix-fishtank", "Kilix Fishtank", GAME_LAUNCH_KILIX95, {0}},
-    {"terminal-lander", "Terminal Lander", GAME_LAUNCH_KILIX95, {0}},
-    {"kitty-brokeout", "Kitty Brokeout", GAME_LAUNCH_KILIX95, {0}}
+    {"terminal-lander", "Kilix Lander", GAME_LAUNCH_KILIX95, {0}},
+    {"kitty-brokeout", "Kilix Brokeout", GAME_LAUNCH_KILIX95, {0}}
 };
 
 static GamePlacement game_placement(int index)
