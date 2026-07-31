@@ -38,7 +38,7 @@ try:
         "HOME": str(home),
         "GPU_TERMINAL_HOME": str(gpu_root),
         "KILIX95_STORAGE_HOME": str(storage_root),
-        "KILIX_HOME": str(ROOT.parent / "kilix"),
+        "KILIX_HOME": str(ROOT.parents[1] / "kilix"),
         "PATH": str(bin_dir) + os.pathsep + "/usr/bin:/bin",
         "PYTHONDONTWRITEBYTECODE": "1",
     })

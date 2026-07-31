@@ -19,6 +19,12 @@ try:
     os.environ["GPU_TERMINAL_SOURCE_HOME"] = source
     assert host._discover_kilix_home() == checkout
 
+    os.environ["GPU_TERMINAL_SOURCE_HOME"] = tempfile.mkdtemp(
+        prefix="gpu-terminal-source-empty-")
+    workspace_kilix = Path(__file__).resolve().parents[3] / "kilix"
+    if (workspace_kilix / "kilix").exists():
+        assert Path(host._discover_kilix_home()) == workspace_kilix
+
     explicit = tempfile.mkdtemp(prefix="kilix-explicit-")
     os.environ["KILIX_HOME"] = explicit
     assert host._discover_kilix_home() == explicit

@@ -14,7 +14,7 @@ import tempfile
 import time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-SOURCE_HOME = os.path.dirname(os.path.dirname(HERE))
+SOURCE_HOME = os.path.dirname(os.path.dirname(os.path.dirname(HERE)))
 
 
 def main():

@@ -13,7 +13,8 @@ def _discover_kilix_home():
     source_home = os.path.abspath(os.path.expanduser(source_home))
     candidates = [
         os.path.join(source_home, "kilix"),
-        os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "kilix")),
+        os.path.abspath(os.path.join(
+            os.path.dirname(__file__), "..", "..", "kilix")),
     ]
     for cand in candidates:
         if os.path.exists(os.path.join(cand, "kilix")):

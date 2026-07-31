@@ -7,7 +7,7 @@ import sys
 
 
 ROOT = Path(__file__).resolve().parents[1]
-KILIX_HOME = Path(os.environ.get("KILIX_HOME", ROOT.parent / "kilix"))
+KILIX_HOME = Path(os.environ.get("KILIX_HOME", ROOT.parents[1] / "kilix"))
 sys.path.insert(0, str(KILIX_HOME / "config"))
 
 
