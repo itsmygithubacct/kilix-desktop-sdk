@@ -6,8 +6,8 @@ per-user storage (override with $KILIX_DESKTOP_DIR):
 plain files and directories dropped there appear as icons, and "Create
 Launcher…" writes freedesktop-style .desktop files there. Programs launch
 into new kilix tabs/windows over kitty remote control; X11 apps go through
-`kilix run`; launcher URLs go through `kilix browse`; Help links can open the
-system default browser.
+`kilix run`; launcher and Help URLs go through Kilix's ordered real-browser
+dispatcher.
 """
 import configparser
 import os
@@ -1002,25 +1002,16 @@ class Shell:
             wm.inputbox(self.desk, "Web Browser", "Address:", "https://",
                         cb=lambda u: u and self.open_url(u), icon="browser")
             return
-        self._tab([os.path.join(KILIX_HOME, "kilix"), "browse", url],
-                  "browse", None)
+        self._tab([os.path.join(KILIX_HOME, "kilix"), "open-url", url],
+                  "browser", None)
 
     def open_default_browser_tab(self, url, title="Browser"):
-        """Open a URL with the system default opener inside a filled Kilix tab."""
+        """Open a URL through Kilix's ordered real-browser policy."""
         if not url:
             return False
-        for cand in ("xdg-open", "sensible-browser"):
-            exe = shutil.which(cand)
-            if exe:
-                return self.open_x11_tab([exe, url], title or "Browser",
-                                         fill=True)
-        gio = shutil.which("gio")
-        if gio:
-            return self.open_x11_tab([gio, "open", url], title or "Browser",
-                                     fill=True)
-        wm.msgbox(self.desk, "Web Browser",
-                  "No default browser opener was found.", icon="error")
-        return False
+        return self._tab(
+            [os.path.join(KILIX_HOME, "kilix"), "open-url", url],
+            title or "Browser", None)
 
     @staticmethod
     def pleb_recovery_doc_candidates():
@@ -1080,9 +1071,8 @@ class Shell:
         """Launch a web browser from the desktop.
 
         Firefox opens in a filled kilix-run tab by default so it stays inside
-        the terminal pane. Chromium opens in a tab by default, drawn by the
-        headless `kilix browse` engine, because its GUI crashes under software
-        rendering. mode overrides: "window", "tab", "fullscreen".
+        the terminal pane. Chromium's tab action uses the ordered real-browser
+        dispatcher. mode overrides: "window", "tab", "fullscreen".
         """
         url = url or self.BROWSER_HOME
         if which == "chromium":
@@ -1091,8 +1081,8 @@ class Shell:
                           icon="error")
                 return
             mode = mode or "tab"
-            if mode == "tab":               # headless chromium, drawn in the tab
-                self._tab([os.path.join(KILIX_HOME, "kilix"), "browse", url],
+            if mode == "tab":               # ordered real-browser handoff
+                self._tab([os.path.join(KILIX_HOME, "kilix"), "open-url", url],
                           "Chromium", None)
             else:                           # GUI chromium (works where GL does)
                 self._browser_window(

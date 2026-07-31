@@ -3,6 +3,10 @@
 A Windows 95-style desktop rendered as **pixels** inside a Kilix pane, with an
 optional Windows XP-style flavor.
 
+Kilix 95 is the release-default desktop provider in the four-repository
+Plebian-OS core. Kilix Cap, Kilix TUI, and Kilix Land are additional optional
+desktops with their own integration and release positions.
+
 Kilix 95 is not a window manager for the host X session. It is a Python desktop
 surface that draws a complete desktop into a PIL framebuffer, sends that
 framebuffer through the Kitty graphics protocol, and routes terminal keyboard
@@ -23,12 +27,12 @@ shared with [Kilix](https://github.com/itsmygithubacct/kilix),
 [Pleb](https://github.com/itsmygithubacct/pleb), and
 [Plebian-OS](https://github.com/itsmygithubacct/plebian-os). It adds the pane
 memory controls and monitor launcher, the Tmux Manager and PTY Sessions Start
-menu entries, and Kilix Temps controls, on top of the shared-SDK adoption below.
-Settings gains a **Session logs** tab for Kilix's default-on pane transcripts,
-consuming the SDK 1.5 session-logging contract, including the two directory
-budgets that bound the transcript tree: dead-pane logs are compressed
-promptly, and the oldest are recompressed more densely before any history
-is dropped.
+menu entries, a **Kilix TUI** launcher, and Kilix Temps controls, on top of the
+shared-SDK adoption below. Settings gains a **Session logs** tab for Kilix's
+default-on pane transcripts, consuming the SDK 1.5 session-logging contract,
+including the two directory budgets that bound the transcript tree: dead-pane
+logs are compressed promptly, and the oldest are recompressed more densely
+before any history is dropped.
 
 Settings also gains a **Voice** tab over SDK 1.6's shared speech contract —
 read-aloud and dictation engines, voice, rate, extent, devices, and a dictation
@@ -135,13 +139,13 @@ The boundary is:
 - `kilix_sdk.term`: raw mode and terminal input parsing.
 - `kilix_sdk.graphics`: inline Kitty graphics for streamed sessions.
 - `kilix_sdk.state`: bounded, CRC-checked, crash-safe internal state records.
-- Kilix CLI helpers: `kilix run`, `kilix browse`, `kilix serve`.
+- Kilix CLI helpers: `kilix run`, `kilix open-url`, `kilix serve`.
 - Kitty remote control: `kitten @ launch` for new tabs and windows.
 
-`provider.json` declares provider API 1, the required `kilix_sdk` 1.5 contract,
+`provider.json` declares provider API 1, the required `kilix_sdk` 1.7 contract,
 and the security behaviors the provider implements. Kilix validates that
 data-only manifest and its implementation markers before executing the
-provider. `main.py` also calls `kilix_sdk.require_compatible("1.5")` as a
+provider. `main.py` also calls `kilix_sdk.require_compatible("1.7")` as a
 defense-in-depth runtime check. Incompatible hosts fail early with a clear
 version error.
 
@@ -281,15 +285,14 @@ It uses `man <section> <name>` with pager output disabled, then strips terminal
 formatting so the result is readable in the desktop text widget.
 
 Blue underlined Help links are live links. They call
-`Shell.open_default_browser_tab()`, which tries:
+`Shell.open_default_browser_tab()`, which uses Kilix's fixed browser order:
 
-1. `xdg-open`
-2. `sensible-browser`
-3. `gio open`
+1. `google-chrome`
+2. `chromium-browser`
+3. `firefox-esr`
 
-The opener runs inside a filled Kilix tab. This is deliberately separate from
-launcher URL files and Start -> Programs -> Web Browser, which continue to use
-the Kilix browser flow.
+Launcher URL files and Start -> Programs -> Web Browser use the same policy.
+The experimental in-pane browser is only the no-real-browser fallback.
 
 Current built-in Help link targets include:
 
@@ -313,12 +316,12 @@ Kilix 95 has several launch paths, each with a different containment model.
 | `window` | launcher option | `kitten @ launch --type=os-window` |
 | `run` | X11 apps | `kilix run COMMAND` in a Kilix tab |
 | `fullscreen` | X11 app launcher option | XPane fullscreen-sized app window |
-| `browse` | URL launcher files, Chromium tab mode | `kilix browse URL` |
-| default browser | Help links | `xdg-open`/`sensible-browser`/`gio open` in a tab |
+| `browse` | URL launcher files, Chromium tab mode | `kilix open-url URL` |
+| default browser | Help links | `kilix open-url URL` |
 
-Firefox defaults to a filled `kilix run` tab so it stays contained in the
-terminal pane. Chromium defaults to the Kilix browser path in tab mode because
-GUI Chromium can be fragile under software rendering.
+The explicit Firefox program entry defaults to a filled `kilix run` tab so it
+stays contained in the terminal pane. General URL opening follows the ordered
+real-browser policy above.
 
 VirtualBox is special-cased. `.vbox` files and VirtualBox `.desktop` entries
 open through `kilix run --refit-windows` so the VM window stays contained.
@@ -358,7 +361,7 @@ Supported `X-Kilix-Open` values:
 - `window`: run in a Kilix OS window.
 - `run`: run an X11 app through `kilix run`.
 - `fullscreen`: run as a full-desktop XPane window.
-- `browse`: open a URL through `kilix browse`.
+- `browse`: open a URL through `kilix open-url`.
 
 For URL launchers:
 
@@ -394,7 +397,7 @@ Notable apps:
 | Printers / Device Manager | host service inspection | read-only discovery plus safe virtual-printer setup |
 | My Briefcase | two-folder synchronization | no deletion propagation or two-sided-conflict overwrite |
 | PowerToys / Disk Defragmenter | shell conveniences and disk-map theater | configuration helpers; the disk is never modified |
-| Help | two-pane guide with live links | link rows open through the system default browser helper |
+| Help | two-pane guide with live links | link rows use the ordered real-browser dispatcher |
 | System Manual | searchable man-page browser | scans manpath and renders selected pages as text |
 | Task Manager | running-window list | can switch to windows, request close, or open Run |
 | Recycle Bin | deleted-file browser | restores or purges files from the recycle backing store |
@@ -688,14 +691,14 @@ Common requirements by feature:
 - Xvfb and XTest support for XPane
 - python-xlib for XPane and clipboard bridging
 - `man`/`manpath` for System Manual
-- `xdg-open`, `sensible-browser`, or `gio` for Help live links
+- `google-chrome`, `chromium-browser`, or `firefox-esr` for real-browser links
 - audio players such as `paplay`, `aplay`, `ffplay`, or `play` for UI sounds
 - browsers/VirtualBox only when those launch paths are used
 
 Dependency failures should degrade by feature:
 
 - missing `man` affects only System Manual;
-- missing default-browser openers affects only live Help links;
+- missing real browsers activates Kilix's in-pane URL fallback;
 - missing audio players mutes UI sounds;
 - missing Xvfb/ffmpeg/python-xlib affects XPane and GUI app embedding;
 - missing browser binaries affects browser launch entries;
@@ -828,12 +831,12 @@ Also check that the man directories contain section folders such as `man1`,
 
 **Help links do not open**
 
-Install or configure one of `xdg-open`, `sensible-browser`, or `gio`. Help links
-use the system default browser path; URL launcher files still use `kilix browse`.
+Install one of `google-chrome`, `chromium-browser`, or `firefox-esr`. Kilix
+checks for them in that order. If none is installed, URL launchers and Help
+links fall back to the experimental in-pane browser.
 
-If the opener exists but nothing appears, try the same URL from a regular
-terminal with `xdg-open URL`. The Help path launches the opener in a filled
-Kilix tab; it does not choose or install a browser itself.
+If a browser exists but nothing appears, try the same URL from a regular
+terminal with `kilix open-url URL`.
 
 **X11 apps fail to open in desktop windows**
 

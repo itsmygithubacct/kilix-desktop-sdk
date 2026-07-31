@@ -201,13 +201,12 @@ def build_book():
                   "for content-only fullscreen. The Kilix page strip and "
                   "clickable pane title bar disappear; press F11 again to "
                   "restore the normal chrome and window geometry."),
-            ("b", "`kilix browse URL` opens a URL through Kilix's browser "
-                  "launcher."),
+            ("b", "`kilix open-url URL` prefers Google Chrome, then Chromium "
+                  "Browser, then Firefox ESR. The in-pane browser is used only "
+                  "when none of those is installed."),
             ("b", "`kilix serve` starts the mux terminal service used by Mux "
                   "Terminal."),
-            ("b", "Help-topic links use the system default browser through "
-                  "`xdg-open`/`sensible-browser`, so repository links open like "
-                  "normal web links."),
+            ("b", "Help-topic links use the same ordered real-browser policy."),
             ("l", "Kilix repository", KILIX_REPO),
         ]),
         ("kilix95", f"Using {product}", [

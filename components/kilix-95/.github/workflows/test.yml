@@ -17,7 +17,7 @@ jobs:
       # (see the advisory `pairing` job below, which watches for exactly that).
       # Advance this to the coordinated Kilix release commit during every
       # release — RELEASING.md step 1 in the Plebian-OS repository.
-      KILIX_COMMIT: 2680a61f46b4273ca2c49db33ee1ab45b9e4d05d
+      KILIX_COMMIT: 1d32aece4be33ea9a773f31c686a1936b0c0bf8d
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
       - name: Install test dependencies
@@ -33,7 +33,6 @@ jobs:
           git -C "$KILIX_HOME" submodule update --init \
             third_party/kilix-content \
             third_party/kilix-state \
-            third_party/kilix-state-py \
             third_party/kitty-frame-presenter
           python3 tests/run.py
 
@@ -66,6 +65,5 @@ jobs:
           git -C "$KILIX_HOME" submodule update --init \
             third_party/kilix-content \
             third_party/kilix-state \
-            third_party/kilix-state-py \
             third_party/kitty-frame-presenter
           python3 tests/run.py
