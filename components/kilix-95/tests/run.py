@@ -14,7 +14,31 @@ import tempfile
 import time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-SOURCE_HOME = os.path.dirname(os.path.dirname(os.path.dirname(HERE)))
+
+
+def resolve_source_layout(environ=None, here=HERE):
+    """Return the shared source root and exact Kilix checkout for tests.
+
+    The canonical checkout nests this provider below ``kilix-desktops``, but
+    CI checks Kilix out beside the provider repository inside the workflow's
+    project directory. An explicit host path is authoritative in both cases;
+    directory-depth inference is only the local-layout fallback.
+    """
+    environ = os.environ if environ is None else environ
+    explicit_kilix = environ.get("KILIX_HOME")
+    if explicit_kilix:
+        kilix_home = os.path.abspath(os.path.expanduser(explicit_kilix))
+        return os.path.dirname(kilix_home), kilix_home
+
+    explicit_source = environ.get("GPU_TERMINAL_SOURCE_HOME")
+    if explicit_source:
+        source_home = os.path.abspath(os.path.expanduser(explicit_source))
+    else:
+        source_home = os.path.dirname(os.path.dirname(os.path.dirname(here)))
+    return source_home, os.path.join(source_home, "kilix")
+
+
+SOURCE_HOME, KILIX_HOME = resolve_source_layout()
 
 
 def main():
@@ -29,8 +53,7 @@ def main():
         native_sandbox = tempfile.mkdtemp(prefix="kilix95-native-test-")
         native_storage = os.path.join(native_sandbox, "storage")
         native_build = os.path.join(native_storage, "build")
-        helper = os.path.join(SOURCE_HOME, "kilix", "scripts",
-                              "build-state-library.sh")
+        helper = os.path.join(KILIX_HOME, "scripts", "build-state-library.sh")
         native_env = dict(os.environ, KILIX_STORAGE_HOME=native_storage,
                           KILIX_BUILD_DIRECTORY=native_build)
         try:
@@ -65,7 +88,7 @@ def main():
             "GPU_TERMINAL_HOME": data_root,
             "GPU_TERMINAL_SETTINGS_FILE": os.path.join(
                 data_root, "settings.conf"),
-            "KILIX_HOME": os.path.join(SOURCE_HOME, "kilix"),
+            "KILIX_HOME": KILIX_HOME,
             "KILIX_STORAGE_HOME": kilix_root,
             "KILIX_CONFIG_HOME": os.path.join(kilix_root, "config"),
             "KILIX_STATE_DIRECTORY": os.path.join(kilix_root, "state"),
