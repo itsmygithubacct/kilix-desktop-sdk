@@ -465,17 +465,21 @@ with conf("font_size 12\n"):
     assert shared_settings.stt_submit(win.shared_path) == "never"
 
 
-# Start ▸ Programs carries both voice TUIs. Each prefers an installed command
-# over the pinned Kilix installer, and an entry that resolves to nothing says
-# so: a missing speech engine degrades the feature, it never swallows a click.
+# Start ▸ Programs carries both voice settings/diagnostic TUIs and names them
+# honestly. Each uses the same installed, development, pinned resolution order
+# as the Kilix widgets, and an entry that resolves to nothing says so: a missing
+# speech engine degrades the feature, it never swallows a click. Voice Help
+# explains that the actual page-strip actions need a terminal pane rather than
+# this pixel surface.
 with conf("font_size 12\n") as target:
     d = H.make_desk()
     d.taskbar.open_start_menu()
     programs = next(item for item in d.menus.stack[0].items
                     if item.label == "Programs")
     entries = {item.label: item for item in programs.submenu}
-    assert entries["Read Aloud"].icon == "speak"
-    assert entries["Dictation"].icon == "microphone"
+    assert entries["Read Aloud Settings"].icon == "speak"
+    assert entries["Dictation Settings"].icon == "microphone"
+    assert entries["Voice Help"].icon == "help"
 
     opened = []
     d.shell._tab = lambda argv, title, cwd=None: opened.append(
@@ -485,14 +489,42 @@ with conf("font_size 12\n") as target:
         f"/usr/local/bin/{name}" if name in ("kilix-tts", "kilix-stt")
         else real_which(name))
     try:
-        entries["Read Aloud"].action()
-        entries["Dictation"].action()
+        entries["Read Aloud Settings"].action()
+        entries["Dictation Settings"].action()
     finally:
         shell_mod.shutil.which = real_which
     home = os.path.expanduser("~")
     assert opened == [
         (["/usr/local/bin/kilix-tts"], "Read Aloud", home),
         (["/usr/local/bin/kilix-stt"], "Dictation", home),
+    ], opened
+
+    # With no installed commands, a development checkout is the next exact
+    # branch used by the page-strip widgets.
+    source_home = os.path.join(os.path.dirname(target), "voice-source")
+    voice_project = os.path.join(source_home, "kilix-apps", "kilix-voice")
+    os.makedirs(voice_project)
+    for command in ("kilix-tts", "kilix-stt"):
+        executable = os.path.join(voice_project, command)
+        with open(executable, "w", encoding="utf-8") as stream:
+            stream.write("#!/bin/sh\n")
+        os.chmod(executable, 0o755)
+    previous_source_home = os.environ.get("GPU_TERMINAL_SOURCE_HOME")
+    os.environ["GPU_TERMINAL_SOURCE_HOME"] = source_home
+    shell_mod.shutil.which = lambda name: None
+    opened.clear()
+    try:
+        entries["Read Aloud Settings"].action()
+        entries["Dictation Settings"].action()
+    finally:
+        shell_mod.shutil.which = real_which
+        if previous_source_home is None:
+            os.environ.pop("GPU_TERMINAL_SOURCE_HOME", None)
+        else:
+            os.environ["GPU_TERMINAL_SOURCE_HOME"] = previous_source_home
+    assert opened == [
+        ([os.path.join(voice_project, "kilix-tts")], "Read Aloud", home),
+        ([os.path.join(voice_project, "kilix-stt")], "Dictation", home),
     ], opened
 
     messages = []
@@ -502,17 +534,46 @@ with conf("font_size 12\n") as target:
         (title, text, kw))
     shell_mod.KILIX_HOME = os.path.dirname(target)   # holds no kilix launcher
     shell_mod.shutil.which = lambda name: None
+    empty_source = os.path.join(os.path.dirname(target), "empty-source")
+    os.mkdir(empty_source)
+    previous_source_home = os.environ.get("GPU_TERMINAL_SOURCE_HOME")
+    os.environ["GPU_TERMINAL_SOURCE_HOME"] = empty_source
+    opened.clear()
     try:
-        assert entries["Read Aloud"].action() is False
-        assert entries["Dictation"].action() is False
+        assert entries["Read Aloud Settings"].action() is False
+        assert entries["Dictation Settings"].action() is False
     finally:
         shell_mod.wm.msgbox = real_msgbox
         shell_mod.KILIX_HOME = real_kilix_home
         shell_mod.shutil.which = real_which
+        if previous_source_home is None:
+            os.environ.pop("GPU_TERMINAL_SOURCE_HOME", None)
+        else:
+            os.environ["GPU_TERMINAL_SOURCE_HOME"] = previous_source_home
     assert [title for title, _text, _kw in messages] == \
         ["Read Aloud", "Dictation"], messages
     assert all(kw.get("icon") == "error" for _t, _m, kw in messages), messages
-    assert len(opened) == 2, "an unresolved target still opened a tab"
+    assert not opened, "an unresolved target still opened a tab"
+
+    messages.clear()
+    shell_mod.wm.msgbox = lambda desk, title, text, **kw: messages.append(
+        (title, text, kw))
+    try:
+        assert entries["Voice Help"].action() is True
+    finally:
+        shell_mod.wm.msgbox = real_msgbox
+    assert len(messages) == 1, messages
+    title, text, kwargs = messages[0]
+    assert title == "Kilix Voice Help"
+    assert "terminal panes" in text
+    assert "drawn as pixels" in text
+    assert "Start > Programs > Terminal" in text
+    assert "speaking head" in text
+    assert "microphone" in text
+    assert "Click the same button again to stop" in text
+    assert "page strip at the top of Kilix" in text
+    assert "exact pinned runtime" in text
+    assert kwargs.get("icon") == "info"
 
 
 print("ok")

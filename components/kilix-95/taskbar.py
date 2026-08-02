@@ -531,10 +531,12 @@ class Taskbar:
                    action=shell.open_tmux_manager),
                 MI("Kilix TUI", icon="terminal",
                    action=shell.open_kilix_tui),
-                MI("Read Aloud", icon="speak",
+                MI("Read Aloud Settings", icon="speak",
                    action=shell.open_kilix_tts),
-                MI("Dictation", icon="microphone",
+                MI("Dictation Settings", icon="microphone",
                    action=shell.open_kilix_stt),
+                MI("Voice Help", icon="help",
+                   action=shell.open_voice_help),
                 # Next to Dictation on purpose: the speech model it needs is
                 # one of the models this downloads, and they share one copy.
                 MI("BitNet Models", icon="bonsai",

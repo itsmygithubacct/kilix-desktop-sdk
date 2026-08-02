@@ -842,12 +842,25 @@ class Shell:
         return False
 
     @staticmethod
+    def kilix_voice_source_target(command):
+        """Resolve a development voice TUI from the same tree as the widgets."""
+        source_home = os.environ.get("GPU_TERMINAL_SOURCE_HOME") or \
+            os.path.expanduser("~/gpu_terminal")
+        project = os.path.join(
+            os.path.abspath(os.path.expanduser(source_home)),
+            "kilix-apps", "kilix-voice")
+        candidate = os.path.join(project, command)
+        if os.path.isfile(candidate) and os.access(candidate, os.X_OK):
+            return [candidate]
+        return None
+
+    @staticmethod
     def kilix_tts_target():
-        """Installed TUI first, then the Kilix pinned installer — the same order
-        the tab-bar voice widgets resolve in, so a Start-menu launch and a click
-        on the widget can never end up running different kilix-voice builds."""
+        """Installed, development, then pinned — matching Kilix's widgets."""
         if executable := shutil.which("kilix-tts"):
             return [executable]
+        if target := Shell.kilix_voice_source_target("kilix-tts"):
+            return target
         kilix = os.path.join(KILIX_HOME, "kilix")
         if os.path.isfile(kilix) and os.access(kilix, os.X_OK):
             return [kilix, "tts"]
@@ -865,9 +878,11 @@ class Shell:
 
     @staticmethod
     def kilix_stt_target():
-        """Installed TUI first; the Kilix pinned installer is the fallback."""
+        """Installed, development, then pinned — matching Kilix's widgets."""
         if executable := shutil.which("kilix-stt"):
             return [executable]
+        if target := Shell.kilix_voice_source_target("kilix-stt"):
+            return target
         kilix = os.path.join(KILIX_HOME, "kilix")
         if os.path.isfile(kilix) and os.access(kilix, os.X_OK):
             return [kilix, "stt"]
@@ -885,6 +900,33 @@ class Shell:
             "Neither an installed Kilix dictation TUI nor the pinned Kilix "
             "installer could be found.", icon="error")
         return False
+
+    def open_voice_help(self):
+        """Explain where the real speech controls act.
+
+        Kilix 95 is a framebuffer, not terminal text.  Naming that boundary in
+        the desktop keeps the two settings/diagnostic TUIs from looking like
+        one-click speech actions and gives a first-time user a complete route
+        to a pane that read-aloud and dictation can actually target.
+        """
+        wm.msgbox(
+            self.desk,
+            "Kilix Voice Help",
+            "Read Aloud and Dictation are the speaking-head and microphone "
+            "buttons in the page strip at the top of Kilix.\n\n"
+            "They work on terminal panes. Open Start > Programs > Terminal, "
+            "then click the speaking head to read that pane or click the "
+            "microphone to dictate into it. Click the same button again to "
+            "stop.\n\n"
+            "The Kilix 95 desktop is drawn as pixels, so it has no terminal "
+            "text for those controls to read or type into. Use the Read "
+            "Aloud Settings and Dictation Settings entries to test audio, "
+            "choose devices, and inspect diagnostics. On an installed release, "
+            "if the voice runtime is missing, those Settings entries install "
+            "Kilix's exact pinned runtime before opening.",
+            icon="info",
+        )
+        return True
 
     @staticmethod
     def kilix_bonsai_target():

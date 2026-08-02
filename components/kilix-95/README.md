@@ -22,9 +22,17 @@ Quit through Start -> Shut Down..., or press `Ctrl+Alt+Q`.
 
 ## Release 0.1.7
 
+Release date: 2026-08-02.
+
 - Make `python3 main.py --version` and `--help` available before the Kilix
   native state library is built. Runtime desktop and screenshot paths retain
   the same fail-closed library check before UI setup.
+- Name the Start-menu speech entries as settings/diagnostic tools and add a
+  Voice Help entry that explains how to use Kilix's real page-strip controls
+  in a terminal pane. Kilix 95 is a pixel framebuffer, so it cannot itself be
+  a read-aloud or dictation text target. On an installed release, if needed,
+  the settings entries install the exact voice runtime pinned by the active
+  Kilix checkout before opening.
 
 Version 0.1.7 is the coordinated stack release covering everything since 0.1.2,
 shared with [Kilix](https://github.com/itsmygithubacct/kilix),
@@ -50,6 +58,10 @@ installed browser and retains the in-pane renderer as a fallback. Release tags
 for this repository are created only by the coordinated release procedure —
 see Plebian-OS's
 [RELEASING.md](https://github.com/itsmygithubacct/plebian-os/blob/main/RELEASING.md).
+0.1.7 is the fresh-install upgrade baseline. Older installations are
+reinstalled; later coordinated releases must support a preserving upgrade from
+the immediately previous published release under Plebian-OS's
+[upgrade policy](https://github.com/itsmygithubacct/plebian-os/blob/main/UPGRADING.md).
 
 > The `0.1.3` and `0.1.4` sections below are **component milestones**, not
 > shipped stack releases: they mark which Kilix provider SDK this desktop
