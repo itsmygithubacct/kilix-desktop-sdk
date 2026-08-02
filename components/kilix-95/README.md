@@ -22,6 +22,10 @@ Quit through Start -> Shut Down..., or press `Ctrl+Alt+Q`.
 
 ## Release 0.1.7
 
+- Make `python3 main.py --version` and `--help` available before the Kilix
+  native state library is built. Runtime desktop and screenshot paths retain
+  the same fail-closed library check before UI setup.
+
 Version 0.1.7 is the coordinated stack release covering everything since 0.1.2,
 shared with [Kilix](https://github.com/itsmygithubacct/kilix),
 [Pleb](https://github.com/itsmygithubacct/pleb), and

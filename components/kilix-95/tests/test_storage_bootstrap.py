@@ -19,6 +19,9 @@ env.update({
     "KILIX95_STORAGE_HOME": str(storage_root),
     "KILIX95_CACHE_HOME": str(cache_root),
     "PYTHONDONTWRITEBYTECODE": "1",
+    # --version is an informational release command. It must not require the
+    # native state library that a first Kilix login builds for UI launches.
+    "KILIX_STATE_LIBRARY": str(sandbox / "deliberately-missing-state.so"),
 })
 env.pop("GPU_TERMINAL_SETTINGS_FILE", None)
 
@@ -49,6 +52,17 @@ try:
     run_version()
     assert stat.S_IMODE(storage_root.stat().st_mode) == 0o700
     assert stat.S_IMODE(cache_root.stat().st_mode) == 0o700
+
+    # Informational commands are the only exception: a real desktop path still
+    # fails before rendering when the pinned native host library is absent.
+    screenshot = sandbox / "must-not-render.png"
+    runtime = subprocess.run(
+        [sys.executable, str(ROOT / "main.py"),
+         "--screenshot", str(screenshot)],
+        cwd=ROOT, env=env, capture_output=True, text=True, timeout=30)
+    assert runtime.returncode != 0, runtime.stdout + runtime.stderr
+    assert "libkilix-state" in runtime.stderr, runtime.stderr
+    assert not screenshot.exists(), screenshot
 finally:
     shutil.rmtree(sandbox, ignore_errors=True)
 

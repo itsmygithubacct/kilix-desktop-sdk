@@ -98,7 +98,6 @@ except OSError as exc:
         "Kilix 95 cannot initialize shared settings at "
         f"{shared_settings.settings_path()}"
     ) from exc
-kilix_state.default_library()  # Fail before UI setup if the host build is absent.
 import icons
 import shell as shell_mod
 import taskbar as taskbar_mod
@@ -1290,6 +1289,11 @@ def main():
     ap.add_argument("--size", default="1024x768",
                     help="screenshot size WxH")
     a = ap.parse_args()
+    # argparse exits above for --version/--help. Those informational paths must
+    # work on a freshly installed system before a Kilix session has built its
+    # native state library; every path that creates a desktop still fails here
+    # before any UI setup if the pinned host library is unavailable.
+    kilix_state.default_library()
     if a.dir:
         os.environ["KILIX_DESKTOP_DIR"] = a.dir
     if a.screenshot:
