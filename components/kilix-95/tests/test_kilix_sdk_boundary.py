@@ -51,6 +51,19 @@ assert f'require_kilix_sdk("{requirement}")' in main_text
 assert f"requires kilix_sdk {requirement};" in main_text, (
     f"main.py's ImportError message does not name kilix_sdk {requirement}")
 
+# The built-in fallback and this authoritative provider are one coordinated
+# contract. Checking the host manifest here makes the pinned-host CI job fail
+# if either side advances its release or SDK declaration without the other.
+host_manifest = json.loads((KILIX_HOME / "desktop" / "provider.json").read_text())
+for key in ("version", "provider_api", "requires_kilix_sdk", "security_features"):
+    expected = (sorted(manifest[key])
+                if isinstance(manifest[key], list) else manifest[key])
+    actual = (sorted(host_manifest[key])
+              if isinstance(host_manifest[key], list) else host_manifest[key])
+    assert actual == expected, (
+        f"built-in/external provider parity mismatch for {key}: "
+        f"host={actual!r}, kilix-95={expected!r}")
+
 # The version gate above compares a declared number. It cannot notice a
 # provider reaching for a shared-settings symbol that the host SDK does not
 # actually export — which is how a provider ends up importable against the

@@ -20,9 +20,9 @@ kilix desktop
 
 Quit through Start -> Shut Down..., or press `Ctrl+Alt+Q`.
 
-## Release 0.1.6
+## Release 0.1.7
 
-Version 0.1.6 is the coordinated stack release covering everything since 0.1.2,
+Version 0.1.7 is the coordinated stack release covering everything since 0.1.2,
 shared with [Kilix](https://github.com/itsmygithubacct/kilix),
 [Pleb](https://github.com/itsmygithubacct/pleb), and
 [Plebian-OS](https://github.com/itsmygithubacct/plebian-os). It adds the pane
@@ -50,8 +50,8 @@ see Plebian-OS's
 > The `0.1.3` and `0.1.4` sections below are **component milestones**, not
 > shipped stack releases: they mark which Kilix provider SDK this desktop
 > consumed. No Plebian-OS image was ever built or published for either.
-> `0.1.5` was prepared as a coordinated release and never cut; its work ships
-> here as 0.1.6.
+> `0.1.5` was prepared as a coordinated release and never cut. `0.1.6` was an
+> unpublished failed candidate; all of that work is folded into 0.1.7.
 
 ## 0.1.4 — consumes SDK 1.4
 
