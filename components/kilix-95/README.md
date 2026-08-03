@@ -53,8 +53,9 @@ entries. The **Tools** tab pairs the Tmux Manager with SDK 1.7's coding-agent
 policy: one setting deciding whether a resumed coding agent starts with its own
 approval prompts disabled, spelled out on screen because it is the one knob here
 that makes an agent act without asking. This desktop now requires **Kilix SDK
-1.7**. Web links now use Kilix's canonical browser dispatcher, which prefers an
-installed browser and retains the in-pane renderer as a fallback. Release tags
+1.7**. Web links now use Kilix 95's contained browser routing, which selects an
+installed browser, launches it through `kilix run`, and retains the in-pane
+renderer as a fallback. Release tags
 for this repository are created only by the coordinated release procedure —
 see Plebian-OS's
 [RELEASING.md](https://github.com/itsmygithubacct/plebian-os/blob/main/RELEASING.md).
@@ -303,11 +304,14 @@ It uses `man <section> <name>` with pager output disabled, then strips terminal
 formatting so the result is readable in the desktop text widget.
 
 Blue underlined Help links are live links. They call
-`Shell.open_default_browser_tab()`, which uses Kilix's fixed browser order:
+`Shell.open_default_browser_tab()`, which uses this fixed browser order:
 
 1. `google-chrome`
-2. `chromium-browser`
-3. `firefox-esr`
+2. `google-chrome-stable`
+3. `chromium`
+4. `chromium-browser`
+5. `firefox-esr`
+6. `firefox`
 
 Launcher URL files and Start -> Programs -> Web Browser use the same policy.
 The experimental in-pane browser is only the no-real-browser fallback.
@@ -330,16 +334,21 @@ Kilix 95 has several launch paths, each with a different containment model.
 
 | mode | used by | behavior |
 |---|---|---|
-| `tab` | terminal apps, launcher default | `kitten @ launch --type=tab` |
+| `tab` | terminal apps, explicitly terminal launchers | `kitten @ launch --type=tab` |
 | `window` | launcher option | `kitten @ launch --type=os-window` |
-| `run` | X11 apps | `kilix run COMMAND` in a Kilix tab |
+| `run` | X11 apps, imported GUI launcher default | `kilix run COMMAND` in a Kilix tab |
 | `fullscreen` | X11 app launcher option | XPane fullscreen-sized app window |
-| `browse` | URL launcher files, Chromium tab mode | `kilix open-url URL` |
-| default browser | Help links | `kilix open-url URL` |
+| `browse` | URL launcher files | selected browser via `kilix run --fill` |
+| default browser | Help links | selected browser via `kilix run --fill` |
 
-The explicit Firefox program entry defaults to a filled `kilix run` tab so it
-stays contained in the terminal pane. General URL opening follows the ordered
-real-browser policy above.
+The explicit Firefox and Chromium program entries default to filled `kilix run`
+tabs so they stay contained in the terminal pane. General URLs use the first
+installed real browser in the documented order and contain it the same way;
+Kilix's in-pane URL renderer is the no-browser fallback.
+Contained Chromium and Firefox instances use disposable per-window profiles so
+an already-running native browser cannot capture the URL. Launch from a
+terminal with an explicit Chromium `--user-data-dir` or Firefox `--profile`
+when persistent browser state is required.
 
 VirtualBox is special-cased. `.vbox` files and VirtualBox `.desktop` entries
 open through `kilix run --refit-windows` so the VM window stays contained.
@@ -379,7 +388,12 @@ Supported `X-Kilix-Open` values:
 - `window`: run in a Kilix OS window.
 - `run`: run an X11 app through `kilix run`.
 - `fullscreen`: run as a full-desktop XPane window.
-- `browse`: open a URL through `kilix open-url`.
+- `browse`: open a URL in the selected browser through `kilix run --fill`.
+
+An imported application launcher with no `X-Kilix-Open` uses `run` unless it
+declares `Terminal=true`, in which case it uses `tab`. Freedesktop `%U`, `%F`,
+and related argument placeholders are removed before a copied launcher runs;
+Kilix 95 supplies no selected-file arguments for them.
 
 For URL launchers:
 
@@ -709,7 +723,7 @@ Common requirements by feature:
 - Xvfb and XTest support for XPane
 - python-xlib for XPane and clipboard bridging
 - `man`/`manpath` for System Manual
-- `google-chrome`, `chromium-browser`, or `firefox-esr` for real-browser links
+- Google Chrome, Chromium, or Firefox for real-browser links
 - audio players such as `paplay`, `aplay`, `ffplay`, or `play` for UI sounds
 - browsers/VirtualBox only when those launch paths are used
 
@@ -849,12 +863,15 @@ Also check that the man directories contain section folders such as `man1`,
 
 **Help links do not open**
 
-Install one of `google-chrome`, `chromium-browser`, or `firefox-esr`. Kilix
-checks for them in that order. If none is installed, URL launchers and Help
-links fall back to the experimental in-pane browser.
+Install Google Chrome (`google-chrome` or `google-chrome-stable`), Chromium
+(`chromium` or `chromium-browser`), or Firefox (`firefox-esr` or `firefox`).
+Kilix 95 checks for them in the order documented under Help. If none is
+installed, URL launchers and Help links fall back to the experimental in-pane
+browser.
 
-If a browser exists but nothing appears, try the same URL from a regular
-terminal with `kilix open-url URL`.
+If a browser exists but nothing appears, reproduce the contained path from a
+regular terminal with `kilix run --fill BROWSER URL`, substituting the selected
+browser command.
 
 **X11 apps fail to open in desktop windows**
 
