@@ -115,6 +115,18 @@ security baseline across provider choices, writes settings only to XDG user
 configuration, and pins optional downloaded game/app sources to immutable
 commits with safe archive extraction.
 
+## Watch the episode
+
+https://github.com/user-attachments/assets/fe477615-845b-4d53-b568-e1eca849a8d8
+
+**[Desktop One: Kilix 95 and XP](https://github.com/itsmygithubacct/kilix-95/releases/download/media-v1/05-kilix-95-and-xp.mp4)**
+— part five of *Kilix, Pleb, and Plebian-OS: A Desktop Built Inside a Terminal*, the ten-part
+stack series. The inline player is a 720p preview; the link is the full-quality file (1920×1080,
+3m27s, 16 MB; published as a
+[media release](https://github.com/itsmygithubacct/kilix-95/releases/tag/media-v1) so a clone
+stays small). The [full series](https://github.com/itsmygithubacct/plebian-os#watch-the-series) (31m22s)
+lives on `plebian-os` and plays at [plebian-os.com](https://plebian-os.com/#watch).
+
 ## Quick Start
 
 From a normal Kilix session:
