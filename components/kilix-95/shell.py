@@ -1135,14 +1135,47 @@ class Shell:
             return [browser, "--no-remote", url]
         return [browser, url]
 
+    @staticmethod
+    def kilix_chawan_target():
+        """Only the Kilix CLI.
+
+        Unlike the other tools here there is no installed command to prefer:
+        `kilix chawan` owns the pinned checkout and the first-run build, and
+        the browser's binary lives inside that private prefix. Going through
+        the CLI is what keeps a Start-menu launch and a typed `kilix chawan`
+        on the same build."""
+        kilix = os.path.join(KILIX_HOME, "kilix")
+        if os.path.isfile(kilix) and os.access(kilix, os.X_OK):
+            return [kilix, "chawan"]
+        return None
+
+    def open_kilix_chawan(self, url=None):
+        """The text browser, in a terminal tab.
+
+        It is a terminal program, so it opens in a kilix tab rather than an
+        XPane: there is no X client to host. The first launch builds it, which
+        takes a few minutes and prints its progress in that tab."""
+        target = self.kilix_chawan_target()
+        if target is None:
+            wm.msgbox(
+                self.desk, "Chawan",
+                "The Kilix launcher could not be found, so the text browser "
+                "cannot be installed or started.", icon="error")
+            return False
+        if url:
+            target = target + [url]
+        return self._tab(target, "Chawan", os.path.expanduser("~"))
+
     def open_browser(self, which="firefox", mode=None, url=None):
         """Launch a web browser from the desktop.
 
         Firefox and Chromium open in a filled kilix-run tab by default so they
         stay inside the terminal pane. mode overrides: "window", "tab",
-        "fullscreen".
+        "fullscreen". Chawan is a terminal browser and ignores mode.
         """
         url = url or self.BROWSER_HOME
+        if which == "chawan":
+            return self.open_kilix_chawan(url)
         if which == "chromium":
             chromium = self._first_on_path(self.CHROME_CANDS)
             if not chromium:

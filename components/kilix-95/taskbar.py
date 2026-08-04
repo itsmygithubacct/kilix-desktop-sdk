@@ -561,6 +561,11 @@ class Taskbar:
                        MI("Open Fullscreen",
                           action=lambda: shell.open_browser("chromium", "fullscreen")),
                    ]),
+                # The one browser that needs no X server: it draws pages as
+                # terminal cells and images with the Kitty graphics protocol,
+                # so it works where the two above cannot run at all.
+                MI("Chawan (Text)", icon="browser",
+                   action=lambda: shell.open_browser("chawan")),
                 # opens empty; the player has its own Open dialog (the eject
                 # button → a zenity file picker) for choosing tracks
                 MI("Media Player", icon="amp",
