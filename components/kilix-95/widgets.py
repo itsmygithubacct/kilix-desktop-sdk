@@ -1516,12 +1516,18 @@ class MenuHost:
             self._eat_release = False      # a drag-select arms the release
             if i != over.hot:
                 over.hot = i
-                # entering an item trims deeper submenus and opens this one's
-                while self.stack and self.stack[-1] is not over:
-                    self.stack.pop()
                 it = over.items[i] if i >= 0 else None
                 if it and it.submenu is not None and it.enabled:
+                    # A different submenu replaces the open one; anything
+                    # deeper than this menu goes with it.
+                    while self.stack and self.stack[-1] is not over:
+                        self.stack.pop()
                     self._cascade(over, it)
+                # Hovering anything else leaves an open submenu alone. Closing
+                # it here is what forced the pointer to trace the parent row
+                # exactly: drift one item away, even onto a plain entry, and
+                # the submenu you were reaching for vanished. It now closes on
+                # a click outside it or when another submenu opens.
                 self.desk.dirty = True
         elif not ev.press:
             if self._eat_release:          # release of the opening click (F12/F44)
