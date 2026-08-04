@@ -1691,6 +1691,71 @@ bool launcher_open_tool(LaunchToolId id)
     return spawn_plan(&plan);
 }
 
+bool launcher_open_text_browser(void)
+{
+    LaunchPlan plan;
+    char root[PATH_MAX];
+    char helper[PATH_MAX];
+    char kitten[PATH_MAX];
+    char password[PATH_MAX];
+    char kilix[PATH_MAX];
+    const char *values[14];
+    size_t count = 0;
+
+    if (!enabled) {
+        set_error("desktop app launching is disabled");
+        return false;
+    }
+    if (!in_kilix_session()) {
+        set_error("Run Kilix Cap inside Kilix to open a browser tab.");
+        return false;
+    }
+    if (!resolve_kilix_control(kitten, sizeof kitten,
+                               password, sizeof password)) {
+        set_error("Kilix remote control is unavailable.");
+        return false;
+    }
+    /* `kilix chawan` rather than the browser binary: the launcher owns the
+     * pinned checkout and the first-run build, and on a machine that has
+     * never opened it that first launch is what installs it. */
+    if (!program_resolver("kilix", kilix, sizeof kilix)) {
+        set_error("The Kilix launcher is unavailable.");
+        return false;
+    }
+    if (!project_paths(root, sizeof root, helper, sizeof helper)) {
+        set_error("The Kilix Cap project directory is unavailable.");
+        return false;
+    }
+
+    memset(&plan, 0, sizeof plan);
+    if (snprintf(plan.executable, sizeof plan.executable, "%s", kitten) < 0 ||
+        strlen(kitten) >= sizeof plan.executable ||
+        snprintf(plan.cwd, sizeof plan.cwd, "%s", root) < 0 ||
+        strlen(root) >= sizeof plan.cwd) {
+        set_error("The browser tab could not be described.");
+        return false;
+    }
+    plan.program = "Text Browser";
+    values[count++] = "@";
+    values[count++] = "--password-file";
+    values[count++] = password;
+    values[count++] = "launch";
+    values[count++] = "--type=tab";
+    values[count++] = "--cwd";
+    values[count++] = root;
+    values[count++] = "--self";
+    values[count++] = "--tab-title";
+    values[count++] = "Text Browser";
+    values[count++] = "--";
+    values[count++] = kilix;
+    values[count++] = "chawan";
+    if (!finish_plan_many(&plan, values, count)) {
+        set_error("The browser tab could not be described.");
+        return false;
+    }
+    return spawn_plan(&plan);
+}
+
 bool launcher_open_game(const char *game_id, GameLaunchKind kind,
                         const char *kilix95_project_root,
                         const char *catalog_helper)

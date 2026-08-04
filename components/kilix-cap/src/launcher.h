@@ -72,6 +72,11 @@ bool        launcher_begin_web(void);
 LauncherWebStatus launcher_web_status(void);
 bool        launcher_focus_web(void);
 void        launcher_discard_web(void);
+/* The Study computer's other browser: Chawan, in a plain Kilix terminal tab.
+ * It draws pages as terminal cells rather than as captured pixels, so it needs
+ * none of the two-phase readiness handshake above and opens in one step. This
+ * is what the computer starts on a machine with no graphical browser. */
+bool        launcher_open_text_browser(void);
 /* Mansion appliances either open a fixed desktop program/document or launch
  * one of the bundled live system consoles in a fresh authenticated Kilix
  * terminal tab. */

@@ -1371,6 +1371,16 @@ static void launch_and_report(LaunchAppId app)
             (void)snprintf(status, sizeof status, "%s",
                            "The computer could not begin its boot sequence.");
         } else {
+            /* No graphical browser, so the computer starts the text one
+             * instead of refusing. It is a terminal program, so it opens in
+             * a tab directly and skips the capture handshake entirely. */
+            if (launcher_open_text_browser()) {
+                (void)snprintf(status, sizeof status, "%s",
+                               "Opened the text browser in a tab.");
+                panel_set_launch_status(status, true);
+                sound_play(SOUND_MAGIC);
+                return;
+            }
             (void)snprintf(status, sizeof status, "%s",
                            launcher_last_error()[0] != '\0'
                                ? launcher_last_error()
