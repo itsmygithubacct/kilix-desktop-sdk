@@ -85,11 +85,25 @@ bool ui_object_hit(const Object *o, int px, int py)
         return icon_hit(o->icon, x, y, o->visual.w, o->visual.h, px, py);
     }
     if (o->kind == OBJ_LAPTOP) {
-        if (art_mansion_items_ready())
-            return art_mansion_item_hit(ART_MANSION_ITEM_LAPTOP, x, y,
-                                        o->visual.w, o->visual.h, px, py);
-        return icon_hit(ICON_LAPTOP, x, y, o->visual.w, o->visual.h,
-                        px, py);
+        /* The lid frame lives in o->container (0 closed, 1 ajar, 2
+         * open), the same variant-in-container pattern game media uses.
+         * Picking always follows the frame actually drawn. */
+        int frame = o->container < 0 ? 0
+                    : o->container > 2 ? 2 : o->container;
+        if (frame == 2) {
+            if (art_mansion_items_ready())
+                return art_mansion_item_hit(ART_MANSION_ITEM_LAPTOP, x, y,
+                                            o->visual.w, o->visual.h,
+                                            px, py);
+            return icon_hit(ICON_LAPTOP, x, y, o->visual.w, o->visual.h,
+                            px, py);
+        }
+        if (art_laptop_lid_ready())
+            return art_laptop_lid_hit(frame, x, y, o->visual.w,
+                                      o->visual.h, px, py);
+        return icon_hit(frame == 0 ? ICON_LAPTOP_CLOSED
+                                   : ICON_LAPTOP_AJAR,
+                        x, y, o->visual.w, o->visual.h, px, py);
     }
     if (o->kind == OBJ_GAME_MEDIA) {
         if (art_ready())
@@ -249,10 +263,23 @@ void ui_draw_object(Canvas *c, const Object *o)
         return;
     }
     if (o->kind == OBJ_LAPTOP) {
-        if (art_draw_mansion_item(c, ART_MANSION_ITEM_LAPTOP, x, y, w, h,
-                                  o->pressed))
+        /* Stateful lid: open while a session runs (the mansion-items
+         * cell), closed or mid-swing otherwise (the optional lid pair);
+         * the procedural icons complete every fallback, so the three
+         * frames stay readable with no generated art at all. */
+        int frame = o->container < 0 ? 0
+                    : o->container > 2 ? 2 : o->container;
+        if (frame == 2) {
+            if (art_draw_mansion_item(c, ART_MANSION_ITEM_LAPTOP, x, y,
+                                      w, h, o->pressed))
+                return;
+            icon_draw(c, ICON_LAPTOP, x, y, w, h);
             return;
-        icon_draw(c, ICON_LAPTOP, x, y, w, h);
+        }
+        if (art_draw_laptop_lid(c, frame, x, y, w, h, o->pressed))
+            return;
+        icon_draw(c, frame == 0 ? ICON_LAPTOP_CLOSED : ICON_LAPTOP_AJAR,
+                  x, y, w, h);
         return;
     }
     if (o->kind == OBJ_GAME_MEDIA) {

@@ -65,8 +65,17 @@ enum {
     MANSION_ITEM_CELL_W = 48,
     MANSION_ITEM_CELL_H = 56,
     MANSION_ITEM_W = MANSION_ITEM_COLS * MANSION_ITEM_CELL_W,
-    MANSION_ITEM_H = MANSION_ITEM_ROWS * MANSION_ITEM_CELL_H
+    MANSION_ITEM_H = MANSION_ITEM_ROWS * MANSION_ITEM_CELL_H,
+    LAPTOP_LID_COLS = 2,
+    LAPTOP_LID_ROWS = 1,
+    LAPTOP_LID_CELL_W = MANSION_ITEM_CELL_W,
+    LAPTOP_LID_CELL_H = MANSION_ITEM_CELL_H,
+    LAPTOP_LID_W = LAPTOP_LID_COLS * LAPTOP_LID_CELL_W,
+    LAPTOP_LID_H = LAPTOP_LID_ROWS * LAPTOP_LID_CELL_H
 };
+
+_Static_assert(LAPTOP_LID_COLS * LAPTOP_LID_ROWS == ART_LAPTOP_LID_FRAMES,
+               "the lid grid must hold exactly the frame count");
 
 _Static_assert(MANSION_ITEM_COLS * MANSION_ITEM_ROWS ==
                    ART_MANSION_ITEM_VARIANTS,
@@ -84,8 +93,11 @@ static sr_canvas game_media;
 static sr_canvas game_media_alpha;
 static sr_canvas mansion_items;
 static sr_canvas mansion_items_alpha;
+static sr_canvas laptop_lid;
+static sr_canvas laptop_lid_alpha;
 static bool loaded;
 static bool mansion_items_loaded;
+static bool laptop_lid_loaded;
 static bool extra_items_enabled = true;
 
 static const DeskSprite *find_sprite(IconId icon)
@@ -184,6 +196,8 @@ static void free_bundle(void)
     sr_canvas_free(&game_media_alpha);
     sr_canvas_free(&mansion_items);
     sr_canvas_free(&mansion_items_alpha);
+    sr_canvas_free(&laptop_lid);
+    sr_canvas_free(&laptop_lid_alpha);
 }
 
 /* The two mask plates are deliberately RGB PPMs so the runtime asset format
@@ -306,6 +320,54 @@ static void load_mansion_items(const char *directory)
     mansion_items_loaded = true;
 }
 
+static bool laptop_lid_layers_valid(const sr_canvas *atlas,
+                                    const sr_canvas *alpha)
+{
+    size_t visible[ART_LAPTOP_LID_FRAMES] = {0};
+    size_t partial = 0;
+    size_t pixels = (size_t)LAPTOP_LID_W * LAPTOP_LID_H;
+    for (size_t i = 0; i < pixels; i++) {
+        uint32_t mask_rgb = alpha->px[i] & 0xffffffu;
+        unsigned value = mask_rgb & 0xffu;
+        int x = (int)(i % LAPTOP_LID_W);
+        int frame = x / LAPTOP_LID_CELL_W;
+        if (((mask_rgb >> 16) & 0xffu) != value ||
+            ((mask_rgb >> 8) & 0xffu) != value)
+            return false;
+        if (value == 0u) {
+            if ((atlas->px[i] & 0xffffffu) != 0u) return false;
+        } else {
+            visible[frame]++;
+            if (value < 255u) partial++;
+        }
+    }
+    for (int i = 0; i < ART_LAPTOP_LID_FRAMES; i++)
+        if (visible[i] < 100u) return false;
+    return partial > 0u;
+}
+
+/* The lid pair is a second optional add-on with the same both-or-neither
+ * rule; it animates the mansion-items open laptop, so it is only loaded
+ * once that atlas is in. */
+static void load_laptop_lid(const char *directory)
+{
+    sr_canvas atlas = {0};
+    sr_canvas alpha = {0};
+    if (!mansion_items_loaded) return;
+    if (!load_rgb_size(directory, "laptop-lid.ppm", LAPTOP_LID_W,
+                       LAPTOP_LID_H, &atlas) ||
+        !load_rgb_size(directory, "laptop-lid-mask.ppm", LAPTOP_LID_W,
+                       LAPTOP_LID_H, &alpha) ||
+        !laptop_lid_layers_valid(&atlas, &alpha)) {
+        sr_canvas_free(&atlas);
+        sr_canvas_free(&alpha);
+        return;
+    }
+    laptop_lid = atlas;
+    laptop_lid_alpha = alpha;
+    laptop_lid_loaded = true;
+}
+
 static bool load_bundle(const char *directory)
 {
     sr_canvas plates[BACKGROUND_COUNT] = {{0}};
@@ -346,6 +408,7 @@ static bool load_bundle(const char *directory)
     game_media = media;
     game_media_alpha = media_mask;
     load_mansion_items(directory);
+    load_laptop_lid(directory);
     return true;
 }
 
@@ -393,6 +456,7 @@ void art_shutdown(void)
     free_bundle();
     loaded = false;
     mansion_items_loaded = false;
+    laptop_lid_loaded = false;
 }
 
 bool art_ready(void) { return loaded; }
@@ -405,6 +469,11 @@ bool art_mansion_items_ready(void)
 void art_set_extra_items_enabled(bool enabled)
 {
     extra_items_enabled = enabled;
+}
+
+bool art_laptop_lid_ready(void)
+{
+    return art_mansion_items_ready() && laptop_lid_loaded;
 }
 
 static bool draw_background(Canvas *canvas, BackgroundId id)
@@ -616,6 +685,59 @@ bool art_mansion_item_hit(int variant, int x, int y, int w, int h,
     source_y = cell_y + (int)(((int64_t)py - y) * MANSION_ITEM_CELL_H / h);
     return (mansion_items_alpha.px[(size_t)source_y * MANSION_ITEM_W +
                                    (size_t)source_x] & 0xffu) >= 128u;
+}
+
+bool art_draw_laptop_lid(Canvas *canvas, int frame, int x, int y,
+                         int w, int h, bool pressed)
+{
+    int cell_x;
+    if (!art_laptop_lid_ready() || canvas == NULL || canvas->px == NULL ||
+        w <= 0 || h <= 0 || frame < 0 || frame >= ART_LAPTOP_LID_FRAMES)
+        return false;
+    cell_x = frame * LAPTOP_LID_CELL_W;
+    for (int dy = 0; dy < h; dy++) {
+        int destination_y = y + dy;
+        int source_y = (int)((int64_t)dy * LAPTOP_LID_CELL_H / h);
+        if (destination_y < 0 || destination_y >= canvas->h) continue;
+        for (int dx = 0; dx < w; dx++) {
+            int destination_x = x + dx;
+            int source_x = cell_x +
+                           (int)((int64_t)dx * LAPTOP_LID_CELL_W / w);
+            size_t source;
+            size_t destination;
+            unsigned alpha;
+            uint32_t above;
+            if (destination_x < 0 || destination_x >= canvas->w) continue;
+            source = (size_t)source_y * LAPTOP_LID_W + (size_t)source_x;
+            alpha = laptop_lid_alpha.px[source] & 0xffu;
+            if (alpha == 0u) continue;
+            above = laptop_lid.px[source];
+            if (pressed) above = shade_rgb(above, 3u, 4u);
+            destination = (size_t)destination_y * (size_t)canvas->w +
+                          (size_t)destination_x;
+            canvas->px[destination] = alpha_blend(
+                canvas->px[destination], above, alpha);
+        }
+    }
+    return true;
+}
+
+bool art_laptop_lid_hit(int frame, int x, int y, int w, int h,
+                        int px, int py)
+{
+    int cell_x;
+    int source_x;
+    int source_y;
+    if (!art_laptop_lid_ready() || frame < 0 ||
+        frame >= ART_LAPTOP_LID_FRAMES || w <= 0 || h <= 0 ||
+        (int64_t)px < x || (int64_t)py < y ||
+        (int64_t)px >= (int64_t)x + w || (int64_t)py >= (int64_t)y + h)
+        return false;
+    cell_x = frame * LAPTOP_LID_CELL_W;
+    source_x = cell_x + (int)(((int64_t)px - x) * LAPTOP_LID_CELL_W / w);
+    source_y = (int)(((int64_t)py - y) * LAPTOP_LID_CELL_H / h);
+    return (laptop_lid_alpha.px[(size_t)source_y * LAPTOP_LID_W +
+                                (size_t)source_x] & 0xffu) >= 128u;
 }
 
 bool art_workdesk_item_bounds(IconId icon, int *x, int *y, int *w, int *h)

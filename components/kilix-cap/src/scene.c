@@ -96,6 +96,18 @@ static struct {
 static bool laptop_menu_request_pending;
 static bool laptop_launch_pending;
 static char pending_laptop_profile[LAPTOP_ID_MAX];
+/* The laptop's running state, injected by main from the run registry the
+ * same way the profile ids are injected, so the deterministic soak and
+ * the headless tests see only what they put in. laptop_on drives the
+ * lid: a short tween between closed (0) and open (2) with the half-open
+ * frame between, in the scene's dt idiom like door transitions. */
+static bool laptop_menu_running[LAPTOP_PROFILES_MAX];
+static bool laptop_on;
+static double laptop_lid_t; /* 0 closed .. 2 open */
+static bool laptop_close_pending;
+static char pending_laptop_close[LAPTOP_ID_MAX];
+#define LAPTOP_LID_STEP_SECONDS 0.10
+#define LAPTOP_LID_OPEN_FRAME 2
 
 enum {
     LAPTOP_MENU_W = 264,
@@ -259,6 +271,10 @@ static void build_desk(void)
     set_object(&desk_objs[DESK_LAPTOP_INDEX], "Laptop", "Laptop",
                OBJ_LAPTOP, ICON_LAPTOP, ui_rect(12, 204, 42, 49), -1,
                false);
+    /* The lid frame rides in container (game media's variant pattern):
+     * closed until the run registry says a session is live. */
+    desk_objs[DESK_LAPTOP_INDEX].container =
+        (int)(laptop_lid_t + 0.5);
     set_object(&desk_objs[DESK_ITEMS + 1], "Hallway door", "Hall", OBJ_DOOR,
                ICON_NONE, ui_rect(386, 44, 50, 150), SCENE_HALLWAY, true);
 }
@@ -548,6 +564,8 @@ static void reset_world(SceneId destination)
     laptop_menu_request_pending = false;
     laptop_launch_pending = false;
     pending_laptop_profile[0] = '\0';
+    laptop_close_pending = false;
+    pending_laptop_close[0] = '\0';
     bar_objs[2].active = lamp_on;
 }
 
@@ -749,6 +767,24 @@ bool scene_take_laptop_request(const char **profile_id)
     return true;
 }
 
+void scene_set_laptop_state(bool on, const bool *running, int count)
+{
+    laptop_on = on;
+    memset(laptop_menu_running, 0, sizeof laptop_menu_running);
+    if (running == NULL || count <= 0) return;
+    if (count > LAPTOP_PROFILES_MAX) count = LAPTOP_PROFILES_MAX;
+    memcpy(laptop_menu_running, running,
+           (size_t)count * sizeof running[0]);
+}
+
+bool scene_take_laptop_close_request(const char **profile_id)
+{
+    if (!laptop_close_pending || profile_id == NULL) return false;
+    *profile_id = pending_laptop_close;
+    laptop_close_pending = false;
+    return true;
+}
+
 /* Chooser card layout. Row 0..count-1 are profiles; row count is Close.
  * An empty scan keeps only the Close row under a hint line. */
 static int laptop_menu_rows(void)
@@ -794,6 +830,16 @@ static void laptop_menu_choose(int row)
     if (row == laptop_menu.profiles.count) {
         laptop_menu.open = false;
         sound_play(SOUND_DISMISS);
+        return;
+    }
+    if (laptop_menu_running[row]) {
+        /* A live session: choosing its row asks for it to be CLOSED
+         * rather than opened twice; the row said so before the touch. */
+        (void)snprintf(pending_laptop_close, sizeof pending_laptop_close,
+                       "%s", laptop_menu.profiles.ids[row]);
+        laptop_close_pending = true;
+        laptop_menu.open = false;
+        sound_play(SOUND_MAGIC);
         return;
     }
     (void)snprintf(pending_laptop_profile, sizeof pending_laptop_profile,
@@ -852,8 +898,19 @@ static void draw_laptop_menu(Canvas *c)
         int row_y = card.y + laptop_menu_header_height() +
                     row * LAPTOP_MENU_ROW_H;
         bool close_row = row == laptop_menu.profiles.count;
-        const char *text = close_row ? "Close"
-                                     : laptop_menu.profiles.ids[row];
+        char row_text[LAPTOP_ID_MAX + 24];
+        const char *text;
+        if (close_row) {
+            text = "Close";
+        } else if (laptop_menu_running[row]) {
+            /* The row is honest about what a touch does. */
+            (void)snprintf(row_text, sizeof row_text,
+                           "%s - running, close",
+                           laptop_menu.profiles.ids[row]);
+            text = row_text;
+        } else {
+            text = laptop_menu.profiles.ids[row];
+        }
         if (row == laptop_menu.pressed_row) {
             draw_round_rect(c, card.x + 8, row_y + 1, card.w - 16,
                             LAPTOP_MENU_ROW_H - 2, 4, UI_TEAL);
@@ -1196,6 +1253,21 @@ bool scene_handle(const input_event *ev)
 void scene_update(double dt)
 {
     if (!isfinite(dt) || dt <= 0.0) return;
+    {
+        /* The lid follows the injected running state, one tween in the
+         * scene's dt idiom: closed <-> half-open <-> open, roughly a
+         * tenth of a second per frame, reversing cleanly mid-swing. */
+        double target = laptop_on ? (double)LAPTOP_LID_OPEN_FRAME : 0.0;
+        double step = dt / LAPTOP_LID_STEP_SECONDS;
+        if (laptop_lid_t < target)
+            laptop_lid_t = laptop_lid_t + step > target
+                               ? target : laptop_lid_t + step;
+        else if (laptop_lid_t > target)
+            laptop_lid_t = laptop_lid_t - step < target
+                               ? target : laptop_lid_t - step;
+        desk_objs[DESK_LAPTOP_INDEX].container =
+            (int)(laptop_lid_t + 0.5);
+    }
     if (transient_status_remaining > 0.0 &&
         !(web_boot.active &&
           strcmp(transient_status, "Computer booting Web...") == 0)) {
@@ -1720,6 +1792,12 @@ uint32_t scene_digest(void)
     h = fnv1a(h, laptop_menu_request_pending ? 1u : 0u);
     h = fnv1a(h, laptop_launch_pending ? 1u : 0u);
     h = fnv1a_text(h, pending_laptop_profile);
+    h = fnv1a(h, laptop_on ? 1u : 0u);
+    h = fnv1a(h, (uint32_t)(laptop_lid_t * 1000.0));
+    h = fnv1a(h, laptop_close_pending ? 1u : 0u);
+    h = fnv1a_text(h, pending_laptop_close);
+    for (int i = 0; i < laptop_menu.profiles.count; i++)
+        h = fnv1a(h, laptop_menu_running[i] ? 1u : 0u);
     for (int s = 0; s < SCENE_COUNT; s++)
         for (int i = 0; i < scenes[s].nobjs; i++) {
             const Object *o = &scenes[s].objs[i];

@@ -244,6 +244,47 @@ static void icon_laptop(Canvas *c, int x, int y, int w, int h)
                       sy + sh + 4 + row * (kh - 3) / 2, 2, 2, MC_LIGHT);
 }
 
+static void icon_laptop_closed(Canvas *c, int x, int y, int w, int h)
+{
+    /* The same portable computer with its lid shut: a slim two-layer
+     * slab resting on the desk, hinge ridge at the back, thin front
+     * seam. Proportions echo icon_laptop's base wedge so the closed and
+     * open frames read as one object. */
+    int bw = w * 9 / 10;
+    int bx = x + (w - bw) / 2;
+    int bh = h * 2 / 5;
+    int by = y + h - bh - 1;
+    if (bw < 14 || bh < 6) return;
+    draw_gradient_v(c, bx, by, bw, bh, 0x6f8890, UI_NAVY); /* lid top   */
+    draw_frame(c, bx, by, bw, bh, 1, MC_BLACK);
+    draw_rect(c, bx, by, bw, 2, 0x8fa6ac);                 /* back ridge */
+    draw_rect(c, bx + 2, by + bh - 3, bw - 4, 1, MC_BLACK); /* seam     */
+    draw_rect(c, bx + bw / 2 - 3, by + bh - 2, 6, 1, UI_GOLD); /* latch */
+}
+
+static void icon_laptop_ajar(Canvas *c, int x, int y, int w, int h)
+{
+    /* The lid mid-swing: a short raised leaf over the keyboard base,
+     * screen still dark, one glare line where the light catches it. */
+    int bw = w * 9 / 10;
+    int bx = x + (w - bw) / 2;
+    int sh = h * 2 / 5;             /* the part-raised screen leaf */
+    int kh = h / 4;                 /* keyboard base wedge         */
+    int sw = bw * 4 / 5;
+    int sx = bx + (bw - sw) / 2;
+    int sy = y + h - kh - sh - 4;
+    if (bw < 14 || sh < 5 || kh < 4) return;
+    draw_rect(c, sx, sy, sw, sh, UI_NAVY);
+    draw_frame(c, sx, sy, sw, sh, 1, MC_BLACK);
+    draw_rect(c, sx + 3, sy + 2, sw - 6, 1, MC_WHITE);   /* glare line */
+    draw_rect(c, sx - 2, sy + sh, sw + 4, 2, MC_BLACK);  /* hinge      */
+    draw_gradient_v(c, bx, sy + sh + 2, bw, kh, UI_SLATE, UI_NAVY);
+    draw_frame(c, bx, sy + sh + 2, bw, kh, 1, MC_BLACK);
+    for (int col = 0; col < 6; col++)
+        draw_rect(c, bx + 3 + col * (bw - 6) / 6, sy + sh + 4, 2, 2,
+                  MC_LIGHT);
+}
+
 static void icon_keyboard(Canvas *c, int x, int y, int w, int h)
 {
     int bw = w * 9 / 10;
@@ -282,6 +323,8 @@ void icon_draw(Canvas *c, IconId id, int x, int y, int w, int h)
     case ICON_TIN:        icon_tin(c, x, y, w, h); break;
     case ICON_KEYBOARD:   icon_keyboard(c, x, y, w, h); break;
     case ICON_LAPTOP:     icon_laptop(c, x, y, w, h); break;
+    case ICON_LAPTOP_CLOSED: icon_laptop_closed(c, x, y, w, h); break;
+    case ICON_LAPTOP_AJAR:   icon_laptop_ajar(c, x, y, w, h); break;
     case ICON_NONE:
     case ICON_COUNT:
     default: break;

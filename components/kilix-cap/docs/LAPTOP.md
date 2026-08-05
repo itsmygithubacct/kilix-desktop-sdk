@@ -1,14 +1,21 @@
 # The Study laptop
 
-An open laptop sits on the front-left corner of the Study desk. Touching it
+A laptop sits on the front-left corner of the Study desk. Touching it
 opens a chooser listing your **laptop profiles**; picking one opens a
 configured Kilix terminal session in its own window, or switches to another
 Kilix desktop provider. The chooser's Close row (or a touch outside the
 card) dismisses it.
 
-The laptop is drawn from the generated small-prop atlas when it is
-installed (`assets/art/mansion-items.ppm`), and from a procedural drawing
-otherwise — like every other prop, missing art degrades, it never breaks.
+The laptop is **stateful art**: its lid is closed while nothing runs and
+open while any profile session is live, with a short
+closed → half-open → open swing between (about a tenth of a second per
+frame, reversing cleanly mid-swing). The open frame comes from the
+generated small-prop atlas (`assets/art/mansion-items.ppm`) and the two
+lid frames from a second optional pair (`assets/art/laptop-lid.ppm` +
+`laptop-lid-mask.ppm`, prepared by `tools/prepare_laptop_lid.py`, only
+loaded alongside the atlas whose open laptop it animates); the procedural
+closed/ajar/open drawings remain the complete fallback — like every other
+prop, missing art degrades, it never breaks.
 
 ## Profiles: one convention across the Kilix desktops
 
@@ -78,22 +85,51 @@ desktop=land
 
 ## What a launch does
 
+Opening prefers the host's own verb: the laptop probes `kilix laptop
+help` once (the same probe-never-assume pattern as the games handoff) and
+delegates to `kilix laptop open <id>`, which spawns the session and
+records it in the shared **run registry**. On a host that predates the
+verb, the fallback keeps everything working:
+
 - A **pane profile** becomes a generated kitty `--session` file in the
-  private config directory (`~/.local/gpu_terminal/kilix-cap/`), and the
-  laptop runs `kilix --detach --session <file>` — the session opens as its
-  own Kilix window, which is what a laptop would do. `layout=splits` panes
-  alternate right/down splits; `layout=tabs` panes each get a tab.
+  private config directory (`~/.local/gpu_terminal/kilix-cap/`), spawned
+  as `kilix --session <file>` — un-detached, so the child pid is the
+  session window itself and the laptop records it in the registry. The
+  session opens as its own Kilix window, which is what a laptop would do.
+  `layout=splits` panes alternate right/down splits; `layout=tabs` panes
+  each get a tab.
 - A **desktop profile** runs `kilix <provider>` (`95` maps to
   `kilix desktop 95`), which opens the provider the way Kilix itself
-  would — usually a new tab of the current Kilix window.
+  would — usually a new tab of the current Kilix window. Desktop
+  profiles are not tracked in the registry: the wrapper exits once the
+  provider tab exists.
 
-Both paths are fixed argv vectors through `posix_spawn`; no shell ever
+All paths are fixed argv vectors through `posix_spawn`; no shell ever
 interprets profile text. Launching requires running Kilix Cap inside a
 Kilix session (the same rule as every app tab).
+
+## Running sessions and closing
+
+The run registry — `run/<id>.pid` beside the profiles, one ASCII pid per
+file written 0600 at spawn — is one contract shared with
+kilix-land-desktop, `kilix laptop`, and the launcher TUI, so a session
+opened anywhere shows as running everywhere. Liveness is a real check:
+`kill(pid, 0)` (EPERM counts as alive, a /proc zombie does not), never
+the file alone; a stale or garbled entry is deleted by whichever reader
+notices it. Kilix Cap consults the registry about once a second and
+tweens the lid to match.
+
+The chooser marks live sessions (`<id> - running, close`), and touching
+such a row **closes** that session — `kilix laptop close <id>` when the
+host verb exists, a SIGTERM to the recorded pid otherwise — instead of
+opening a duplicate. Walking away just leaves the session running and
+the lid open.
 
 ## Testing
 
 `kilix-cap --laptop-test` covers discovery, seeding, strict parsing (the
-rejection catalogue), session emission, and provider argv mapping;
-`--interaction-test` covers the chooser's request/geometry behavior;
-`--scene-test`/`--selftest` cover the object like any other.
+rejection catalogue), session emission, provider argv mapping, and the
+run registry's rules (record/read-back, stale cleanup, close semantics);
+`--interaction-test` covers the chooser's request/geometry behavior plus
+the lid tween and the running-row close request; `--scene-test`/
+`--selftest` cover the object like any other.

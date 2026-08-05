@@ -61,4 +61,22 @@ bool art_draw_mansion_item(Canvas *canvas, int variant, int x, int y,
 bool art_mansion_item_hit(int variant, int x, int y, int w, int h,
                           int px, int py);
 
+/* Two generated lid frames animate the Study laptop: fully closed (0) and
+ * half-open (1); the fully open frame stays ART_MANSION_ITEM_LAPTOP. The
+ * pair laptop-lid.ppm / laptop-lid-mask.ppm is a SECOND optional add-on
+ * following the mansion-items rules exactly — both-or-neither, validated
+ * on load, excluded from hash-pinned render fixtures via
+ * art_set_extra_items_enabled — and it only engages when the small-prop
+ * atlas whose open laptop it animates is itself present, so the lid never
+ * mixes generated frames with the procedural drawing. The procedural
+ * closed/ajar icons remain the complete fallback. The four mansion-items
+ * cells are untouched by this extension. */
+enum { ART_LAPTOP_LID_FRAMES = 2 };
+enum { ART_LAPTOP_LID_CLOSED = 0, ART_LAPTOP_LID_AJAR = 1 };
+bool art_laptop_lid_ready(void);
+bool art_draw_laptop_lid(Canvas *canvas, int frame, int x, int y,
+                         int w, int h, bool pressed);
+bool art_laptop_lid_hit(int frame, int x, int y, int w, int h,
+                        int px, int py);
+
 #endif /* KILIX_CAP_ART_H */

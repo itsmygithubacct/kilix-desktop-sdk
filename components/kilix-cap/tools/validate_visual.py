@@ -85,6 +85,23 @@ MANSION_CELL_W = 48
 MANSION_CELL_H = 56
 MANSION_VARIANTS = 4
 
+# The OPTIONAL laptop-lid group: two frames (closed, half-open) that
+# animate the mansion-items open laptop. Same rules as mansion-items —
+# all-or-none plus its own provenance manifest — and additionally it may
+# only ship alongside the mansion-items group, because src/art.c refuses
+# to animate a laptop it cannot draw open.
+LID_MANIFEST = ROOT / "docs" / "visual-provenance-laptop-lid.json"
+LID_SOURCE = "assets/art/laptop-lid-source.png"
+LID_KEYED = "assets/art/laptop-lid.png"
+LID_ATLAS = "assets/art/laptop-lid.ppm"
+LID_ALPHA = "assets/art/laptop-lid-mask.ppm"
+LID_PATHS = {LID_SOURCE, LID_KEYED, LID_ATLAS, LID_ALPHA}
+LID_W = 96
+LID_H = 56
+LID_CELL_W = 48
+LID_CELL_H = 56
+LID_FRAMES = 2
+
 SEMANTIC_IDS = {
     1: "Clock",
     2: "In box",
@@ -694,6 +711,117 @@ def validate_mansion_group(actual_paths: set[str]) -> str:
     return "present, validated"
 
 
+def validate_lid_media(path: str, raster: bytes, alpha: list[int]) -> None:
+    """The 2x1 lid sheet mirrors the small-prop layer rules."""
+    visible = [0] * LID_FRAMES
+    partial = 0
+    for index, value in enumerate(alpha):
+        x = index % LID_W
+        frame = x // LID_CELL_W
+        pixel = raster[index * 3:index * 3 + 3]
+        if value == 0:
+            if pixel != b"\x00\x00\x00":
+                raise VisualError(
+                    f"{path}: colored pixel outside the coverage mask"
+                )
+        else:
+            visible[frame] += 1
+            if value < 255:
+                partial += 1
+    for frame, count in enumerate(visible):
+        if count < 100:
+            raise VisualError(
+                f"{path}: lid frame {frame} has under 100 visible pixels"
+            )
+    if partial == 0:
+        raise VisualError(f"{path}: mask carries no antialiased coverage")
+
+
+def validate_lid_group(actual_paths: set[str],
+                       mansion_status: str) -> str:
+    present = actual_paths & LID_PATHS
+    if not present:
+        return "review pending (procedural lid frames serve)"
+    if present != LID_PATHS:
+        missing = ", ".join(sorted(LID_PATHS - present))
+        raise VisualError(
+            f"optional laptop-lid group is incomplete; missing {missing}"
+        )
+    if not mansion_status.startswith("present"):
+        raise VisualError(
+            "laptop-lid frames cannot ship without the mansion-items "
+            "atlas whose open laptop they animate"
+        )
+    manifest = json.loads(regular_file(LID_MANIFEST).decode("utf-8"))
+    if not isinstance(manifest, dict) or manifest.get("schema") != (
+        "kilix-cap-visual-provenance-laptop-lid-v1"
+    ):
+        raise VisualError("unexpected laptop-lid provenance schema")
+    generator = manifest.get("generator")
+    if (
+        not isinstance(generator, dict)
+        or generator.get("requested") != "Gemini image generation"
+        or generator.get("provider") != "Gemini image generation"
+        or generator.get("model_identifier") != "gemini-3-pro-image"
+    ):
+        raise VisualError("laptop-lid generator record is incomplete")
+    generation = manifest.get("generation")
+    if (
+        not isinstance(generation, dict)
+        or not isinstance(generation.get("prompt"), str)
+        or len(generation["prompt"]) < 200
+        or generation.get("mode") != "text-to-image"
+    ):
+        raise VisualError("laptop-lid prompt record is incomplete")
+    preparation = manifest.get("preparation")
+    if (
+        not isinstance(preparation, dict)
+        or preparation.get("item_tool") != "tools/prepare_laptop_lid.py"
+        or preparation.get("chroma_tool")
+        != "imagegen skill scripts/remove_chroma_key.py"
+    ):
+        raise VisualError("laptop-lid preparation record is incomplete")
+    entries = manifest.get("files")
+    if not isinstance(entries, dict) or set(entries) != LID_PATHS:
+        raise VisualError("laptop-lid file inventory is wrong")
+    rasters: dict[str, bytes] = {}
+    for relative, entry in entries.items():
+        if not isinstance(entry, dict):
+            raise VisualError("laptop-lid file entry must be an object")
+        data = regular_file(ROOT / relative)
+        if hashlib.sha256(data).hexdigest() != entry.get("sha256"):
+            raise VisualError(
+                f"{relative} SHA-256 does not match laptop-lid provenance"
+            )
+        if relative == LID_SOURCE:
+            # The generator writes JPEG bytes under the .png source name
+            # (the same recorded quirk as mansion-items); structure is
+            # validated on the keyed RGBA copy instead.
+            if entry.get("format") != "JPEG-in-png-name":
+                raise VisualError(f"{relative} has the wrong recorded format")
+            dimensions = (entry.get("width"), entry.get("height"))
+        elif relative.endswith(".png"):
+            dimensions = png_dimensions(data)
+            if entry.get("format") != "PNG":
+                raise VisualError(f"{relative} has the wrong recorded format")
+        else:
+            width, height, raster = ppm_raster(data)
+            dimensions = (width, height)
+            if dimensions != (LID_W, LID_H):
+                raise VisualError(
+                    f"{relative} is {width}x{height}; expected "
+                    f"{LID_W}x{LID_H}"
+                )
+            if entry.get("format") != "P6":
+                raise VisualError(f"{relative} has the wrong recorded format")
+            rasters[relative] = raster
+        if (entry.get("width"), entry.get("height")) != dimensions:
+            raise VisualError(f"{relative} recorded dimensions are wrong")
+    alpha = gray_values(LID_ALPHA, rasters[LID_ALPHA])
+    validate_lid_media(LID_ATLAS, rasters[LID_ATLAS], alpha)
+    return "present, validated"
+
+
 def run() -> str:
     manifest = json.loads(regular_file(MANIFEST).decode("utf-8"))
     if not isinstance(manifest, dict):
@@ -711,12 +839,14 @@ def run() -> str:
                 f"{path.relative_to(ROOT)} is not a regular visual asset"
             )
         actual_paths.add(path.relative_to(ROOT).as_posix())
-    if actual_paths - MANSION_PATHS != EXPECTED_PATHS:
+    if actual_paths - MANSION_PATHS - LID_PATHS != EXPECTED_PATHS:
         raise VisualError(
             "assets/art does not match the exact thirty-three-file "
-            "inventory plus the optional mansion-items group"
+            "inventory plus the optional mansion-items and laptop-lid "
+            "groups"
         )
     mansion_status = validate_mansion_group(actual_paths)
+    lid_status = validate_lid_group(actual_paths, mansion_status)
 
     rasters: dict[str, bytes] = {}
     for relative, entry in entries.items():
@@ -776,12 +906,12 @@ def run() -> str:
     validate_layer_relationships(
         rasters[GAME_MEDIA], media_alpha, [0] * len(media_alpha)
     )
-    return mansion_status
+    return mansion_status, lid_status
 
 
 def main() -> int:
     try:
-        mansion_status = run()
+        mansion_status, lid_status = run()
     except (OSError, KeyError, TypeError, json.JSONDecodeError, VisualError) as exc:
         print(f"validate_visual: {exc}", file=sys.stderr)
         return 1
@@ -789,6 +919,7 @@ def main() -> int:
         "validate_visual: eight room-native scenes, Desk/game sprites, 13 "
         "semantic hit IDs, three lossless source normalizations, hashes, and "
         "provenance OK; optional mansion-items: " + mansion_status
+        + "; optional laptop-lid: " + lid_status
     )
     return 0
 

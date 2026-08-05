@@ -91,6 +91,13 @@ void scene_set_laptop_profiles(const LaptopList *profiles);
 void scene_open_laptop_menu(void);
 bool scene_laptop_menu_open(void);
 bool scene_take_laptop_request(const char **profile_id);
+/* Running state, injected by main from the run registry the same way the
+ * profile ids are: `on` opens the lid (a short closed/half-open/open
+ * tween drawn on the desk object), `running` parallels the injected
+ * profile list so the chooser marks live sessions — whose rows then ask
+ * to CLOSE the session, raised as this take-and-clear request. */
+void scene_set_laptop_state(bool on, const bool *running, int count);
+bool scene_take_laptop_close_request(const char **profile_id);
 
 /* Short non-modal feedback belongs in the name bar so direct-launch objects
  * never need to open a textual status panel. */

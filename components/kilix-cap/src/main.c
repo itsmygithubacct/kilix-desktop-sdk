@@ -13,6 +13,7 @@
 #include "game_catalog.h"
 #include "game_icons.h"
 #include "input.h"
+#include "laptop_run.h"
 #include "launcher.h"
 #include "panel.h"
 #include "scene.h"
@@ -854,6 +855,45 @@ static int cmd_interaction_test(void)
         test_expect(!scene_laptop_menu_open() &&
                         !scene_take_laptop_request(&profile_id),
                     "the Close row dismisses without launching", &failures);
+
+        /* Running state, injected exactly like the profile list: the lid
+         * tweens closed -> half-open -> open, and a running profile's
+         * row asks to CLOSE the session instead of opening a second. */
+        test_expect(laptop->container == 0,
+                    "the laptop starts with its lid closed", &failures);
+        {
+            bool running[LAPTOP_PROFILES_MAX] = {true, false};
+            scene_set_laptop_state(true, running, profiles.count);
+        }
+        scene_update(0.05);
+        test_expect(scene_object(SCENE_DESK, 13)->container == 1,
+                    "the opening lid passes the half-open frame",
+                    &failures);
+        scene_update(0.25);
+        test_expect(scene_object(SCENE_DESK, 13)->container == 2,
+                    "a live session settles the lid fully open",
+                    &failures);
+        scene_open_laptop_menu();
+        send_mouse(IN_MOUSE_DOWN, 240, 139, 0, true);
+        send_mouse(IN_MOUSE_UP, 240, 139, 0, true);
+        test_expect(!scene_laptop_menu_open() &&
+                        !scene_take_laptop_request(&profile_id) &&
+                        scene_take_laptop_close_request(&profile_id) &&
+                        profile_id != NULL &&
+                        strcmp(profile_id, "alpha") == 0,
+                    "choosing a running row raises one close request",
+                    &failures);
+        test_expect(!scene_take_laptop_close_request(&profile_id),
+                    "the close request is consumed exactly once",
+                    &failures);
+        scene_set_laptop_state(false, NULL, 0);
+        scene_update(0.10);
+        test_expect(scene_object(SCENE_DESK, 13)->container == 1,
+                    "the closing lid reverses through half-open",
+                    &failures);
+        scene_update(0.25);
+        test_expect(scene_object(SCENE_DESK, 13)->container == 0,
+                    "an ended session closes the lid again", &failures);
     }
 
     if (failures == 0) printf("interaction-test: ok\n");
@@ -1623,31 +1663,68 @@ static bool laptop_seed_directory(char *path, size_t size)
                     (int)(slash - executable), executable) < (int)size;
 }
 
+/* The profile list the chooser was last given, kept so the periodic
+ * registry poll can keep its running flags fresh while it is open. */
+static LaptopList chooser_profiles;
+
+/* Push the run registry's word into the scene: the lid state, and — for
+ * the chooser — which injected profiles have a live session. The scene
+ * itself never touches the filesystem. */
+static void inject_laptop_state(void)
+{
+    bool running[LAPTOP_PROFILES_MAX] = {false};
+    for (int i = 0; i < chooser_profiles.count; i++)
+        running[i] =
+            laptop_run_status(chooser_profiles.ids[i], NULL) == 1;
+    scene_set_laptop_state(laptop_run_any(), running,
+                           chooser_profiles.count);
+}
+
 static void service_laptop_menu(void)
 {
     char seed[PATH_MAX];
-    LaptopList profiles;
     if (!scene_take_laptop_menu_request()) return;
     if (laptop_scan(laptop_seed_directory(seed, sizeof seed) ? seed : NULL,
-                    &profiles) < 0)
-        memset(&profiles, 0, sizeof profiles);
-    scene_set_laptop_profiles(&profiles);
+                    &chooser_profiles) < 0)
+        memset(&chooser_profiles, 0, sizeof chooser_profiles);
+    scene_set_laptop_profiles(&chooser_profiles);
+    inject_laptop_state();
     scene_open_laptop_menu();
 }
 
 static void launch_laptop_and_report(const char *profile_id)
 {
     char status[96];
-    if (launcher_open_laptop(profile_id)) {
+    char error[LAPTOP_ERROR_MAX];
+    if (laptop_run_open(profile_id, error, sizeof error)) {
         (void)snprintf(status, sizeof status,
                        "Opened laptop profile %s.", profile_id);
         scene_set_status(status, true);
         sound_play(SOUND_MAGIC);
     } else {
         (void)snprintf(status, sizeof status, "%s",
-                       launcher_last_error()[0] != '\0'
-                           ? launcher_last_error()
+                       error[0] != '\0'
+                           ? error
                            : "The laptop profile could not open.");
+        scene_set_status(status, false);
+        sound_play(SOUND_ERROR);
+    }
+}
+
+static void close_laptop_and_report(const char *profile_id)
+{
+    char status[96];
+    char error[LAPTOP_ERROR_MAX];
+    if (laptop_run_close(profile_id, error, sizeof error)) {
+        (void)snprintf(status, sizeof status,
+                       "Closing laptop session %s.", profile_id);
+        scene_set_status(status, true);
+        sound_play(SOUND_DISMISS);
+    } else {
+        (void)snprintf(status, sizeof status, "%s",
+                       error[0] != '\0'
+                           ? error
+                           : "The laptop session could not close.");
         scene_set_status(status, false);
         sound_play(SOUND_ERROR);
     }
@@ -1663,6 +1740,8 @@ static void service_requests(void)
     service_laptop_menu();
     while (scene_take_laptop_request(&laptop_profile))
         launch_laptop_and_report(laptop_profile);
+    while (scene_take_laptop_close_request(&laptop_profile))
+        close_laptop_and_report(laptop_profile);
     while (scene_take_mail_registration(&target)) {
         if (launcher_save_mail_target(target)) {
             panel_set_mail_target(launcher_mail_target());
@@ -1793,6 +1872,15 @@ static int run_interactive(const char *argv0)
         if (!running) break;
 
         launcher_poll();
+        {
+            /* The registry is the laptop's truth; consult it about once
+             * a second and let the scene tween the lid to match. */
+            static int laptop_poll_countdown;
+            if (--laptop_poll_countdown <= 0) {
+                laptop_poll_countdown = PRESENT_HZ;
+                inject_laptop_state();
+            }
+        }
         service_web_readiness();
         scene_update(dt);
         if (game_catalog_poll())
@@ -1908,7 +1996,9 @@ int main(int argc, char **argv)
         return cmd_launcher_test();
     if (strcmp(argv[1], "--laptop-test") == 0) {
         if (!laptop_selftest()) return 1;
-        printf("laptop-test: ok (profiles, sessions, rejections)\n");
+        if (!laptop_run_selftest()) return 1;
+        printf("laptop-test: ok (profiles, sessions, rejections, "
+               "run registry)\n");
         return 0;
     }
     if (strcmp(argv[1], "--game-catalog-test") == 0)
