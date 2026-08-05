@@ -56,7 +56,8 @@ bool ui_target_valid(const Object *o)
     if (o->kind == OBJ_PROGRAM || o->kind == OBJ_ITEM ||
         o->kind == OBJ_GAME_MEDIA ||
         o->kind == OBJ_DOOR || o->kind == OBJ_PORTAL ||
-        o->kind == OBJ_APPLIANCE || o->kind == OBJ_LAPTOP)
+        o->kind == OBJ_APPLIANCE || o->kind == OBJ_LAPTOP ||
+        o->kind == OBJ_BREAKER)
         return o->visual.w > 0 && o->visual.h > 0 &&
                o->hit.x == o->visual.x && o->hit.y == o->visual.y &&
                o->hit.w == o->visual.w && o->hit.h == o->visual.h;
@@ -77,6 +78,8 @@ bool ui_object_hit(const Object *o, int px, int py)
                                          o->visual.h, px, py);
         return icon_hit(o->icon, x, y, o->visual.w, o->visual.h, px, py);
     }
+    if (o->kind == OBJ_BREAKER)
+        return icon_hit(o->icon, x, y, o->visual.w, o->visual.h, px, py);
     if (o->kind == OBJ_ITEM) {
         if (art_mansion_items_ready() && o->icon >= ICON_BOX &&
             o->icon <= ICON_TIN)
@@ -259,6 +262,10 @@ void ui_draw_object(Canvas *c, const Object *o)
             art_draw_mansion_item(c, o->icon - ICON_BOX, x, y, w, h,
                                   o->pressed))
             return;
+        icon_draw(c, o->icon, x, y, w, h);
+        return;
+    }
+    if (o->kind == OBJ_BREAKER) {
         icon_draw(c, o->icon, x, y, w, h);
         return;
     }

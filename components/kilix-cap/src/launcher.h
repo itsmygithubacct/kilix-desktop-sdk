@@ -91,6 +91,28 @@ bool        launcher_open_game(const char *game_id, GameLaunchKind kind,
  * generated kitty --session file in the private config directory opened
  * with `kilix --detach --session`, i.e. the laptop gets its own window. */
 bool        launcher_open_laptop(const char *profile_id);
+
+/* The Study breaker panel: end this session, or the machine.
+ *
+ * The three argv vectors are the frozen contract named by kilix-tui-utils'
+ * src/kilix_tui/privileged.py, which Kilix Land Desktop's fuse box already
+ * mirrors — a fourth desktop inventing its own spelling of "shut down" is
+ * exactly what that contract exists to prevent. Cap runs them directly
+ * rather than through a Kilix tab: a mansion whose remote control has died
+ * must still be able to stop the machine, and a tab would close before a
+ * refusal could be read. */
+typedef enum LaunchPowerId {
+    LAUNCH_POWER_LOGOUT = 0,
+    LAUNCH_POWER_REBOOT,
+    LAUNCH_POWER_POWEROFF,
+    LAUNCH_POWER_COUNT
+} LaunchPowerId;
+const char *launcher_power_title(LaunchPowerId id);
+/* False when the action's tool is missing, or — for logout — when no
+ * session id is set, rather than guessing which session to end. */
+bool        launcher_power_available(LaunchPowerId id);
+bool        launcher_power(LaunchPowerId id);
+
 const char *launcher_last_program(void);
 const char *launcher_last_error(void);
 

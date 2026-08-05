@@ -856,6 +856,67 @@ static int cmd_interaction_test(void)
                         !scene_take_laptop_request(&profile_id),
                     "the Close row dismisses without launching", &failures);
 
+        /* The master breaker. Its rows ARM before they act, so no single
+         * touch anywhere in the mansion can end the session or the
+         * machine. Card is 232x134 at (124, 85): row 0 spans y 115..139,
+         * row 1 139..163, the Close row 187..211. */
+        {
+            const Object *breaker = scene_object(SCENE_DESK, 14);
+            LaunchPowerId power = LAUNCH_POWER_COUNT;
+            int bx = 0, by = 0;
+            test_expect(breaker != NULL && breaker->kind == OBJ_BREAKER &&
+                            strcmp(breaker->name,
+                                   "Master breaker panel") == 0,
+                        "the Study wall carries a master breaker",
+                        &failures);
+            test_expect(object_hit_point(breaker, &bx, &by),
+                        "breaker responds on its visible pixels", &failures);
+            test_expect(!scene_power_menu_open(),
+                        "no power menu before the breaker is touched",
+                        &failures);
+            click_object(breaker);
+            test_expect(scene_power_menu_open(),
+                        "touching the breaker opens the power menu",
+                        &failures);
+            send_mouse(IN_MOUSE_DOWN, 240, 127, 0, true);
+            send_mouse(IN_MOUSE_UP, 240, 127, 0, true);
+            test_expect(scene_power_menu_open() &&
+                            !scene_take_power_request(&power),
+                        "the first touch of a power row only arms it",
+                        &failures);
+            send_mouse(IN_MOUSE_DOWN, 240, 127, 0, true);
+            send_mouse(IN_MOUSE_UP, 240, 127, 0, true);
+            test_expect(!scene_power_menu_open() &&
+                            scene_take_power_request(&power) &&
+                            power == LAUNCH_POWER_LOGOUT,
+                        "the second touch of the same row acts", &failures);
+            test_expect(!scene_take_power_request(&power),
+                        "the power request is consumed exactly once",
+                        &failures);
+            /* Arming one row then touching another must leave nothing
+               armed and act on nothing. */
+            scene_open_power_menu();
+            send_mouse(IN_MOUSE_DOWN, 240, 127, 0, true);
+            send_mouse(IN_MOUSE_UP, 240, 127, 0, true);
+            send_mouse(IN_MOUSE_DOWN, 240, 151, 0, true);
+            send_mouse(IN_MOUSE_UP, 240, 151, 0, true);
+            test_expect(scene_power_menu_open() &&
+                            !scene_take_power_request(&power),
+                        "arming a second row acts on neither", &failures);
+            send_mouse(IN_MOUSE_DOWN, 240, 199, 0, true);
+            send_mouse(IN_MOUSE_UP, 240, 199, 0, true);
+            test_expect(!scene_power_menu_open() &&
+                            !scene_take_power_request(&power),
+                        "the breaker's Close row leaves the power alone",
+                        &failures);
+            scene_open_power_menu();
+            send_mouse(IN_MOUSE_DOWN, 20, 40, 0, true);
+            test_expect(!scene_power_menu_open() &&
+                            !scene_take_power_request(&power),
+                        "pressing outside the breaker card dismisses it",
+                        &failures);
+        }
+
         /* Running state, injected exactly like the profile list: the lid
          * tweens closed -> half-open -> open, and a running profile's
          * row asks to CLOSE the session instead of opening a second. */
@@ -1594,6 +1655,29 @@ static void service_web_readiness(void)
     sound_play(SOUND_ERROR);
 }
 
+/* The breaker's chosen action. Success is deliberately quiet about what
+ * happens next: the session or the machine is already on its way out, and
+ * a cheerful "Opened" would be the last thing a user reads. */
+static void run_power_and_report(LaunchPowerId action)
+{
+    char status[96];
+    if (launcher_power(action)) {
+        (void)snprintf(status, sizeof status, "%s...",
+                       launcher_power_title(action));
+        panel_set_launch_status(status, true);
+        scene_set_status(status, true);
+        sound_play(SOUND_SWITCH);
+    } else {
+        (void)snprintf(status, sizeof status, "%s",
+                       launcher_last_error()[0] != '\0'
+                           ? launcher_last_error()
+                           : "That power action is unavailable.");
+        panel_set_launch_status(status, false);
+        scene_set_status(status, false);
+        sound_play(SOUND_ERROR);
+    }
+}
+
 static void launch_tool_and_report(LaunchToolId tool)
 {
     char status[96];
@@ -1737,6 +1821,7 @@ static void service_requests(void)
     GameLaunchKind game_kind;
     LaunchAppId app;
     LaunchToolId tool;
+    LaunchPowerId power;
     service_laptop_menu();
     while (scene_take_laptop_request(&laptop_profile))
         launch_laptop_and_report(laptop_profile);
@@ -1753,6 +1838,7 @@ static void service_requests(void)
     }
     while (scene_take_game_request(&target, &game_kind))
         launch_game_and_report(target, game_kind);
+    while (scene_take_power_request(&power)) run_power_and_report(power);
     while (scene_take_tool_request(&tool)) launch_tool_and_report(tool);
     while (scene_take_launch_request(&app)) launch_and_report(app);
 }

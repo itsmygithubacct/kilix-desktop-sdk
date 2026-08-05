@@ -99,6 +99,14 @@ bool scene_take_laptop_request(const char **profile_id);
 void scene_set_laptop_state(bool on, const bool *running, int count);
 bool scene_take_laptop_close_request(const char **profile_id);
 
+/* The Study breaker panel. Touching it raises a modal power menu; a row
+ * ARMS on its first touch and only acts on a second touch of the same row,
+ * so no single click can end the session or the machine. Touching another
+ * row, or dismissing, disarms. */
+void scene_open_power_menu(void);
+bool scene_power_menu_open(void);
+bool scene_take_power_request(LaunchPowerId *action);
+
 /* Short non-modal feedback belongs in the name bar so direct-launch objects
  * never need to open a textual status panel. */
 void scene_set_status(const char *message, bool success);

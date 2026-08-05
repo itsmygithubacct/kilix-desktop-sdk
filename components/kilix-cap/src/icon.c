@@ -262,6 +262,35 @@ static void icon_laptop_closed(Canvas *c, int x, int y, int w, int h)
     draw_rect(c, bx + bw / 2 - 3, by + bh - 2, 6, 1, UI_GOLD); /* latch */
 }
 
+static void icon_breaker(Canvas *c, int x, int y, int w, int h)
+{
+    /* A wall breaker panel: steel door on a recessed box, hinge down the
+     * left, a handle, and three toggles behind the glass — one per action
+     * the panel offers, so the object states its own arity. */
+    int door_x = x + 2;
+    int door_w = w - 4;
+    int inner_y = y + 6;
+    int inner_h = h - 12;
+    if (w < 16 || h < 20) return;
+    draw_rect(c, x, y, w, h, UI_SLATE);
+    draw_frame(c, x, y, w, h, 2, MC_BLACK);
+    draw_gradient_v(c, door_x, y + 2, door_w, h - 4, MC_LIGHT, UI_SLATE);
+    draw_frame(c, door_x, y + 2, door_w, h - 4, 1, MC_BLACK);
+    draw_rect(c, door_x + 1, y + 3, 2, h - 6, MC_BLACK);      /* hinge  */
+    draw_rect(c, x + w - 6, y + h / 2 - 3, 3, 7, UI_NAVY);    /* handle */
+    draw_rect(c, door_x + 5, inner_y, door_w - 10, inner_h, MC_BLACK);
+    for (int i = 0; i < 3; i++) {
+        int slot_h = inner_h / 3;
+        int slot_y = inner_y + i * slot_h + 1;
+        if (slot_h < 4) break;
+        draw_rect(c, door_x + 7, slot_y, door_w - 14, slot_h - 2, UI_TEAL);
+        /* Each toggle sits thrown to one side; the top one is the odd
+         * one out so the panel never reads as a plain grille. */
+        draw_rect(c, i == 0 ? door_x + 8 : door_x + door_w - 12,
+                  slot_y + 1, 3, slot_h - 4, MC_WHITE);
+    }
+}
+
 static void icon_laptop_ajar(Canvas *c, int x, int y, int w, int h)
 {
     /* The lid mid-swing: a short raised leaf over the keyboard base,
@@ -325,6 +354,7 @@ void icon_draw(Canvas *c, IconId id, int x, int y, int w, int h)
     case ICON_LAPTOP:     icon_laptop(c, x, y, w, h); break;
     case ICON_LAPTOP_CLOSED: icon_laptop_closed(c, x, y, w, h); break;
     case ICON_LAPTOP_AJAR:   icon_laptop_ajar(c, x, y, w, h); break;
+    case ICON_BREAKER:       icon_breaker(c, x, y, w, h); break;
     case ICON_NONE:
     case ICON_COUNT:
     default: break;

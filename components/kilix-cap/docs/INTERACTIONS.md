@@ -12,7 +12,7 @@ text list or built-in status panel.
 
 | Room | Physical behavior |
 |---|---|
-| Study | Thirteen separated desk props launch Clock, Inbox, Outbox, Mail, Profile, Notepad, Dates, Contacts, Files, Phone, Writer, Calculator, and Web. The laptop on the desk's front-left corner opens the laptop-profile chooser (docs/LAPTOP.md): a profile opens a configured Kilix terminal session in its own window or another desktop provider. The right door enters the Grand Gallery. |
+| Study | Thirteen separated desk props launch Clock, Inbox, Outbox, Mail, Profile, Notepad, Dates, Contacts, Files, Phone, Writer, Calculator, and Web. The laptop on the desk's front-left corner opens the laptop-profile chooser (docs/LAPTOP.md): a profile opens a configured Kilix terminal session in its own window or another desktop provider. The master breaker on the left wall opens a power menu whose rows arm before they act. The right door enters the Grand Gallery. |
 | Grand Gallery | Three diminishing side-door pairs, each fitted to its own position and vanishing lines, lead to Study, Library, Server Room, Cleaning Room, Game Room, and Storeroom. The glazed door at the end leads to the Balcony. |
 | Storeroom | Storage box, wooden crate, and tin canister can be dragged between the two shelves. The left door returns to the Gallery. |
 | Server Room | Two monitor screens launch live system TUIs. Four separate equipment zones open system settings, storage, network, and software administration apps. |
@@ -71,6 +71,37 @@ web_home=https://example.org/
 
 The value must be one bounded `http(s)` URL with no whitespace. Invalid,
 relative, and non-Web schemes are ignored in favor of Hacker News.
+
+## Master breaker
+
+The Study's left wall carries the mansion's only power control. Touching it
+raises a modal card with **Log out**, **Restart**, **Shut down**, and a row
+that leaves the panel.
+
+Every action row **arms** rather than acts. The first touch turns the row into
+a question — `REALLY SHUT DOWN?` — and only a second touch of that same row
+runs anything. Touching a different row moves the arming there, so a stray
+click can never leave two rows one press from acting, and closing the card or
+pressing outside it disarms everything. Nothing else in the mansion can end a
+session or the machine, which is why power is an object of its own rather than
+another row on a panel that also opens documents.
+
+The three commands are the frozen argv contract named by kilix-tui-utils'
+`src/kilix_tui/privileged.py`, the same three Kilix Land Desktop's fuse box
+runs:
+
+| Row | Command |
+|---|---|
+| Log out | `loginctl terminate-session $XDG_SESSION_ID` |
+| Restart | `systemctl reboot` |
+| Shut down | `systemctl poweroff` |
+
+They run directly rather than in a Kilix tab. A mansion whose remote control
+has died must still be able to stop the machine, and a tab would close before
+a refusal could be read. **Log out** is unavailable when `XDG_SESSION_ID` is
+unset: an empty session id makes `loginctl` end whichever session invoked it,
+and the panel names the session it ends rather than guessing.
+
 
 ## Server Room monitors
 

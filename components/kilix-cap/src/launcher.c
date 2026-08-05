@@ -1530,6 +1530,70 @@ bool launcher_open(LaunchAppId id)
     return spawn_plan(&plan);
 }
 
+static const char *const power_titles[LAUNCH_POWER_COUNT] = {
+    "Log out", "Restart", "Shut down"
+};
+
+const char *launcher_power_title(LaunchPowerId id)
+{
+    if (id < 0 || id >= LAUNCH_POWER_COUNT) return "";
+    return power_titles[id];
+}
+
+/* privileged.py's argv, verbatim. `session` carries XDG_SESSION_ID for the
+ * logout vector and is unused by the other two. */
+static bool build_power_plan(LaunchPowerId id, LaunchPlan *plan)
+{
+    const char *session = getenv("XDG_SESSION_ID");
+    const char *values[2];
+    size_t count = 0;
+
+    if (plan == NULL || id < 0 || id >= LAUNCH_POWER_COUNT) return false;
+    memset(plan, 0, sizeof *plan);
+    if (id == LAUNCH_POWER_LOGOUT) {
+        /* An empty session id makes loginctl end the *invoking* session,
+         * which is right for a logout and wrong for anything that inherits
+         * this code later. Naming the session keeps the argv honest. */
+        if (session == NULL || session[0] == '\0') return false;
+        if (!choose_program(plan, (const char *const[]){"loginctl"}, 1))
+            return false;
+        values[count++] = "terminate-session";
+        values[count++] = session;
+    } else {
+        if (!choose_program(plan, (const char *const[]){"systemctl"}, 1))
+            return false;
+        values[count++] = id == LAUNCH_POWER_REBOOT ? "reboot" : "poweroff";
+    }
+    return finish_plan_many(plan, values, count);
+}
+
+bool launcher_power_available(LaunchPowerId id)
+{
+    LaunchPlan plan;
+    if (!enabled) return false;
+    return build_power_plan(id, &plan);
+}
+
+bool launcher_power(LaunchPowerId id)
+{
+    LaunchPlan plan;
+    if (!enabled) {
+        set_error("desktop app launching is disabled");
+        return false;
+    }
+    if (!build_power_plan(id, &plan)) {
+        if (id == LAUNCH_POWER_LOGOUT && (getenv("XDG_SESSION_ID") == NULL ||
+                                          getenv("XDG_SESSION_ID")[0] == '\0'))
+            set_error("There is no session to leave.");
+        else
+            set_error(id == LAUNCH_POWER_LOGOUT
+                          ? "loginctl is not installed."
+                          : "systemctl is not installed.");
+        return false;
+    }
+    return spawn_plan(&plan);
+}
+
 bool launcher_open_laptop(const char *profile_id)
 {
     LaunchPlan plan;
@@ -2178,6 +2242,53 @@ static void restore_kilix_session(const SavedKilixSession *saved)
         setenv("KILIX_RC_PASSWORD_FILE", saved->password, 1);
 }
 
+/* privileged.py's argv trio, pinned exactly. Kilix Land Desktop's fuse box
+ * runs the same three vectors; if either desktop's spelling drifts, one of
+ * these assertions is the thing that notices. */
+static bool power_plan_selftest(void)
+{
+    LaunchPlan plan;
+    const char *saved = getenv("XDG_SESSION_ID");
+    char keep[64];
+
+    keep[0] = '\0';
+    if (saved != NULL &&
+        (snprintf(keep, sizeof keep, "%s", saved) < 0 ||
+         strlen(saved) >= sizeof keep))
+        return false;
+    setenv("XDG_SESSION_ID", "7", 1);
+    if (!build_power_plan(LAUNCH_POWER_LOGOUT, &plan) ||
+        strcmp(plan.program, "loginctl") != 0 ||
+        strcmp(plan.argv[1], "terminate-session") != 0 ||
+        strcmp(plan.argv[2], "7") != 0 || plan.argv[3] != NULL)
+        goto fail;
+    if (!build_power_plan(LAUNCH_POWER_REBOOT, &plan) ||
+        strcmp(plan.program, "systemctl") != 0 ||
+        strcmp(plan.argv[1], "reboot") != 0 || plan.argv[2] != NULL)
+        goto fail;
+    if (!build_power_plan(LAUNCH_POWER_POWEROFF, &plan) ||
+        strcmp(plan.argv[1], "poweroff") != 0 || plan.argv[2] != NULL)
+        goto fail;
+    /* Without a session id there is no honest logout argv, and the two
+     * machine actions are unaffected by it. */
+    unsetenv("XDG_SESSION_ID");
+    if (build_power_plan(LAUNCH_POWER_LOGOUT, &plan) ||
+        !build_power_plan(LAUNCH_POWER_POWEROFF, &plan))
+        goto fail;
+    setenv("XDG_SESSION_ID", "", 1);
+    if (build_power_plan(LAUNCH_POWER_LOGOUT, &plan)) goto fail;
+    if (build_power_plan((LaunchPowerId)-1, &plan) ||
+        build_power_plan(LAUNCH_POWER_COUNT, &plan))
+        goto fail;
+    if (keep[0] != '\0') setenv("XDG_SESSION_ID", keep, 1);
+    else unsetenv("XDG_SESSION_ID");
+    return true;
+fail:
+    if (keep[0] != '\0') setenv("XDG_SESSION_ID", keep, 1);
+    else unsetenv("XDG_SESSION_ID");
+    return false;
+}
+
 static bool tool_plan_selftest(void)
 {
     char root[PATH_MAX];
@@ -2264,6 +2375,7 @@ static bool tool_plan_selftest(void)
         plan.argv[1] == NULL || strcmp(plan.argv[1], readme) != 0 ||
         plan.argv[2] != NULL)
         return false;
+    if (!power_plan_selftest()) return false;
     return !build_tool_plan((LaunchToolId)-1, &plan) &&
            !build_tool_plan(LAUNCH_TOOL_COUNT, &plan);
 }

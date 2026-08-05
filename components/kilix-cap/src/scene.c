@@ -20,7 +20,9 @@ typedef struct Container {
 enum {
     DESK_ITEMS = 13,
     DESK_LAPTOP_INDEX = DESK_ITEMS,
-    DESK_OBJS = DESK_ITEMS + 2, /* props + laptop + hallway door */
+    DESK_BREAKER_INDEX = DESK_ITEMS + 1,
+    /* props + laptop + breaker + hallway door */
+    DESK_OBJS = DESK_ITEMS + 3,
     HALL_OBJS = 7,
     STORE_ITEMS = 3,
     STORE_OBJS = STORE_ITEMS + 1,
@@ -109,6 +111,26 @@ static char pending_laptop_close[LAPTOP_ID_MAX];
 #define LAPTOP_LID_STEP_SECONDS 0.10
 #define LAPTOP_LID_OPEN_FRAME 2
 
+/* The breaker's power menu. Deliberately its own small state rather than a
+ * generalization of the laptop chooser above: the two disagree about what a
+ * touch means — a profile row acts at once, a power row must be armed first
+ * — and folding them together would put that difference behind a flag. */
+static struct {
+    bool open;
+    int pressed_row;   /* -1 = none                                  */
+    int armed_row;     /* -1 = none; a row asks before it acts       */
+} power_menu = {false, -1, -1};
+static bool power_request_pending;
+static LaunchPowerId pending_power_action;
+
+enum {
+    POWER_MENU_W = 232,
+    POWER_MENU_HEADER_H = 30,
+    POWER_MENU_ROW_H = 24,
+    POWER_MENU_FOOTER_H = 8,
+    POWER_MENU_ROWS = LAUNCH_POWER_COUNT + 1  /* actions + Close */
+};
+
 enum {
     LAPTOP_MENU_W = 264,
     LAPTOP_MENU_HEADER_H = 30,
@@ -163,7 +185,8 @@ static void set_object(Object *o, const char *name, const char *label,
     o->visual = visual;
     if (kind == OBJ_PROGRAM || kind == OBJ_DOOR || kind == OBJ_ITEM ||
         kind == OBJ_PORTAL || kind == OBJ_GAME_MEDIA ||
-        kind == OBJ_APPLIANCE || kind == OBJ_LAPTOP)
+        kind == OBJ_APPLIANCE || kind == OBJ_LAPTOP ||
+        kind == OBJ_BREAKER)
         o->hit = visual;
     else
         o->hit = ui_target(visual);
@@ -275,7 +298,14 @@ static void build_desk(void)
      * closed until the run registry says a session is live. */
     desk_objs[DESK_LAPTOP_INDEX].container =
         (int)(laptop_lid_t + 0.5);
-    set_object(&desk_objs[DESK_ITEMS + 1], "Hallway door", "Hall", OBJ_DOOR,
+    /* The master breaker hangs on the clear left wall, above the laptop and
+     * clear of every desk prop. Power is the one thing in the mansion that
+     * can end the session it is being touched from, so it gets an object of
+     * its own rather than a row on a panel that also opens documents. */
+    set_object(&desk_objs[DESK_BREAKER_INDEX], "Master breaker panel",
+               "Power", OBJ_BREAKER, ICON_BREAKER, ui_rect(14, 62, 36, 50),
+               -1, false);
+    set_object(&desk_objs[DESK_ITEMS + 2], "Hallway door", "Hall", OBJ_DOOR,
                ICON_NONE, ui_rect(386, 44, 50, 150), SCENE_HALLWAY, true);
 }
 
@@ -563,6 +593,10 @@ static void reset_world(SceneId destination)
     laptop_menu.pressed_row = -1;
     laptop_menu_request_pending = false;
     laptop_launch_pending = false;
+    power_menu.open = false;
+    power_menu.pressed_row = -1;
+    power_menu.armed_row = -1;
+    power_request_pending = false;
     pending_laptop_profile[0] = '\0';
     laptop_close_pending = false;
     pending_laptop_close[0] = '\0';
@@ -611,6 +645,9 @@ void scene_goto(SceneId id)
     panel_close(false);
     laptop_menu.open = false;
     laptop_menu.pressed_row = -1;
+    power_menu.open = false;
+    power_menu.pressed_row = -1;
+    power_menu.armed_row = -1;
     current = id;
     memset(&trans, 0, sizeof trans);
     memset(&web_boot, 0, sizeof web_boot);
@@ -797,6 +834,136 @@ static int laptop_menu_header_height(void)
 {
     return LAPTOP_MENU_HEADER_H +
            (laptop_menu.profiles.count == 0 ? 14 : 0);
+}
+
+void scene_open_power_menu(void)
+{
+    power_menu.open = true;
+    power_menu.pressed_row = -1;
+    power_menu.armed_row = -1;
+}
+
+bool scene_power_menu_open(void) { return power_menu.open; }
+
+bool scene_take_power_request(LaunchPowerId *action)
+{
+    if (!power_request_pending) return false;
+    power_request_pending = false;
+    if (action != NULL) *action = pending_power_action;
+    return true;
+}
+
+static UiRect power_menu_card(void)
+{
+    int height = POWER_MENU_HEADER_H + POWER_MENU_ROWS * POWER_MENU_ROW_H +
+                 POWER_MENU_FOOTER_H;
+    UiRect card;
+    card.x = (CANVAS_W - POWER_MENU_W) / 2;
+    card.y = CONTENT_Y + (CONTENT_H - height) / 2;
+    card.w = POWER_MENU_W;
+    card.h = height;
+    return card;
+}
+
+static int power_menu_row_at(int x, int y)
+{
+    UiRect card = power_menu_card();
+    int row;
+    if (!ui_hit(card, x, y)) return -1;
+    row = (y - card.y - POWER_MENU_HEADER_H) / POWER_MENU_ROW_H;
+    if (y < card.y + POWER_MENU_HEADER_H || row < 0 ||
+        row >= POWER_MENU_ROWS)
+        return -1;
+    return row;
+}
+
+static void power_menu_choose(int row)
+{
+    if (row < 0 || row >= POWER_MENU_ROWS) return;
+    if (row == LAUNCH_POWER_COUNT) {           /* Close */
+        power_menu.open = false;
+        power_menu.armed_row = -1;
+        sound_play(SOUND_DISMISS);
+        return;
+    }
+    if (power_menu.armed_row != row) {
+        /* First touch only arms: the row now asks, and nothing has
+         * happened yet. Arming a different row disarms the previous one,
+         * so a stray touch cannot leave two rows one click from acting. */
+        power_menu.armed_row = row;
+        sound_play(SOUND_SWITCH);
+        return;
+    }
+    pending_power_action = (LaunchPowerId)row;
+    power_request_pending = true;
+    power_menu.open = false;
+    power_menu.armed_row = -1;
+    sound_play(SOUND_MAGIC);
+}
+
+/* Modal routing, matching the chooser above: press arms a row, release on
+ * the same row acts, release elsewhere or a press outside dismisses. */
+static bool power_menu_handle(const input_event *ev)
+{
+    if (ev->kind == IN_MOUSE_DOWN) {
+        if (!ev->in_view || ev->button != 0) return true;
+        power_menu.pressed_row = power_menu_row_at(ev->mx, ev->my);
+        if (power_menu.pressed_row < 0 &&
+            !ui_hit(power_menu_card(), ev->mx, ev->my)) {
+            power_menu.open = false;
+            power_menu.armed_row = -1;
+            sound_play(SOUND_DISMISS);
+        } else {
+            sound_play(SOUND_TOUCH);
+        }
+        return true;
+    }
+    if (ev->kind == IN_MOUSE_UP) {
+        int row = power_menu_row_at(ev->mx, ev->my);
+        if (power_menu.pressed_row >= 0 && row == power_menu.pressed_row)
+            power_menu_choose(row);
+        power_menu.pressed_row = -1;
+        return true;
+    }
+    if (ev->kind == IN_MOUSE_LEAVE) {
+        power_menu.pressed_row = -1;
+        return true;
+    }
+    return ev->kind == IN_MOUSE_MOVE || ev->kind == IN_MOUSE_WHEEL;
+}
+
+static void draw_power_menu(Canvas *c)
+{
+    static const char *const armed_labels[LAUNCH_POWER_COUNT] = {
+        "REALLY LOG OUT?", "REALLY RESTART?", "REALLY SHUT DOWN?"
+    };
+    UiRect card;
+    if (!power_menu.open) return;
+    card = power_menu_card();
+    draw_shadow(c, card.x, card.y, card.w, card.h);
+    draw_round_rect(c, card.x, card.y, card.w, card.h, 6, MC_WHITE);
+    draw_frame(c, card.x, card.y, card.w, card.h, 2, UI_NAVY);
+    draw_rect(c, card.x + 2, card.y + 2, card.w - 4, 3, UI_TEAL);
+    draw_text_center(c, card.x + card.w / 2, card.y + 9,
+                     "MASTER BREAKER", UI_NAVY);
+    for (int row = 0; row < POWER_MENU_ROWS; row++) {
+        int row_y = card.y + POWER_MENU_HEADER_H + row * POWER_MENU_ROW_H;
+        bool close_row = row == LAUNCH_POWER_COUNT;
+        bool armed = !close_row && power_menu.armed_row == row;
+        const char *label = close_row
+                                ? "Leave the panel"
+                                : (armed ? armed_labels[row]
+                                         : launcher_power_title(
+                                               (LaunchPowerId)row));
+        if (power_menu.pressed_row == row)
+            draw_rect(c, card.x + 4, row_y, card.w - 8, POWER_MENU_ROW_H - 2,
+                      MC_LIGHT);
+        else if (armed)
+            draw_rect(c, card.x + 4, row_y, card.w - 8, POWER_MENU_ROW_H - 2,
+                      UI_TEAL);
+        draw_text(c, card.x + 14, row_y + 8, label,
+                  armed ? MC_WHITE : UI_NAVY);
+    }
 }
 
 static UiRect laptop_menu_card(void)
@@ -1000,7 +1167,8 @@ const char *scene_hover_text(void)
     if (o == NULL || o->name == NULL || o->name[0] == '\0') return text;
 
     if (o->kind == OBJ_PROGRAM || o->kind == OBJ_APPLIANCE ||
-        o->kind == OBJ_GAME_MEDIA || o->kind == OBJ_LAPTOP)
+        o->kind == OBJ_GAME_MEDIA || o->kind == OBJ_LAPTOP ||
+        o->kind == OBJ_BREAKER)
         (void)snprintf(text, sizeof text, "%s - open", o->name);
     else if (o->kind == OBJ_DOOR || o->kind == OBJ_PORTAL)
         (void)snprintf(text, sizeof text, "%s - enter", o->name);
@@ -1062,6 +1230,10 @@ static void activate(Object *o)
     }
     if (o->kind == OBJ_LAPTOP) {
         laptop_menu_request_pending = true;
+        return;
+    }
+    if (o->kind == OBJ_BREAKER) {
+        scene_open_power_menu();
         return;
     }
     for (int i = 0; i < DESK_ITEMS; i++)
@@ -1167,6 +1339,9 @@ bool scene_handle(const input_event *ev)
     if (trans.active) return false;
     /* The chooser is modal for the pointer: rooms, props, and the control
      * bar wait until it closes. */
+    if (power_menu.open && ev->kind != IN_KEY_DOWN &&
+        ev->kind != IN_KEY_REPEAT)
+        return power_menu_handle(ev);
     if (laptop_menu.open && ev->kind != IN_KEY_DOWN &&
         ev->kind != IN_KEY_REPEAT)
         return laptop_menu_handle(ev);
@@ -1714,6 +1889,7 @@ void scene_draw(Canvas *c)
     }
     panel_draw(c);
     draw_laptop_menu(c);
+    draw_power_menu(c);
     draw_transition(c);
     draw_namebar(c);
     draw_controlbar(c);

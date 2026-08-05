@@ -43,6 +43,7 @@ typedef enum IconId {
     ICON_LAPTOP,
     ICON_LAPTOP_CLOSED, /* the laptop's shut lid: the "off" frame */
     ICON_LAPTOP_AJAR,   /* the lid mid-swing between closed and open */
+    ICON_BREAKER,       /* the Study's wall breaker panel: power actions */
     ICON_COUNT
 } IconId;
 
