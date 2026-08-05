@@ -35,6 +35,18 @@ books, instruments, and doors use explicit object-sized hit regions and
 identify themselves in the name bar without painting button boxes over the
 room.
 
+## Watch the episode
+
+https://github.com/user-attachments/assets/473b28b3-2e7a-4062-83b0-06c3a349112e
+
+**[Desktop Two: Kilix Cap](https://github.com/itsmygithubacct/kilix-cap/releases/download/media-v1/06-kilix-cap.mp4)**
+— part six of *Kilix, Pleb, and Plebian-OS: A Desktop Built Inside a Terminal*, the ten-part
+stack series. The inline player is a 720p preview; the link is the full-quality file (1920×1080,
+3m09s, 15 MB; published as a
+[media release](https://github.com/itsmygithubacct/kilix-cap/releases/tag/media-v1) so a clone
+stays small). The [full series](https://github.com/itsmygithubacct/plebian-os#watch-the-series) (31m22s)
+lives on `plebian-os` and plays at [plebian-os.com](https://plebian-os.com/#watch).
+
 ## Build and run
 
 Kilix Cap currently targets Linux desktop systems. The renderer and input core
