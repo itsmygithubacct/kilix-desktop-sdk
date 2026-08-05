@@ -1157,6 +1157,86 @@ static bool build_terminal_tool_plan(LaunchToolId id, const char *root,
     return finish_plan_many(plan, values, count);
 }
 
+/* A Kilix tab running an arbitrary argv.
+ *
+ * The mansion's established answer to a heavyweight interface is a tab — the
+ * two Server Room monitors and every Game Room title already open that way —
+ * so reaching a stack tool is new furniture rather than a new mechanism, and
+ * cap never grows a second copy of a list some other component owns.
+ */
+static bool build_kilix_tab_plan(const char *title,
+                                 const char *const *arguments,
+                                 size_t argument_count, const char *root,
+                                 const char *kitten, const char *password,
+                                 LaunchPlan *plan)
+{
+    const char *values[24];
+    size_t count = 0;
+    size_t index;
+
+    if (plan == NULL || title == NULL || arguments == NULL || root == NULL ||
+        kitten == NULL || password == NULL || argument_count == 0 ||
+        argument_count > 8)
+        return false;
+    memset(plan, 0, sizeof *plan);
+    if (snprintf(plan->executable, sizeof plan->executable, "%s", kitten) < 0 ||
+        strlen(kitten) >= sizeof plan->executable ||
+        snprintf(plan->cwd, sizeof plan->cwd, "%s", root) < 0 ||
+        strlen(root) >= sizeof plan->cwd)
+        return false;
+    plan->program = title;
+    values[count++] = "@";
+    values[count++] = "--password-file";
+    values[count++] = password;
+    values[count++] = "launch";
+    values[count++] = "--type=tab";
+    values[count++] = "--cwd";
+    values[count++] = root;
+    values[count++] = "--self";
+    values[count++] = "--tab-title";
+    values[count++] = title;
+    values[count++] = "--";
+    for (index = 0; index < argument_count; index++)
+        values[count++] = arguments[index];
+    return finish_plan_many(plan, values, count);
+}
+
+static bool in_kilix_session(void);
+
+/* Stack tools the Server Room reaches before it falls back to the host's own
+ * desktop-environment programs. Inside Kilix these are the right answer: the
+ * settings console that edits the file every Kilix component reads, and the
+ * updater that moves the whole pinned closure rather than one checkout. On a
+ * bare X session with no Kilix around them, neither exists, and the original
+ * candidate ladders still apply.
+ */
+static bool build_stack_tool_plan(LaunchToolId id, LaunchPlan *plan)
+{
+    static const char *const settings_argv[] = {"kilix", "settings"};
+    static const char *const update_argv[] = {"kilix", "update", "--stack"};
+    char root[PATH_MAX];
+    char helper[PATH_MAX];
+    char kitten[PATH_MAX];
+    char password[PATH_MAX];
+    char kilix[PATH_MAX];
+
+    if (!in_kilix_session() ||
+        !program_resolver("kilix", kilix, sizeof kilix) ||
+        !project_paths(root, sizeof root, helper, sizeof helper) ||
+        !resolve_kilix_control(kitten, sizeof kitten,
+                               password, sizeof password))
+        return false;
+    if (id == LAUNCH_TOOL_SETTINGS)
+        return build_kilix_tab_plan("Kilix Settings", settings_argv,
+                                    COUNT_OF(settings_argv), root, kitten,
+                                    password, plan);
+    if (id == LAUNCH_TOOL_SOFTWARE)
+        return build_kilix_tab_plan("Update", update_argv,
+                                    COUNT_OF(update_argv), root, kitten,
+                                    password, plan);
+    return false;
+}
+
 static bool build_tool_plan(LaunchToolId id, LaunchPlan *plan)
 {
     static const char *const settings[] = {
@@ -1198,6 +1278,11 @@ static bool build_tool_plan(LaunchToolId id, LaunchPlan *plan)
         return build_terminal_tool_plan(id, root, helper, kitten, password,
                                         plan);
     }
+    /* Stack tools win over the host DE's equivalents when there is a Kilix to
+     * run them in; otherwise the ladders below are unchanged. */
+    if ((id == LAUNCH_TOOL_SETTINGS || id == LAUNCH_TOOL_SOFTWARE) &&
+        build_stack_tool_plan(id, plan))
+        return true;
     memset(plan, 0, sizeof *plan);
     if (tool_is_document(id)) {
         int document_index = id - LAUNCH_TOOL_DOC_START;
@@ -2043,11 +2128,62 @@ cleanup:
     return ok;
 }
 
+/* `make test` has to answer the same question inside a Kilix pane and outside
+ * one. These variables are what in_kilix_session() reads, so without this the
+ * developer's terminal would decide which ladder the assertions below see.
+ */
+typedef struct {
+    char home[PATH_MAX];
+    char socket[PATH_MAX];
+    char password[PATH_MAX];
+    bool had_home;
+    bool had_socket;
+    bool had_password;
+} SavedKilixSession;
+
+static bool save_environment_value(const char *name, char *value, size_t size,
+                                   bool *present)
+{
+    const char *current = getenv(name);
+    *present = current != NULL;
+    if (current == NULL) {
+        value[0] = '\0';
+        return true;
+    }
+    return snprintf(value, size, "%s", current) >= 0 && strlen(current) < size;
+}
+
+static bool without_kilix_session(SavedKilixSession *saved)
+{
+    if (saved == NULL ||
+        !save_environment_value("KILIX_HOME", saved->home, sizeof saved->home,
+                                &saved->had_home) ||
+        !save_environment_value("KITTY_LISTEN_ON", saved->socket,
+                                sizeof saved->socket, &saved->had_socket) ||
+        !save_environment_value("KILIX_RC_PASSWORD_FILE", saved->password,
+                                sizeof saved->password, &saved->had_password))
+        return false;
+    unsetenv("KILIX_HOME");
+    unsetenv("KITTY_LISTEN_ON");
+    unsetenv("KILIX_RC_PASSWORD_FILE");
+    return !in_kilix_session();
+}
+
+static void restore_kilix_session(const SavedKilixSession *saved)
+{
+    if (saved == NULL) return;
+    if (saved->had_home) setenv("KILIX_HOME", saved->home, 1);
+    if (saved->had_socket) setenv("KITTY_LISTEN_ON", saved->socket, 1);
+    if (saved->had_password)
+        setenv("KILIX_RC_PASSWORD_FILE", saved->password, 1);
+}
+
 static bool tool_plan_selftest(void)
 {
     char root[PATH_MAX];
     char helper[PATH_MAX];
     char readme[PATH_MAX];
+    SavedKilixSession session;
     LaunchPlan plan;
 
     if (!project_paths(root, sizeof root, helper, sizeof helper) ||
@@ -2077,10 +2213,51 @@ static bool tool_plan_selftest(void)
         strcmp(plan.argv[14], "cleanup") != 0 ||
         strcmp(plan.argv[15], "packages") != 0 || plan.argv[16] != NULL)
         return false;
-    if (!build_tool_plan(LAUNCH_TOOL_SETTINGS, &plan) ||
-        strcmp(plan.program, "xfce4-settings-manager") != 0 ||
-        plan.argv[1] != NULL)
+    /* The stack tab a Server Room console opens when there is a Kilix around
+     * it. Built with fixture control values for the same reason the terminal
+     * plans above are: the assertion is the exact argv, not the machine. */
+    if (!build_kilix_tab_plan("Kilix Settings",
+                              (const char *const[]){"kilix", "settings"}, 2,
+                              root, "/fixture/kitten", "/fixture/password",
+                              &plan) ||
+        strcmp(plan.program, "Kilix Settings") != 0 ||
+        strcmp(plan.argv[0], "/fixture/kitten") != 0 ||
+        strcmp(plan.argv[9], "--tab-title") != 0 ||
+        strcmp(plan.argv[10], "Kilix Settings") != 0 ||
+        strcmp(plan.argv[11], "--") != 0 ||
+        strcmp(plan.argv[12], "kilix") != 0 ||
+        strcmp(plan.argv[13], "settings") != 0 || plan.argv[14] != NULL)
         return false;
+    if (!build_kilix_tab_plan("Update",
+                              (const char *const[]){"kilix", "update",
+                                                    "--stack"}, 3,
+                              root, "/fixture/kitten", "/fixture/password",
+                              &plan) ||
+        strcmp(plan.argv[12], "kilix") != 0 ||
+        strcmp(plan.argv[13], "update") != 0 ||
+        strcmp(plan.argv[14], "--stack") != 0 || plan.argv[15] != NULL)
+        return false;
+    /* An empty argv would launch a tab that runs whatever the shell defaults
+     * to; a caller that miscounts must get nothing instead. */
+    if (build_kilix_tab_plan("Empty", (const char *const[]){"kilix"}, 0, root,
+                             "/fixture/kitten", "/fixture/password", &plan))
+        return false;
+    /* Outside a Kilix session the host's own settings program is still the
+     * answer. Cleared explicitly so running `make test` from inside a Kilix
+     * pane cannot change what this asserts. */
+    if (!without_kilix_session(&session) ||
+        !build_tool_plan(LAUNCH_TOOL_SETTINGS, &plan) ||
+        strcmp(plan.program, "xfce4-settings-manager") != 0 ||
+        plan.argv[1] != NULL) {
+        restore_kilix_session(&session);
+        return false;
+    }
+    if (!build_tool_plan(LAUNCH_TOOL_SOFTWARE, &plan) ||
+        strcmp(plan.program, "synaptic") != 0 || plan.argv[1] != NULL) {
+        restore_kilix_session(&session);
+        return false;
+    }
+    restore_kilix_session(&session);
     if (!join_path(readme, sizeof readme, root, "README.md") ||
         !build_tool_plan(LAUNCH_TOOL_DOC_START, &plan) ||
         strcmp(plan.program, "xdg-open") != 0 ||
