@@ -1,0 +1,48 @@
+{
+  "schema": "kilix-cap-visual-provenance-gemini-v1",
+  "generated_on": "2026-08-04",
+  "generator": {
+    "requested": "Gemini image generation",
+    "provider": "Gemini image generation",
+    "model_identifier": "gemini-3-pro-image",
+    "note": "The 2026-07-23 bundle in docs/visual-provenance.json records that Gemini was requested but unavailable in that workspace; this later small-prop batch was generated with the requested Gemini pipeline."
+  },
+  "generation": {
+    "id": "mansion-items-sprite-sheet",
+    "mode": "text-to-image",
+    "aspect_ratio": "1:1",
+    "prompt": "Use case: stylized-concept. Asset type: game prop sprite sheet. Primary request: create exactly four separate physical props arranged in a precise invisible 2-column by 2-row grid, evenly spaced with generous margins: top-left a small closed wooden storage box with a fitted lid and a single vertical band of gold tape; top-right a slatted wooden shipping crate with a gold X cross-brace on its front face; bottom-left a rounded vintage tin canister with a fitted lid and soft teal enamel finish; bottom-right an open late-1990s portable laptop computer facing slightly left with a dark warm-grey shell, a blank dark screen with a faint teal glow, and cream keyboard keys. Style/medium: polished painted late-1990s software-illustration charm matching a warm walnut-and-gold mansion interior, simplified readable shapes, crisp cel-shaded silhouettes, gentle top-left key light. Scene/backdrop: perfectly flat solid #00ff00 chroma-key background covering the entire image; do not use #00ff00 anywhere inside a subject. Composition: each prop fully inside its own grid cell, centered in its cell, no overlap between props, no crop; all four props share one consistent scale and viewpoint, a three-quarter view from slightly above. Constraints: the background must be one perfectly uniform #00ff00 with no shadows, gradients, texture, floor plane, or lighting variation; crisp hard outer edges for chroma-key removal; no cast shadow; no contact shadow; exactly four props; no people; no text, letters, numbers, plaques, logos, watermark, UI chrome, or border. Avoid: photorealism, existing product logos, extra objects, scenery."
+  },
+  "preparation": {
+    "chroma_tool": "imagegen skill scripts/remove_chroma_key.py",
+    "chroma_settings": "--auto-key border --soft-matte --transparent-threshold 18 --opaque-threshold 210 --despill --edge-contract 1",
+    "item_tool": "tools/prepare_mansion_items.py",
+    "notes": "The generator wrote JPEG bytes under the .png source name (a known quirk); the keyed RGBA copy and both runtime P6 files were produced from it offline. All four runtime cells were reviewed by eye before shipping."
+  },
+  "files": {
+    "assets/art/mansion-items-source.png": {
+      "sha256": "4c8f6ae325c787bec2b71d4b08a60d457bb1b0f7ac1c2e410d28bfaad49095b0",
+      "format": "JPEG-in-png-name",
+      "width": 1024,
+      "height": 1024
+    },
+    "assets/art/mansion-items.png": {
+      "sha256": "0b0756fd7a77399aea1d3b227a6690bbc91efe6c5c4c7b9231d2b922734ca5b2",
+      "format": "PNG",
+      "width": 1024,
+      "height": 1024
+    },
+    "assets/art/mansion-items.ppm": {
+      "sha256": "7d504c0e0ef29ceda3018af2b8a5b38194bd330bfe9a35e6e45cd8335f29fc4e",
+      "format": "P6",
+      "width": 96,
+      "height": 112
+    },
+    "assets/art/mansion-items-mask.ppm": {
+      "sha256": "a39b268426c4c567cb2dde1fddf6eca4af942dbf5e1e42f4597d2e67983263da",
+      "format": "P6",
+      "width": 96,
+      "height": 112
+    }
+  }
+}
