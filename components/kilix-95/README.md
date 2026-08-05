@@ -20,6 +20,14 @@ kilix desktop
 
 Quit through Start -> Shut Down..., or press `Ctrl+Alt+Q`.
 
+## Release 0.1.8
+
+Prepared 2026-08-04. **Not published yet.**
+
+Upgrades from 0.1.7. Programs gains Install Software and a Coding Agents entry,
+both driving `kilix install`. An opened Start-menu submenu now stays open when
+the pointer leaves the row that opened it.
+
 ## Release 0.1.7
 
 Release date: 2026-08-02.
