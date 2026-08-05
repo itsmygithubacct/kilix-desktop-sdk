@@ -71,6 +71,18 @@ bool art_mansion_item_hit(int variant, int x, int y, int w, int h,
  * mixes generated frames with the procedural drawing. The procedural
  * closed/ajar icons remain the complete fallback. The four mansion-items
  * cells are untouched by this extension. */
+/* The Server Room breaker's generated face: one 30x50 cell, a THIRD
+ * optional add-on following the mansion-items rules exactly — both-or-
+ * neither, validated on load, excluded from hash-pinned render fixtures
+ * via art_set_extra_items_enabled. Unlike the lid it stands alone: it
+ * animates nothing and needs no other atlas present. The cell is exactly
+ * the size the panel occupies on the wall, so the draw path never rescales
+ * it. The procedural icon remains the complete fallback. */
+bool art_breaker_ready(void);
+bool art_draw_breaker(Canvas *canvas, int x, int y, int w, int h,
+                      bool pressed);
+bool art_breaker_hit(int x, int y, int w, int h, int px, int py);
+
 enum { ART_LAPTOP_LID_FRAMES = 2 };
 enum { ART_LAPTOP_LID_CLOSED = 0, ART_LAPTOP_LID_AJAR = 1 };
 bool art_laptop_lid_ready(void);

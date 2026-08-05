@@ -74,6 +74,11 @@ enum {
     LAPTOP_LID_H = LAPTOP_LID_ROWS * LAPTOP_LID_CELL_H
 };
 
+enum {
+    BREAKER_W = 30,
+    BREAKER_H = 50
+};
+
 _Static_assert(LAPTOP_LID_COLS * LAPTOP_LID_ROWS == ART_LAPTOP_LID_FRAMES,
                "the lid grid must hold exactly the frame count");
 
@@ -95,9 +100,12 @@ static sr_canvas mansion_items;
 static sr_canvas mansion_items_alpha;
 static sr_canvas laptop_lid;
 static sr_canvas laptop_lid_alpha;
+static sr_canvas breaker;
+static sr_canvas breaker_alpha;
 static bool loaded;
 static bool mansion_items_loaded;
 static bool laptop_lid_loaded;
+static bool breaker_loaded;
 static bool extra_items_enabled = true;
 
 static const DeskSprite *find_sprite(IconId icon)
@@ -198,6 +206,8 @@ static void free_bundle(void)
     sr_canvas_free(&mansion_items_alpha);
     sr_canvas_free(&laptop_lid);
     sr_canvas_free(&laptop_lid_alpha);
+    sr_canvas_free(&breaker);
+    sr_canvas_free(&breaker_alpha);
 }
 
 /* The two mask plates are deliberately RGB PPMs so the runtime asset format
@@ -368,6 +378,43 @@ static void load_laptop_lid(const char *directory)
     laptop_lid_loaded = true;
 }
 
+/* The breaker face. Independent of the small-prop atlas: it animates
+ * nothing and composes with nothing, so it loads on its own terms. */
+static bool breaker_layers_valid(const sr_canvas *face,
+                                 const sr_canvas *alpha)
+{
+    size_t pixels = (size_t)BREAKER_W * BREAKER_H;
+    size_t visible = 0;
+    if (face == NULL || alpha == NULL) return false;
+    for (size_t i = 0; i < pixels; i++) {
+        uint32_t value = alpha->px[i];
+        unsigned r = (value >> 16) & 0xffu;
+        unsigned g = (value >> 8) & 0xffu;
+        unsigned b = value & 0xffu;
+        if (r != g || g != b) return false;   /* grayscale coverage only */
+        if (b != 0u) visible++;
+    }
+    return visible > pixels / 8u;
+}
+
+static void load_breaker(const char *directory)
+{
+    sr_canvas face = {0};
+    sr_canvas alpha = {0};
+    if (!load_rgb_size(directory, "breaker.ppm", BREAKER_W, BREAKER_H,
+                       &face) ||
+        !load_rgb_size(directory, "breaker-mask.ppm", BREAKER_W, BREAKER_H,
+                       &alpha) ||
+        !breaker_layers_valid(&face, &alpha)) {
+        sr_canvas_free(&face);
+        sr_canvas_free(&alpha);
+        return;
+    }
+    breaker = face;
+    breaker_alpha = alpha;
+    breaker_loaded = true;
+}
+
 static bool load_bundle(const char *directory)
 {
     sr_canvas plates[BACKGROUND_COUNT] = {{0}};
@@ -409,6 +456,7 @@ static bool load_bundle(const char *directory)
     game_media_alpha = media_mask;
     load_mansion_items(directory);
     load_laptop_lid(directory);
+    load_breaker(directory);
     return true;
 }
 
@@ -457,6 +505,7 @@ void art_shutdown(void)
     loaded = false;
     mansion_items_loaded = false;
     laptop_lid_loaded = false;
+    breaker_loaded = false;
 }
 
 bool art_ready(void) { return loaded; }
@@ -720,6 +769,57 @@ bool art_draw_laptop_lid(Canvas *canvas, int frame, int x, int y,
         }
     }
     return true;
+}
+
+bool art_breaker_ready(void)
+{
+    return loaded && breaker_loaded && extra_items_enabled;
+}
+
+bool art_draw_breaker(Canvas *canvas, int x, int y, int w, int h,
+                      bool pressed)
+{
+    if (!art_breaker_ready() || canvas == NULL || canvas->px == NULL ||
+        w <= 0 || h <= 0)
+        return false;
+    for (int dy = 0; dy < h; dy++) {
+        int destination_y = y + dy;
+        int source_y = (int)((int64_t)dy * BREAKER_H / h);
+        if (destination_y < 0 || destination_y >= canvas->h) continue;
+        for (int dx = 0; dx < w; dx++) {
+            int destination_x = x + dx;
+            int source_x = (int)((int64_t)dx * BREAKER_W / w);
+            size_t source;
+            size_t destination;
+            unsigned alpha;
+            uint32_t above;
+            if (destination_x < 0 || destination_x >= canvas->w) continue;
+            source = (size_t)source_y * BREAKER_W + (size_t)source_x;
+            alpha = breaker_alpha.px[source] & 0xffu;
+            if (alpha == 0u) continue;
+            above = breaker.px[source];
+            if (pressed) above = shade_rgb(above, 3u, 4u);
+            destination = (size_t)destination_y * (size_t)canvas->w +
+                          (size_t)destination_x;
+            canvas->px[destination] = alpha_blend(
+                canvas->px[destination], above, alpha);
+        }
+    }
+    return true;
+}
+
+bool art_breaker_hit(int x, int y, int w, int h, int px, int py)
+{
+    int source_x;
+    int source_y;
+    if (!art_breaker_ready() || w <= 0 || h <= 0 ||
+        (int64_t)px < x || (int64_t)py < y ||
+        (int64_t)px >= (int64_t)x + w || (int64_t)py >= (int64_t)y + h)
+        return false;
+    source_x = (int)(((int64_t)px - x) * BREAKER_W / w);
+    source_y = (int)(((int64_t)py - y) * BREAKER_H / h);
+    return (breaker_alpha.px[(size_t)source_y * BREAKER_W +
+                             (size_t)source_x] & 0xffu) >= 128u;
 }
 
 bool art_laptop_lid_hit(int frame, int x, int y, int w, int h,

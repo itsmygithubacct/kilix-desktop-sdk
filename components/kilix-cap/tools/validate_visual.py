@@ -98,6 +98,19 @@ LID_ALPHA = "assets/art/laptop-lid-mask.ppm"
 LID_PATHS = {LID_SOURCE, LID_KEYED, LID_ATLAS, LID_ALPHA}
 LID_W = 96
 LID_H = 56
+
+# The OPTIONAL breaker group: one 30x50 face for the Server Room's master
+# breaker. Same rules as the two groups above — all-or-none plus its own
+# provenance manifest — but it stands alone: it animates nothing, so unlike
+# laptop-lid it does not require any other optional group to be present.
+BREAKER_MANIFEST = ROOT / "docs" / "visual-provenance-breaker.json"
+BREAKER_SOURCE = "assets/art/breaker-source.png"
+BREAKER_KEYED = "assets/art/breaker.png"
+BREAKER_FACE = "assets/art/breaker.ppm"
+BREAKER_ALPHA = "assets/art/breaker-mask.ppm"
+BREAKER_PATHS = {BREAKER_SOURCE, BREAKER_KEYED, BREAKER_FACE, BREAKER_ALPHA}
+BREAKER_W = 30
+BREAKER_H = 50
 LID_CELL_W = 48
 LID_CELL_H = 56
 LID_FRAMES = 2
@@ -822,6 +835,85 @@ def validate_lid_group(actual_paths: set[str],
     return "present, validated"
 
 
+def validate_breaker_group(actual_paths: set[str]) -> str:
+    present = actual_paths & BREAKER_PATHS
+    if not present:
+        return "review pending (procedural panel serves)"
+    if present != BREAKER_PATHS:
+        missing = ", ".join(sorted(BREAKER_PATHS - present))
+        raise VisualError(
+            f"optional breaker group is incomplete; missing {missing}"
+        )
+    manifest = json.loads(regular_file(BREAKER_MANIFEST).decode("utf-8"))
+    if not isinstance(manifest, dict) or manifest.get("schema") != (
+        "kilix-cap-visual-provenance-breaker-v1"
+    ):
+        raise VisualError("unexpected breaker provenance schema")
+    generator = manifest.get("generator")
+    if (
+        not isinstance(generator, dict)
+        or generator.get("requested") != "Gemini image generation"
+        or generator.get("provider") != "Gemini image generation"
+        or generator.get("model_identifier") != "gemini-3-pro-image"
+    ):
+        raise VisualError("breaker generator record is incomplete")
+    generation = manifest.get("generation")
+    if (
+        not isinstance(generation, dict)
+        or not isinstance(generation.get("prompt"), str)
+        or len(generation["prompt"]) < 200
+        or generation.get("mode") != "text-to-image"
+    ):
+        raise VisualError("breaker prompt record is incomplete")
+    preparation = manifest.get("preparation")
+    if (
+        not isinstance(preparation, dict)
+        or preparation.get("item_tool") != "tools/prepare_breaker.py"
+        or preparation.get("chroma_tool")
+        != "imagegen skill scripts/remove_chroma_key.py"
+    ):
+        raise VisualError("breaker preparation record is incomplete")
+    entries = manifest.get("files")
+    if not isinstance(entries, dict) or set(entries) != BREAKER_PATHS:
+        raise VisualError("breaker file inventory is wrong")
+    rasters: dict[str, bytes] = {}
+    for relative, entry in entries.items():
+        if not isinstance(entry, dict):
+            raise VisualError("breaker file entry must be an object")
+        data = regular_file(ROOT / relative)
+        if hashlib.sha256(data).hexdigest() != entry.get("sha256"):
+            raise VisualError(
+                f"{relative} SHA-256 does not match breaker provenance"
+            )
+        if relative == BREAKER_SOURCE:
+            # The generator writes JPEG bytes under the .png source name,
+            # the same recorded quirk as mansion-items and laptop-lid;
+            # structure is validated on the keyed RGBA copy instead.
+            if entry.get("format") != "JPEG-in-png-name":
+                raise VisualError(f"{relative} has the wrong recorded format")
+            dimensions = (entry.get("width"), entry.get("height"))
+        elif relative.endswith(".png"):
+            dimensions = png_dimensions(data)
+            if entry.get("format") != "PNG":
+                raise VisualError(f"{relative} has the wrong recorded format")
+        else:
+            width, height, raster = ppm_raster(data)
+            dimensions = (width, height)
+            if dimensions != (BREAKER_W, BREAKER_H):
+                raise VisualError(
+                    f"{relative} is {width}x{height}; expected "
+                    f"{BREAKER_W}x{BREAKER_H}"
+                )
+            if entry.get("format") != "P6":
+                raise VisualError(f"{relative} has the wrong recorded format")
+            rasters[relative] = raster
+        if (entry.get("width"), entry.get("height")) != dimensions:
+            raise VisualError(f"{relative} recorded dimensions are wrong")
+    alpha = gray_values(BREAKER_ALPHA, rasters[BREAKER_ALPHA])
+    validate_lid_media(BREAKER_FACE, rasters[BREAKER_FACE], alpha)
+    return "present, validated"
+
+
 def run() -> str:
     manifest = json.loads(regular_file(MANIFEST).decode("utf-8"))
     if not isinstance(manifest, dict):
@@ -839,14 +931,16 @@ def run() -> str:
                 f"{path.relative_to(ROOT)} is not a regular visual asset"
             )
         actual_paths.add(path.relative_to(ROOT).as_posix())
-    if actual_paths - MANSION_PATHS - LID_PATHS != EXPECTED_PATHS:
+    if (actual_paths - MANSION_PATHS - LID_PATHS - BREAKER_PATHS
+            != EXPECTED_PATHS):
         raise VisualError(
             "assets/art does not match the exact thirty-three-file "
-            "inventory plus the optional mansion-items and laptop-lid "
-            "groups"
+            "inventory plus the optional mansion-items, laptop-lid, and "
+            "breaker groups"
         )
     mansion_status = validate_mansion_group(actual_paths)
     lid_status = validate_lid_group(actual_paths, mansion_status)
+    breaker_status = validate_breaker_group(actual_paths)
 
     rasters: dict[str, bytes] = {}
     for relative, entry in entries.items():
@@ -906,12 +1000,12 @@ def run() -> str:
     validate_layer_relationships(
         rasters[GAME_MEDIA], media_alpha, [0] * len(media_alpha)
     )
-    return mansion_status, lid_status
+    return mansion_status, lid_status, breaker_status
 
 
 def main() -> int:
     try:
-        mansion_status, lid_status = run()
+        mansion_status, lid_status, breaker_status = run()
     except (OSError, KeyError, TypeError, json.JSONDecodeError, VisualError) as exc:
         print(f"validate_visual: {exc}", file=sys.stderr)
         return 1
@@ -920,6 +1014,7 @@ def main() -> int:
         "semantic hit IDs, three lossless source normalizations, hashes, and "
         "provenance OK; optional mansion-items: " + mansion_status
         + "; optional laptop-lid: " + lid_status
+        + "; optional breaker: " + breaker_status
     )
     return 0
 

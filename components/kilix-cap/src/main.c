@@ -1158,6 +1158,28 @@ static int cmd_visual_test(const char *argv0)
         printf("visual-test: optional mansion-items atlas absent "
                "(procedural props)\n");
     }
+    /* The breaker face stands alone: it composes with no other atlas, so
+     * it is proven on its own terms rather than inside the block above. */
+    if (art_breaker_ready()) {
+        const Object *breaker =
+            scene_object(SCENE_SERVER_ROOM, SCENE_SERVER_BREAKER_INDEX);
+        int hit_x = 0;
+        int hit_y = 0;
+        int clear_x = 0;
+        int clear_y = 0;
+        test_expect(breaker != NULL &&
+                        object_hit_point(breaker, &hit_x, &hit_y),
+                    "generated breaker has an alpha hit pixel", &failures);
+        test_expect(breaker != NULL &&
+                        object_transparent_point(breaker, &clear_x,
+                                                 &clear_y) &&
+                        !ui_object_hit(breaker, clear_x, clear_y),
+                    "transparent breaker pixel is not clickable", &failures);
+        printf("visual-test: optional breaker face loaded\n");
+    } else {
+        printf("visual-test: optional breaker face absent "
+               "(procedural panel)\n");
+    }
     art_shutdown();
     canvas_free(&canvas);
     if (failures == 0)

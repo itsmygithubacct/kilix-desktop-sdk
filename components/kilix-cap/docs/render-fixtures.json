@@ -10,14 +10,14 @@
     "base-game-room.ppm": "da0c384aa6e68266329dea2cc38122f748554b29034470c4ae9239e73bd9df5f",
     "base-hallway.ppm": "dd9a108cedd9fb4fab8935fc1c70d1354b548e962bfbdb3b401bee02d1bffbb3",
     "base-library.ppm": "56b1ed863bc3be81a8e6c001e6e002941ad20199ab7e9771ec5b2b07d1a736ff",
-    "base-server-room.ppm": "4954047dd2ec37211b29069c7cd3363b4cb2749cc7dbaf5689cccdcae424be13",
+    "base-server-room.ppm": "398490bfa6231912a712c062140278cc4a8a9b5632508b8d9b6fbcb303b3b685",
     "base-storeroom.ppm": "f5fe9e3cd7d523a37a622e55fc1948ee923f09f4f1f40bcdae625f90be663c3b",
     "state-cleaning-hover.ppm": "a22fb481037220688519d13fb8de4993bf440d94b89b5647b0592c5d8017eec1",
     "state-desk-hover.ppm": "3bcfdfce7f30b8e01085607bdd33dbbca881858cf43014c188ec71be5bb05e13",
     "state-desk-web-boot.ppm": "0e1c57395ba2e691737cd6fae95a75d357f98d5c444f28d233368391e3927789",
     "state-desk-web-zoom.ppm": "e83dae6535fab36a7e7c3a28bdce0ab2f54a73e69d90f9acab3224e7a82e4334",
     "state-game-hover.ppm": "9a487340cc6f1f3cc1ce73671be367ae676064856d9e22547178014ce1bf069f",
-    "state-server-hover.ppm": "9f255d86f83d150fef8303950860a6fdd06d2c617f1854a4771f0fb2505cb0d3",
+    "state-server-hover.ppm": "393b9c1da9f52d53bc237d9838d33d51c6a0af8853a225209bc312732ca7d4bf",
     "state-store-moved.ppm": "63cb6b09f2e7787fb46432275e843019e5c405663027a8e34a4136dd9e5b586f"
   }
 }

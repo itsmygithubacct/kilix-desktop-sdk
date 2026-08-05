@@ -1,0 +1,56 @@
+{
+  "schema": "kilix-cap-visual-provenance-breaker-v1",
+  "generated_on": "2026-08-05",
+  "generator": {
+    "requested": "Gemini image generation",
+    "provider": "Gemini image generation",
+    "model_identifier": "gemini-3-pro-image",
+    "note": "The Server Room master breaker's face. Generated after two rejected attempts: the first matched the Study's warm palette with hard cel-shaded outlines, which no room in this mansion uses; the second had the door swung flat, giving a square silhouette that cannot fit a 30x50 wall slot."
+  },
+  "generation": {
+    "id": "server-room-master-breaker",
+    "mode": "text-to-image",
+    "aspect_ratio": "2:3",
+    "prompt": "Use case: stylized-concept. Asset type: game prop sprite. Primary request: create exactly one physical prop, centered: an antique wall-mounted electrical breaker panel whose overall silhouette is clearly TALLER THAN WIDE in portrait proportions of roughly 3 units wide by 5 units tall. It is a narrow upright cast-iron cabinet; its hinged door stands only slightly ajar, opened just a shallow sliver toward the viewer so the door stays tucked against the cabinet and does not widen the silhouette, revealing an edge-on glimpse of three heavy brass knife switches stacked vertically inside on a dark slate backplate, the top switch thrown to one side and the lower two thrown to the other. A small brass grab handle on the door's right edge. Style/medium: softly painted photorealistic illustration of a dim Victorian machine room, muted and low-key, aged blackened iron and tarnished brass with faint verdigris, warm amber lamplight falling from the upper left and deep shadow on the right, gentle painterly edges with no hard black outline and no cel shading, subtle surface grime and patina. Scene/backdrop: perfectly flat solid #00ff00 chroma-key background covering the entire image; do not use #00ff00 anywhere inside the subject. Composition: the prop fully inside the frame, centered, no crop, seen straight on as a wall fixture, tall and narrow, filling the frame vertically with generous margins left and right. Constraints: the background must be one perfectly uniform #00ff00 with no shadows, gradients, texture, wall, floor plane, or lighting variation; crisp hard outer edges for chroma-key removal; no cast shadow; no contact shadow; exactly one prop; the door must NOT be swung wide open flat; no people; no text, letters, numbers, dials, gauges, plaques, logos, watermark, UI chrome, or border. Avoid: bright saturated colors, teal, plastic, modern breakers, cartoon outlines, wide landscape composition, extra objects, scenery, warning labels."
+  },
+  "preparation": {
+    "item_tool": "tools/prepare_breaker.py",
+    "chroma_tool": "imagegen skill scripts/remove_chroma_key.py",
+    "chroma_arguments": "--auto-key border --tolerance 60 --soft-matte --despill",
+    "note": "The generated backdrop is not uniform #00ff00 \u2014 it drifts to roughly (19,243,22) at the edges \u2014 so the key is taken from the border rather than assumed, and prepare_breaker.py keeps only the largest connected shape: a few near-transparent specks of key noise would otherwise stretch the subject's bounding box to the whole frame and fit the panel as if it were tiny."
+  },
+  "files": {
+    "assets/art/breaker-source.png": {
+      "sha256": "2736b5e24d29398f2cb43818804e5f02e6a16b5130570d541bd1029acbf0e1a9",
+      "bytes": 512388,
+      "format": "JPEG-in-png-name",
+      "width": 848,
+      "height": 1264,
+      "role": "generated source, chroma-key green backdrop"
+    },
+    "assets/art/breaker.png": {
+      "sha256": "9efe8b790c8e5a4cf914048ed361d71b49b67a5243a7282bbb5c40d4f1437e96",
+      "bytes": 580439,
+      "format": "PNG",
+      "width": 848,
+      "height": 1264,
+      "role": "keyed copy, backdrop removed"
+    },
+    "assets/art/breaker.ppm": {
+      "sha256": "b6fda340d8357686bc38157d0ef79b5ba0f66c26deeaf4a82f063247e6067654",
+      "bytes": 4513,
+      "format": "P6",
+      "width": 30,
+      "height": 50,
+      "role": "runtime face"
+    },
+    "assets/art/breaker-mask.ppm": {
+      "sha256": "75adb4671673037d93e96108dc10ad778fc62eb9d482862f9f3add87edc9d123",
+      "bytes": 4513,
+      "format": "P6",
+      "width": 30,
+      "height": 50,
+      "role": "runtime grayscale coverage mask"
+    }
+  }
+}

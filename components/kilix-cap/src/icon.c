@@ -276,8 +276,10 @@ static void icon_breaker(Canvas *c, int x, int y, int w, int h)
     draw_frame(c, x, y, w, h, 2, MC_BLACK);
     draw_gradient_v(c, door_x, y + 2, door_w, h - 4, MC_LIGHT, UI_SLATE);
     draw_frame(c, door_x, y + 2, door_w, h - 4, 1, MC_BLACK);
-    draw_rect(c, door_x + 1, y + 3, 2, h - 6, MC_BLACK);      /* hinge  */
-    draw_rect(c, x + w - 6, y + h / 2 - 3, 3, 7, UI_NAVY);    /* handle */
+    /* Hinged on the right, opening toward the viewer, so the drawn
+     * fallback and the generated face show the same panel. */
+    draw_rect(c, door_x + door_w - 3, y + 3, 2, h - 6, MC_BLACK); /* hinge  */
+    draw_rect(c, x + 3, y + h / 2 - 3, 3, 7, UI_NAVY);            /* handle */
     draw_rect(c, door_x + 5, inner_y, door_w - 10, inner_h, MC_BLACK);
     for (int i = 0; i < 3; i++) {
         int slot_h = inner_h / 3;

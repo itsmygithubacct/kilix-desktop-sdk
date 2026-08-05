@@ -78,8 +78,11 @@ bool ui_object_hit(const Object *o, int px, int py)
                                          o->visual.h, px, py);
         return icon_hit(o->icon, x, y, o->visual.w, o->visual.h, px, py);
     }
-    if (o->kind == OBJ_BREAKER)
+    if (o->kind == OBJ_BREAKER) {
+        if (art_breaker_ready())
+            return art_breaker_hit(x, y, o->visual.w, o->visual.h, px, py);
         return icon_hit(o->icon, x, y, o->visual.w, o->visual.h, px, py);
+    }
     if (o->kind == OBJ_ITEM) {
         if (art_mansion_items_ready() && o->icon >= ICON_BOX &&
             o->icon <= ICON_TIN)
@@ -266,6 +269,9 @@ void ui_draw_object(Canvas *c, const Object *o)
         return;
     }
     if (o->kind == OBJ_BREAKER) {
+        /* Generated face when it is installed; the drawn icon is the
+         * complete fallback, exactly as for the small props. */
+        if (art_draw_breaker(c, x, y, w, h, o->pressed)) return;
         icon_draw(c, o->icon, x, y, w, h);
         return;
     }
