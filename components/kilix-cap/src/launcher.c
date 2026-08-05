@@ -2,6 +2,8 @@
 #define _GNU_SOURCE
 #include "launcher.h"
 
+#include "laptop.h"
+
 #include <ctype.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -1439,6 +1441,61 @@ bool launcher_open(LaunchAppId id)
         } else
             set_error("no matching desktop program is installed");
         return false;
+    }
+    return spawn_plan(&plan);
+}
+
+bool launcher_open_laptop(const char *profile_id)
+{
+    LaunchPlan plan;
+    LaptopProfile profile;
+    char error[LAPTOP_ERROR_MAX];
+    const char *desktop_arguments[2] = {NULL, NULL};
+    size_t desktop_argument_count;
+
+    if (!enabled) {
+        set_error("desktop app launching is disabled");
+        return false;
+    }
+    if (!in_kilix_session()) {
+        set_error("Run Kilix Cap inside Kilix to open the laptop.");
+        return false;
+    }
+    if (!laptop_load(profile_id, &profile, error, sizeof error)) {
+        set_error(error);
+        return false;
+    }
+    memset(&plan, 0, sizeof plan);
+    if (!choose_program(&plan, (const char *const[]){"kilix"}, 1)) {
+        set_error("Kilix is required to open the laptop.");
+        return false;
+    }
+    plan.program = "the laptop";
+    desktop_argument_count =
+        laptop_desktop_arguments(&profile, desktop_arguments);
+    if (desktop_argument_count > 0) {
+        finish_plan_three(&plan, desktop_arguments[0],
+                          desktop_argument_count > 1 ? desktop_arguments[1]
+                                                     : NULL,
+                          NULL);
+        return spawn_plan(&plan);
+    }
+    {
+        char session_path[PATH_MAX];
+        if (config_directory[0] == '\0' ||
+            snprintf(session_path, sizeof session_path,
+                     "%s/laptop-%s.session", config_directory,
+                     profile.id) >= (int)sizeof session_path ||
+            !ensure_config_directory()) {
+            set_error("The laptop session file has no home.");
+            return false;
+        }
+        if (!laptop_write_session(&profile, session_path, error,
+                                  sizeof error)) {
+            set_error(error);
+            return false;
+        }
+        finish_plan_three(&plan, "--detach", "--session", session_path);
     }
     return spawn_plan(&plan);
 }

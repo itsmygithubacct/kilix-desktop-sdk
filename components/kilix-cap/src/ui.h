@@ -24,7 +24,8 @@ typedef enum ObjKind {
     OBJ_ITEM,       /* touchable; draggable between containers            */
     OBJ_PORTAL,     /* doorway already painted into a generated room      */
     OBJ_GAME_MEDIA, /* generated CD/floppy/manual; launches a game        */
-    OBJ_APPLIANCE   /* physical object already painted into a room plate  */
+    OBJ_APPLIANCE,  /* physical object already painted into a room plate  */
+    OBJ_LAPTOP      /* the portable computer; opens the profile chooser   */
 } ObjKind;
 
 typedef struct Object {

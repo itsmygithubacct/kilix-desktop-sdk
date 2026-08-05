@@ -8,7 +8,10 @@ so the room art, physical objects, and bitmap type remain crisp.
 The mansion has eight connected, full-color rooms:
 
 - **Study** — thirteen physical desk props launch their mapped desktop apps
-  immediately. No prop opens a built-in textual list first.
+  immediately. No prop opens a built-in textual list first. An open laptop
+  on the desk's front-left corner opens configured Kilix terminal sessions
+  and other desktop providers from user-editable laptop profiles
+  (`docs/LAPTOP.md`).
 - **Grand Gallery** — an elegant perspective corridor with six side doors and
   a glazed Balcony entrance at the far end.
 - **Storeroom** — movable boxes and containers can be dragged between two

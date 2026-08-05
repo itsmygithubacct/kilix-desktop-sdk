@@ -109,6 +109,7 @@ test-code: $(BIN)
 	./$(BIN) --audio-trigger-test
 	./$(BIN) --font-test
 	./$(BIN) --launcher-test
+	./$(BIN) --laptop-test
 	python3 tools/kilix_browser.py selftest
 	python3 tools/mansion_tui.py selftest
 	python3 tools/kilix95_games.py selftest
@@ -116,9 +117,9 @@ test-code: $(BIN)
 	@set -e; \
 	a=$$(./$(BIN) --selftest 1337 400); \
 	b=$$(./$(BIN) --selftest 1337 400); \
-	e1='selftest: seed=1337 steps=400 digest=717d6f5f scene=Storeroom'; \
-	e2='selftest: seed=42 steps=900 digest=ef8fc168 scene=Server Room'; \
-	e3='selftest: seed=90210 steps=1500 digest=051b5b3e scene=Balcony'; \
+	e1='selftest: seed=1337 steps=400 digest=de15621b scene=Storeroom'; \
+	e2='selftest: seed=42 steps=900 digest=068c5674 scene=Server Room'; \
+	e3='selftest: seed=90210 steps=1500 digest=0b22f226 scene=Balcony'; \
 	[ "$$a" = "$$b" ] || { echo "FAIL selftest is not deterministic"; \
 	  echo "  run 1: $$a"; echo "  run 2: $$b"; exit 1; }; \
 	[ "$$a" = "$$e1" ] || { echo "FAIL selftest 1337 regression"; \

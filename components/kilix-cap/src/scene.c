@@ -19,7 +19,8 @@ typedef struct Container {
 
 enum {
     DESK_ITEMS = 13,
-    DESK_OBJS = DESK_ITEMS + 1,
+    DESK_LAPTOP_INDEX = DESK_ITEMS,
+    DESK_OBJS = DESK_ITEMS + 2, /* props + laptop + hallway door */
     HALL_OBJS = 7,
     STORE_ITEMS = 3,
     STORE_OBJS = STORE_ITEMS + 1,
@@ -82,6 +83,27 @@ static char transient_status[96];
 static double transient_status_remaining;
 static bool transient_status_success;
 
+/* The laptop's profile chooser. The scene never reads the profile
+ * directory itself: opening is a take-and-clear request main answers by
+ * scanning profiles and calling scene_set_laptop_profiles +
+ * scene_open_laptop_menu, so every filesystem read stays in one layer and
+ * the deterministic soak sees only injected state. */
+static struct {
+    bool open;
+    int pressed_row; /* -1 = none */
+    LaptopList profiles;
+} laptop_menu = {false, -1, {0, {{0}}}};
+static bool laptop_menu_request_pending;
+static bool laptop_launch_pending;
+static char pending_laptop_profile[LAPTOP_ID_MAX];
+
+enum {
+    LAPTOP_MENU_W = 264,
+    LAPTOP_MENU_HEADER_H = 30,
+    LAPTOP_MENU_ROW_H = 24,
+    LAPTOP_MENU_FOOTER_H = 8
+};
+
 #define TRANS_PHASE 0.18
 #define WEB_BOOT_SECONDS 2.80
 #define WEB_ZOOM_SECONDS 0.80
@@ -129,7 +151,7 @@ static void set_object(Object *o, const char *name, const char *label,
     o->visual = visual;
     if (kind == OBJ_PROGRAM || kind == OBJ_DOOR || kind == OBJ_ITEM ||
         kind == OBJ_PORTAL || kind == OBJ_GAME_MEDIA ||
-        kind == OBJ_APPLIANCE)
+        kind == OBJ_APPLIANCE || kind == OBJ_LAPTOP)
         o->hit = visual;
     else
         o->hit = ui_target(visual);
@@ -230,7 +252,14 @@ static void build_desk(void)
         set_object(&desk_objs[i], items[i].name, items[i].label, OBJ_PROGRAM,
                    items[i].icon, ui_rect(x, y, w, h), items[i].app, false);
     }
-    set_object(&desk_objs[DESK_ITEMS], "Hallway door", "Hall", OBJ_DOOR,
+    /* The laptop sits on the clear front-left corner of the desk, beside
+     * the postcard. It is a scene object rather than a Desk prop: its
+     * sprite comes from the optional small-prop atlas (procedural drawing
+     * as fallback), not from the pre-composed workdesk item layer. */
+    set_object(&desk_objs[DESK_LAPTOP_INDEX], "Laptop", "Laptop",
+               OBJ_LAPTOP, ICON_LAPTOP, ui_rect(12, 204, 42, 49), -1,
+               false);
+    set_object(&desk_objs[DESK_ITEMS + 1], "Hallway door", "Hall", OBJ_DOOR,
                ICON_NONE, ui_rect(386, 44, 50, 150), SCENE_HALLWAY, true);
 }
 
@@ -512,6 +541,13 @@ static void reset_world(SceneId destination)
     transient_status[0] = '\0';
     transient_status_remaining = 0.0;
     transient_status_success = false;
+    /* The injected profile list survives a workspace reset the way the
+     * game catalog does; only the transient chooser state clears. */
+    laptop_menu.open = false;
+    laptop_menu.pressed_row = -1;
+    laptop_menu_request_pending = false;
+    laptop_launch_pending = false;
+    pending_laptop_profile[0] = '\0';
     bar_objs[2].active = lamp_on;
 }
 
@@ -555,6 +591,8 @@ void scene_goto(SceneId id)
     cancel_gesture();
     clear_pressed();
     panel_close(false);
+    laptop_menu.open = false;
+    laptop_menu.pressed_row = -1;
     current = id;
     memset(&trans, 0, sizeof trans);
     memset(&web_boot, 0, sizeof web_boot);
@@ -675,6 +713,170 @@ bool scene_take_game_request(const char **id, GameLaunchKind *kind)
     return true;
 }
 
+bool scene_take_laptop_menu_request(void)
+{
+    if (!laptop_menu_request_pending) return false;
+    laptop_menu_request_pending = false;
+    return true;
+}
+
+void scene_set_laptop_profiles(const LaptopList *profiles)
+{
+    if (profiles == NULL || profiles->count < 0 ||
+        profiles->count > LAPTOP_PROFILES_MAX) {
+        memset(&laptop_menu.profiles, 0, sizeof laptop_menu.profiles);
+        return;
+    }
+    laptop_menu.profiles = *profiles;
+}
+
+void scene_open_laptop_menu(void)
+{
+    if (trans.active || web_boot.active) return;
+    cancel_gesture();
+    panel_close(false);
+    laptop_menu.open = true;
+    laptop_menu.pressed_row = -1;
+}
+
+bool scene_laptop_menu_open(void) { return laptop_menu.open; }
+
+bool scene_take_laptop_request(const char **profile_id)
+{
+    if (!laptop_launch_pending || profile_id == NULL) return false;
+    *profile_id = pending_laptop_profile;
+    laptop_launch_pending = false;
+    return true;
+}
+
+/* Chooser card layout. Row 0..count-1 are profiles; row count is Close.
+ * An empty scan keeps only the Close row under a hint line. */
+static int laptop_menu_rows(void)
+{
+    return laptop_menu.profiles.count + 1;
+}
+
+/* An empty scan grows the header by one hint line above the Close row. */
+static int laptop_menu_header_height(void)
+{
+    return LAPTOP_MENU_HEADER_H +
+           (laptop_menu.profiles.count == 0 ? 14 : 0);
+}
+
+static UiRect laptop_menu_card(void)
+{
+    int rows = laptop_menu_rows();
+    int height = laptop_menu_header_height() + rows * LAPTOP_MENU_ROW_H +
+                 LAPTOP_MENU_FOOTER_H;
+    UiRect card;
+    card.x = (CANVAS_W - LAPTOP_MENU_W) / 2;
+    card.y = CONTENT_Y + (CONTENT_H - height) / 2;
+    card.w = LAPTOP_MENU_W;
+    card.h = height;
+    return card;
+}
+
+static int laptop_menu_row_at(int x, int y)
+{
+    UiRect card = laptop_menu_card();
+    int header = laptop_menu_header_height();
+    int row;
+    if (!ui_hit(card, x, y)) return -1;
+    row = (y - card.y - header) / LAPTOP_MENU_ROW_H;
+    if (y < card.y + header || row < 0 || row >= laptop_menu_rows())
+        return -1;
+    return row;
+}
+
+static void laptop_menu_choose(int row)
+{
+    if (row < 0 || row >= laptop_menu_rows()) return;
+    if (row == laptop_menu.profiles.count) {
+        laptop_menu.open = false;
+        sound_play(SOUND_DISMISS);
+        return;
+    }
+    (void)snprintf(pending_laptop_profile, sizeof pending_laptop_profile,
+                   "%s", laptop_menu.profiles.ids[row]);
+    laptop_launch_pending = true;
+    laptop_menu.open = false;
+    sound_play(SOUND_MAGIC);
+}
+
+/* Modal pointer routing while the chooser is open: a press inside a row
+ * arms it, releasing on the same row acts, releasing anywhere else (or
+ * pressing outside the card) dismisses without side effects. */
+static bool laptop_menu_handle(const input_event *ev)
+{
+    if (ev->kind == IN_MOUSE_DOWN) {
+        if (!ev->in_view || ev->button != 0) return true;
+        laptop_menu.pressed_row = laptop_menu_row_at(ev->mx, ev->my);
+        if (laptop_menu.pressed_row < 0 &&
+            !ui_hit(laptop_menu_card(), ev->mx, ev->my)) {
+            laptop_menu.open = false;
+            sound_play(SOUND_DISMISS);
+        } else {
+            sound_play(SOUND_TOUCH);
+        }
+        return true;
+    }
+    if (ev->kind == IN_MOUSE_UP) {
+        int row = laptop_menu_row_at(ev->mx, ev->my);
+        if (laptop_menu.pressed_row >= 0 &&
+            row == laptop_menu.pressed_row)
+            laptop_menu_choose(row);
+        laptop_menu.pressed_row = -1;
+        return true;
+    }
+    if (ev->kind == IN_MOUSE_LEAVE) {
+        laptop_menu.pressed_row = -1;
+        return true;
+    }
+    return ev->kind == IN_MOUSE_MOVE || ev->kind == IN_MOUSE_WHEEL;
+}
+
+static void draw_laptop_menu(Canvas *c)
+{
+    UiRect card;
+    int rows;
+    if (!laptop_menu.open) return;
+    card = laptop_menu_card();
+    rows = laptop_menu_rows();
+    draw_shadow(c, card.x, card.y, card.w, card.h);
+    draw_round_rect(c, card.x, card.y, card.w, card.h, 6, MC_WHITE);
+    draw_frame(c, card.x, card.y, card.w, card.h, 2, UI_NAVY);
+    draw_rect(c, card.x + 2, card.y + 2, card.w - 4, 3, UI_TEAL);
+    draw_text_center(c, card.x + card.w / 2, card.y + 9,
+                     "LAPTOP - OPEN A SESSION", UI_NAVY);
+    for (int row = 0; row < rows; row++) {
+        int row_y = card.y + laptop_menu_header_height() +
+                    row * LAPTOP_MENU_ROW_H;
+        bool close_row = row == laptop_menu.profiles.count;
+        const char *text = close_row ? "Close"
+                                     : laptop_menu.profiles.ids[row];
+        if (row == laptop_menu.pressed_row) {
+            draw_round_rect(c, card.x + 8, row_y + 1, card.w - 16,
+                            LAPTOP_MENU_ROW_H - 2, 4, UI_TEAL);
+        } else if (!close_row) {
+            draw_round_rect(c, card.x + 8, row_y + 1, card.w - 16,
+                            LAPTOP_MENU_ROW_H - 2, 4, MC_LIGHT);
+            draw_frame(c, card.x + 8, row_y + 1, card.w - 16,
+                       LAPTOP_MENU_ROW_H - 2, 1, UI_SLATE);
+        }
+        draw_text_center(c, card.x + card.w / 2,
+                         row_y + (LAPTOP_MENU_ROW_H -
+                                  draw_text_height()) / 2,
+                         text,
+                         row == laptop_menu.pressed_row ? MC_WHITE
+                                                        : UI_NAVY);
+    }
+    if (laptop_menu.profiles.count == 0)
+        draw_text_center(c, card.x + card.w / 2,
+                         card.y + LAPTOP_MENU_HEADER_H - 4,
+                         "No profiles yet - see docs/LAPTOP.md",
+                         UI_SLATE);
+}
+
 void scene_set_status(const char *message, bool success)
 {
     (void)snprintf(transient_status, sizeof transient_status, "%s",
@@ -735,13 +937,13 @@ const char *scene_hover_text(void)
 
     text[0] = '\0';
     if (!notices_on || !pointer_in_view || trans.active || web_boot.active ||
-        (active_obj != NULL && active_obj->held))
+        laptop_menu.open || (active_obj != NULL && active_obj->held))
         return text;
     o = object_at(pointer_x, pointer_y);
     if (o == NULL || o->name == NULL || o->name[0] == '\0') return text;
 
     if (o->kind == OBJ_PROGRAM || o->kind == OBJ_APPLIANCE ||
-        o->kind == OBJ_GAME_MEDIA)
+        o->kind == OBJ_GAME_MEDIA || o->kind == OBJ_LAPTOP)
         (void)snprintf(text, sizeof text, "%s - open", o->name);
     else if (o->kind == OBJ_DOOR || o->kind == OBJ_PORTAL)
         (void)snprintf(text, sizeof text, "%s - enter", o->name);
@@ -799,6 +1001,10 @@ static void activate(Object *o)
     }
     if ((o->kind == OBJ_DOOR || o->kind == OBJ_PORTAL) && o->target >= 0) {
         begin_transition((SceneId)o->target, o->visual);
+        return;
+    }
+    if (o->kind == OBJ_LAPTOP) {
+        laptop_menu_request_pending = true;
         return;
     }
     for (int i = 0; i < DESK_ITEMS; i++)
@@ -902,6 +1108,11 @@ bool scene_handle(const input_event *ev)
         scene_set_pointer(ev->mx, ev->my, ev->in_view);
     if (web_boot.active) return true;
     if (trans.active) return false;
+    /* The chooser is modal for the pointer: rooms, props, and the control
+     * bar wait until it closes. */
+    if (laptop_menu.open && ev->kind != IN_KEY_DOWN &&
+        ev->kind != IN_KEY_REPEAT)
+        return laptop_menu_handle(ev);
     if ((ev->kind == IN_KEY_DOWN || ev->kind == IN_KEY_REPEAT) &&
         active_obj != NULL && panel_active())
         cancel_gesture();
@@ -1430,6 +1641,7 @@ void scene_draw(Canvas *c)
         if (o->held) draw_scene_object(c, o, i);
     }
     panel_draw(c);
+    draw_laptop_menu(c);
     draw_transition(c);
     draw_namebar(c);
     draw_controlbar(c);
@@ -1500,6 +1712,14 @@ uint32_t scene_digest(void)
     h = fnv1a(h, (uint32_t)pending_tool_launch);
     h = fnv1a_text(h, pending_game_id);
     h = fnv1a(h, (uint32_t)pending_game_kind);
+    h = fnv1a(h, laptop_menu.open ? 1u : 0u);
+    h = fnv1a(h, (uint32_t)(laptop_menu.pressed_row + 1));
+    h = fnv1a(h, (uint32_t)laptop_menu.profiles.count);
+    for (int i = 0; i < laptop_menu.profiles.count; i++)
+        h = fnv1a_text(h, laptop_menu.profiles.ids[i]);
+    h = fnv1a(h, laptop_menu_request_pending ? 1u : 0u);
+    h = fnv1a(h, laptop_launch_pending ? 1u : 0u);
+    h = fnv1a_text(h, pending_laptop_profile);
     for (int s = 0; s < SCENE_COUNT; s++)
         for (int i = 0; i < scenes[s].nobjs; i++) {
             const Object *o = &scenes[s].objs[i];

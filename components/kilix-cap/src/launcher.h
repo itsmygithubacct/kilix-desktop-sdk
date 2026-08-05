@@ -86,6 +86,11 @@ bool        launcher_open_tool(LaunchToolId id);
 bool        launcher_open_game(const char *game_id, GameLaunchKind kind,
                                const char *kilix95_root,
                                const char *catalog_helper);
+/* The Study laptop: opens one named laptop profile (docs/LAPTOP.md). A
+ * desktop profile launches `kilix <provider>`; a pane profile becomes a
+ * generated kitty --session file in the private config directory opened
+ * with `kilix --detach --session`, i.e. the laptop gets its own window. */
+bool        launcher_open_laptop(const char *profile_id);
 const char *launcher_last_program(void);
 const char *launcher_last_error(void);
 

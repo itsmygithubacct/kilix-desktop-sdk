@@ -12,7 +12,7 @@ text list or built-in status panel.
 
 | Room | Physical behavior |
 |---|---|
-| Study | Thirteen separated desk props launch Clock, Inbox, Outbox, Mail, Profile, Notepad, Dates, Contacts, Files, Phone, Writer, Calculator, and Web. The right door enters the Grand Gallery. |
+| Study | Thirteen separated desk props launch Clock, Inbox, Outbox, Mail, Profile, Notepad, Dates, Contacts, Files, Phone, Writer, Calculator, and Web. The laptop on the desk's front-left corner opens the laptop-profile chooser (docs/LAPTOP.md): a profile opens a configured Kilix terminal session in its own window or another desktop provider. The right door enters the Grand Gallery. |
 | Grand Gallery | Three diminishing side-door pairs, each fitted to its own position and vanishing lines, lead to Study, Library, Server Room, Cleaning Room, Game Room, and Storeroom. The glazed door at the end leads to the Balcony. |
 | Storeroom | Storage box, wooden crate, and tin canister can be dragged between the two shelves. The left door returns to the Gallery. |
 | Server Room | Two monitor screens launch live system TUIs. Four separate equipment zones open system settings, storage, network, and software administration apps. |

@@ -67,6 +67,24 @@ NORMALIZED_SOURCE_PNGS = {
     "assets/art/server-room-door-source.png",
 }
 
+# The OPTIONAL small-prop group (Storeroom box/crate/tin + Study laptop).
+# src/art.c loads the runtime pair both-or-neither after the mandatory
+# bundle. The group ships only after by-eye review, so assets/art must
+# contain either none of these files (review pending; procedural drawings
+# serve) or all four plus their own provenance manifest below.
+MANSION_MANIFEST = ROOT / "docs" / "visual-provenance-gemini.json"
+MANSION_SOURCE = "assets/art/mansion-items-source.png"
+MANSION_KEYED = "assets/art/mansion-items.png"
+MANSION_ATLAS = "assets/art/mansion-items.ppm"
+MANSION_ALPHA = "assets/art/mansion-items-mask.ppm"
+MANSION_PATHS = {MANSION_SOURCE, MANSION_KEYED, MANSION_ATLAS,
+                 MANSION_ALPHA}
+MANSION_W = 96
+MANSION_H = 112
+MANSION_CELL_W = 48
+MANSION_CELL_H = 56
+MANSION_VARIANTS = 4
+
 SEMANTIC_IDS = {
     1: "Clock",
     2: "In box",
@@ -569,7 +587,114 @@ def validate_manifest(
     return by_path, normalizations
 
 
-def run() -> None:
+def validate_mansion_media(path: str, raster: bytes,
+                           alpha: list[int]) -> None:
+    """The 2x2 small-prop atlas mirrors the game-media layer rules."""
+    visible = [0] * MANSION_VARIANTS
+    partial = 0
+    for index, value in enumerate(alpha):
+        x = index % MANSION_W
+        y = index // MANSION_W
+        variant = (y // MANSION_CELL_H) * 2 + x // MANSION_CELL_W
+        pixel = raster[index * 3:index * 3 + 3]
+        if value == 0:
+            if pixel != b"\x00\x00\x00":
+                raise VisualError(
+                    f"{path}: colored pixel outside the coverage mask"
+                )
+        else:
+            visible[variant] += 1
+            if value < 255:
+                partial += 1
+    for variant, count in enumerate(visible):
+        if count < 100:
+            raise VisualError(
+                f"{path}: variant {variant} has under 100 visible pixels"
+            )
+    if partial == 0:
+        raise VisualError(f"{path}: mask carries no antialiased coverage")
+
+
+def validate_mansion_group(actual_paths: set[str]) -> str:
+    present = actual_paths & MANSION_PATHS
+    if not present:
+        return "review pending (procedural props serve)"
+    if present != MANSION_PATHS:
+        missing = ", ".join(sorted(MANSION_PATHS - present))
+        raise VisualError(
+            f"optional mansion-items group is incomplete; missing {missing}"
+        )
+    manifest = json.loads(regular_file(MANSION_MANIFEST).decode("utf-8"))
+    if not isinstance(manifest, dict) or manifest.get("schema") != (
+        "kilix-cap-visual-provenance-gemini-v1"
+    ):
+        raise VisualError("unexpected mansion-items provenance schema")
+    generator = manifest.get("generator")
+    if (
+        not isinstance(generator, dict)
+        or generator.get("requested") != "Gemini image generation"
+        or generator.get("provider") != "Gemini image generation"
+        or generator.get("model_identifier") != "gemini-3-pro-image"
+    ):
+        raise VisualError("mansion-items generator record is incomplete")
+    generation = manifest.get("generation")
+    if (
+        not isinstance(generation, dict)
+        or not isinstance(generation.get("prompt"), str)
+        or len(generation["prompt"]) < 200
+        or generation.get("mode") != "text-to-image"
+    ):
+        raise VisualError("mansion-items prompt record is incomplete")
+    preparation = manifest.get("preparation")
+    if (
+        not isinstance(preparation, dict)
+        or preparation.get("item_tool") != "tools/prepare_mansion_items.py"
+        or preparation.get("chroma_tool")
+        != "imagegen skill scripts/remove_chroma_key.py"
+    ):
+        raise VisualError("mansion-items preparation record is incomplete")
+    entries = manifest.get("files")
+    if not isinstance(entries, dict) or set(entries) != MANSION_PATHS:
+        raise VisualError("mansion-items file inventory is wrong")
+    rasters: dict[str, bytes] = {}
+    for relative, entry in entries.items():
+        if not isinstance(entry, dict):
+            raise VisualError("mansion-items file entry must be an object")
+        data = regular_file(ROOT / relative)
+        if hashlib.sha256(data).hexdigest() != entry.get("sha256"):
+            raise VisualError(
+                f"{relative} SHA-256 does not match gemini provenance"
+            )
+        if relative == MANSION_SOURCE:
+            # The generator writes JPEG bytes under the .png name; the
+            # recorded format captures that honestly and structure is
+            # validated on the keyed RGBA copy instead.
+            if entry.get("format") != "JPEG-in-png-name":
+                raise VisualError(f"{relative} has the wrong recorded format")
+            dimensions = (entry.get("width"), entry.get("height"))
+        elif relative.endswith(".png"):
+            dimensions = png_dimensions(data)
+            if entry.get("format") != "PNG":
+                raise VisualError(f"{relative} has the wrong recorded format")
+        else:
+            width, height, raster = ppm_raster(data)
+            dimensions = (width, height)
+            if dimensions != (MANSION_W, MANSION_H):
+                raise VisualError(
+                    f"{relative} is {width}x{height}; expected "
+                    f"{MANSION_W}x{MANSION_H}"
+                )
+            if entry.get("format") != "P6":
+                raise VisualError(f"{relative} has the wrong recorded format")
+            rasters[relative] = raster
+        if (entry.get("width"), entry.get("height")) != dimensions:
+            raise VisualError(f"{relative} recorded dimensions are wrong")
+    alpha = gray_values(MANSION_ALPHA, rasters[MANSION_ALPHA])
+    validate_mansion_media(MANSION_ATLAS, rasters[MANSION_ATLAS], alpha)
+    return "present, validated"
+
+
+def run() -> str:
     manifest = json.loads(regular_file(MANIFEST).decode("utf-8"))
     if not isinstance(manifest, dict):
         raise VisualError("visual provenance root must be an object")
@@ -586,10 +711,12 @@ def run() -> None:
                 f"{path.relative_to(ROOT)} is not a regular visual asset"
             )
         actual_paths.add(path.relative_to(ROOT).as_posix())
-    if actual_paths != EXPECTED_PATHS:
+    if actual_paths - MANSION_PATHS != EXPECTED_PATHS:
         raise VisualError(
-            "assets/art does not match the exact thirty-three-file inventory"
+            "assets/art does not match the exact thirty-three-file "
+            "inventory plus the optional mansion-items group"
         )
+    mansion_status = validate_mansion_group(actual_paths)
 
     rasters: dict[str, bytes] = {}
     for relative, entry in entries.items():
@@ -649,18 +776,19 @@ def run() -> None:
     validate_layer_relationships(
         rasters[GAME_MEDIA], media_alpha, [0] * len(media_alpha)
     )
+    return mansion_status
 
 
 def main() -> int:
     try:
-        run()
+        mansion_status = run()
     except (OSError, KeyError, TypeError, json.JSONDecodeError, VisualError) as exc:
         print(f"validate_visual: {exc}", file=sys.stderr)
         return 1
     print(
         "validate_visual: eight room-native scenes, Desk/game sprites, 13 "
         "semantic hit IDs, three lossless source normalizations, hashes, and "
-        "provenance OK"
+        "provenance OK; optional mansion-items: " + mansion_status
     )
     return 0
 

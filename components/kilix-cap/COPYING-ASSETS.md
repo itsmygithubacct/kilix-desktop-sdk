@@ -67,9 +67,15 @@ entrance were already part of their source art.
   nine-variant CD/floppy/manual source and runtime atlas. Each present title
   receives an original project-owned 16×16 icon exported from Kilix 95's
   code-authored `icons.py`.
+- The optional small-prop atlas uses `mansion-items-source.png`,
+  `mansion-items.png`, `mansion-items.ppm`, and `mansion-items-mask.ppm`
+  as a four-variant source and runtime layer for the Storeroom's storage
+  box, wooden crate, and tin canister, and the Study laptop. Its prompts,
+  hashes, and preparation live in `docs/visual-provenance-gemini.json`;
+  when the group is absent the four props keep their procedural drawings.
 Storeroom movable objects, dynamic state, borders, cursor, name bar, and house
-map are drawn by project code. No commercial-product icon or artwork is
-included.
+map are drawn by project code as the standing fallback. No
+commercial-product icon or artwork is included.
 
 ## Generated visual sources
 

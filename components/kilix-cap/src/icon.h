@@ -40,6 +40,7 @@ typedef enum IconId {
     ICON_CRATE,
     ICON_TIN,
     ICON_KEYBOARD,
+    ICON_LAPTOP,
     ICON_COUNT
 } IconId;
 

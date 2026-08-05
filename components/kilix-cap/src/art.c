@@ -59,8 +59,18 @@ enum {
     GAME_MEDIA_CELL_W = 48,
     GAME_MEDIA_CELL_H = 56,
     GAME_MEDIA_W = GAME_MEDIA_COLS * GAME_MEDIA_CELL_W,
-    GAME_MEDIA_H = GAME_MEDIA_ROWS * GAME_MEDIA_CELL_H
+    GAME_MEDIA_H = GAME_MEDIA_ROWS * GAME_MEDIA_CELL_H,
+    MANSION_ITEM_COLS = 2,
+    MANSION_ITEM_ROWS = 2,
+    MANSION_ITEM_CELL_W = 48,
+    MANSION_ITEM_CELL_H = 56,
+    MANSION_ITEM_W = MANSION_ITEM_COLS * MANSION_ITEM_CELL_W,
+    MANSION_ITEM_H = MANSION_ITEM_ROWS * MANSION_ITEM_CELL_H
 };
+
+_Static_assert(MANSION_ITEM_COLS * MANSION_ITEM_ROWS ==
+                   ART_MANSION_ITEM_VARIANTS,
+               "the small-prop grid must hold exactly the variant count");
 
 _Static_assert((int)ICON_CLOCK == 1 &&
                    (int)ICON_GLOBE == (int)DESK_SPRITE_COUNT,
@@ -72,7 +82,11 @@ static sr_canvas item_alpha;
 static sr_canvas item_hit;
 static sr_canvas game_media;
 static sr_canvas game_media_alpha;
+static sr_canvas mansion_items;
+static sr_canvas mansion_items_alpha;
 static bool loaded;
+static bool mansion_items_loaded;
+static bool extra_items_enabled = true;
 
 static const DeskSprite *find_sprite(IconId icon)
 {
@@ -168,6 +182,8 @@ static void free_bundle(void)
     sr_canvas_free(&item_hit);
     sr_canvas_free(&game_media);
     sr_canvas_free(&game_media_alpha);
+    sr_canvas_free(&mansion_items);
+    sr_canvas_free(&mansion_items_alpha);
 }
 
 /* The two mask plates are deliberately RGB PPMs so the runtime asset format
@@ -241,6 +257,55 @@ static bool game_media_layers_valid(const sr_canvas *atlas,
     return partial > 0u;
 }
 
+static bool mansion_item_layers_valid(const sr_canvas *atlas,
+                                      const sr_canvas *alpha)
+{
+    size_t visible[ART_MANSION_ITEM_VARIANTS] = {0};
+    size_t partial = 0;
+    size_t pixels = (size_t)MANSION_ITEM_W * MANSION_ITEM_H;
+    for (size_t i = 0; i < pixels; i++) {
+        uint32_t mask_rgb = alpha->px[i] & 0xffffffu;
+        unsigned value = mask_rgb & 0xffu;
+        int x = (int)(i % MANSION_ITEM_W);
+        int y = (int)(i / MANSION_ITEM_W);
+        int variant = (y / MANSION_ITEM_CELL_H) * MANSION_ITEM_COLS +
+                      x / MANSION_ITEM_CELL_W;
+        if (((mask_rgb >> 16) & 0xffu) != value ||
+            ((mask_rgb >> 8) & 0xffu) != value)
+            return false;
+        if (value == 0u) {
+            if ((atlas->px[i] & 0xffffffu) != 0u) return false;
+        } else {
+            visible[variant]++;
+            if (value < 255u) partial++;
+        }
+    }
+    for (int i = 0; i < ART_MANSION_ITEM_VARIANTS; i++)
+        if (visible[i] < 100u) return false;
+    return partial > 0u;
+}
+
+/* The optional pair loads both-or-neither after the mandatory bundle, so a
+ * checkout awaiting art review runs with every plate and procedural
+ * props rather than losing the whole bundle. */
+static void load_mansion_items(const char *directory)
+{
+    sr_canvas atlas = {0};
+    sr_canvas alpha = {0};
+    if (!load_rgb_size(directory, "mansion-items.ppm", MANSION_ITEM_W,
+                       MANSION_ITEM_H, &atlas) ||
+        !load_rgb_size(directory, "mansion-items-mask.ppm", MANSION_ITEM_W,
+                       MANSION_ITEM_H, &alpha) ||
+        !mansion_item_layers_valid(&atlas, &alpha)) {
+        sr_canvas_free(&atlas);
+        sr_canvas_free(&alpha);
+        return;
+    }
+    mansion_items = atlas;
+    mansion_items_alpha = alpha;
+    mansion_items_loaded = true;
+}
+
 static bool load_bundle(const char *directory)
 {
     sr_canvas plates[BACKGROUND_COUNT] = {{0}};
@@ -280,6 +345,7 @@ static bool load_bundle(const char *directory)
     item_hit = hit;
     game_media = media;
     game_media_alpha = media_mask;
+    load_mansion_items(directory);
     return true;
 }
 
@@ -326,9 +392,20 @@ void art_shutdown(void)
 {
     free_bundle();
     loaded = false;
+    mansion_items_loaded = false;
 }
 
 bool art_ready(void) { return loaded; }
+
+bool art_mansion_items_ready(void)
+{
+    return loaded && mansion_items_loaded && extra_items_enabled;
+}
+
+void art_set_extra_items_enabled(bool enabled)
+{
+    extra_items_enabled = enabled;
+}
 
 static bool draw_background(Canvas *canvas, BackgroundId id)
 {
@@ -479,6 +556,66 @@ bool art_game_media_hit(int variant, int x, int y, int w, int h,
     source_y = cell_y + (int)(((int64_t)py - y) * GAME_MEDIA_CELL_H / h);
     return (game_media_alpha.px[(size_t)source_y * GAME_MEDIA_W +
                                 (size_t)source_x] & 0xffu) >= 128u;
+}
+
+bool art_draw_mansion_item(Canvas *canvas, int variant, int x, int y,
+                           int w, int h, bool pressed)
+{
+    int cell_x;
+    int cell_y;
+    if (!art_mansion_items_ready() || canvas == NULL ||
+        canvas->px == NULL || w <= 0 || h <= 0 || variant < 0 ||
+        variant >= ART_MANSION_ITEM_VARIANTS)
+        return false;
+    cell_x = (variant % MANSION_ITEM_COLS) * MANSION_ITEM_CELL_W;
+    cell_y = (variant / MANSION_ITEM_COLS) * MANSION_ITEM_CELL_H;
+    for (int dy = 0; dy < h; dy++) {
+        int destination_y = y + dy;
+        int source_y = cell_y +
+                       (int)((int64_t)dy * MANSION_ITEM_CELL_H / h);
+        if (destination_y < 0 || destination_y >= canvas->h) continue;
+        for (int dx = 0; dx < w; dx++) {
+            int destination_x = x + dx;
+            int source_x = cell_x +
+                           (int)((int64_t)dx * MANSION_ITEM_CELL_W / w);
+            size_t source;
+            size_t destination;
+            unsigned alpha;
+            uint32_t above;
+            if (destination_x < 0 || destination_x >= canvas->w) continue;
+            source = (size_t)source_y * MANSION_ITEM_W + (size_t)source_x;
+            alpha = mansion_items_alpha.px[source] & 0xffu;
+            if (alpha == 0u) continue;
+            above = mansion_items.px[source];
+            if (pressed) above = shade_rgb(above, 3u, 4u);
+            destination = (size_t)destination_y * (size_t)canvas->w +
+                          (size_t)destination_x;
+            canvas->px[destination] = alpha_blend(
+                canvas->px[destination], above, alpha);
+        }
+    }
+    return true;
+}
+
+bool art_mansion_item_hit(int variant, int x, int y, int w, int h,
+                          int px, int py)
+{
+    int cell_x;
+    int cell_y;
+    int source_x;
+    int source_y;
+    if (!art_mansion_items_ready() || variant < 0 ||
+        variant >= ART_MANSION_ITEM_VARIANTS || w <= 0 || h <= 0 ||
+        (int64_t)px < x || (int64_t)py < y ||
+        (int64_t)px >= (int64_t)x + w ||
+        (int64_t)py >= (int64_t)y + h)
+        return false;
+    cell_x = (variant % MANSION_ITEM_COLS) * MANSION_ITEM_CELL_W;
+    cell_y = (variant / MANSION_ITEM_COLS) * MANSION_ITEM_CELL_H;
+    source_x = cell_x + (int)(((int64_t)px - x) * MANSION_ITEM_CELL_W / w);
+    source_y = cell_y + (int)(((int64_t)py - y) * MANSION_ITEM_CELL_H / h);
+    return (mansion_items_alpha.px[(size_t)source_y * MANSION_ITEM_W +
+                                   (size_t)source_x] & 0xffu) >= 128u;
 }
 
 bool art_workdesk_item_bounds(IconId icon, int *x, int *y, int *w, int *h)

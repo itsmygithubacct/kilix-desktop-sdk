@@ -219,6 +219,31 @@ static void icon_tin(Canvas *c, int x, int y, int w, int h)
                 0x6f9f9a, 0x86b4ae);
 }
 
+static void icon_laptop(Canvas *c, int x, int y, int w, int h)
+{
+    /* An open portable computer: raised screen leaf over a keyboard base
+     * wedge, hinge line between them, teal screen glow. */
+    int bw = w * 9 / 10;
+    int bx = x + (w - bw) / 2;
+    int sh = h * 3 / 5;             /* screen leaf height   */
+    int kh = h - sh - 2;            /* keyboard base height */
+    int sw = bw * 4 / 5;
+    int sx = bx + (bw - sw) / 2;
+    int sy = y + 1;
+    if (bw < 14 || sh < 8 || kh < 5) return;
+    draw_rect(c, sx, sy, sw, sh, UI_NAVY);
+    draw_frame(c, sx, sy, sw, sh, 2, MC_BLACK);
+    draw_rect(c, sx + 3, sy + 3, sw - 6, sh - 6, UI_TEAL);
+    draw_rect(c, sx + 4, sy + 4, sw - 8, 2, MC_WHITE);   /* glare line */
+    draw_rect(c, sx - 2, sy + sh, sw + 4, 2, MC_BLACK);  /* hinge      */
+    draw_gradient_v(c, bx, sy + sh + 2, bw, kh, UI_SLATE, UI_NAVY);
+    draw_frame(c, bx, sy + sh + 2, bw, kh, 1, MC_BLACK);
+    for (int row = 0; row < 2; row++)
+        for (int col = 0; col < 6; col++)
+            draw_rect(c, bx + 3 + col * (bw - 6) / 6,
+                      sy + sh + 4 + row * (kh - 3) / 2, 2, 2, MC_LIGHT);
+}
+
 static void icon_keyboard(Canvas *c, int x, int y, int w, int h)
 {
     int bw = w * 9 / 10;
@@ -256,6 +281,7 @@ void icon_draw(Canvas *c, IconId id, int x, int y, int w, int h)
     case ICON_CRATE:      icon_crate(c, x, y, w, h); break;
     case ICON_TIN:        icon_tin(c, x, y, w, h); break;
     case ICON_KEYBOARD:   icon_keyboard(c, x, y, w, h); break;
+    case ICON_LAPTOP:     icon_laptop(c, x, y, w, h); break;
     case ICON_NONE:
     case ICON_COUNT:
     default: break;

@@ -39,4 +39,26 @@ bool art_workdesk_item_bounds(IconId icon, int *x, int *y, int *w, int *h);
 bool art_workdesk_item_hit(IconId icon, int x, int y, int w, int h,
                            int px, int py);
 
+/* Four generated small-prop variants: the Storeroom's storage box (0),
+ * wooden crate (1), and tin canister (2), plus the Study laptop (3). The
+ * pair mansion-items.ppm / mansion-items-mask.ppm is an OPTIONAL add-on to
+ * the mandatory bundle: a tree without it still loads every plate and the
+ * props keep their procedural drawings, so review-pending art degrades
+ * gracefully. Hash-pinned render fixtures exclude it (see
+ * art_set_extra_items_enabled), keeping their digests identical whether or
+ * not the optional pair is present. */
+enum { ART_MANSION_ITEM_VARIANTS = 4 };
+enum {
+    ART_MANSION_ITEM_BOX = 0,
+    ART_MANSION_ITEM_CRATE = 1,
+    ART_MANSION_ITEM_TIN = 2,
+    ART_MANSION_ITEM_LAPTOP = 3
+};
+bool art_mansion_items_ready(void);
+void art_set_extra_items_enabled(bool enabled);
+bool art_draw_mansion_item(Canvas *canvas, int variant, int x, int y,
+                           int w, int h, bool pressed);
+bool art_mansion_item_hit(int variant, int x, int y, int w, int h,
+                          int px, int py);
+
 #endif /* KILIX_CAP_ART_H */

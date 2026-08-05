@@ -5,6 +5,7 @@
 #include "canvas.h"
 #include "game_catalog.h"
 #include "input.h"
+#include "laptop.h"
 #include "launcher.h"
 #include "ui.h"
 
@@ -80,6 +81,16 @@ void scene_finish_web_boot(void);
 bool scene_take_mail_registration(const char **target);
 /* A clicked CD/floppy/manual is handed to main once for shell-free launch. */
 bool scene_take_game_request(const char **id, GameLaunchKind *kind);
+
+/* The Study laptop. A click raises a take-and-clear menu request; main
+ * scans the profile directory, injects the ids, and opens the chooser, so
+ * the scene never touches the filesystem. Choosing a profile raises a
+ * launch request the same take-and-clear way. */
+bool scene_take_laptop_menu_request(void);
+void scene_set_laptop_profiles(const LaptopList *profiles);
+void scene_open_laptop_menu(void);
+bool scene_laptop_menu_open(void);
+bool scene_take_laptop_request(const char **profile_id);
 
 /* Short non-modal feedback belongs in the name bar so direct-launch objects
  * never need to open a textual status panel. */

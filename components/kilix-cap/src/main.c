@@ -23,6 +23,7 @@
 #include "soft_raster.h"
 
 #include <errno.h>
+#include <limits.h>
 #include <math.h>
 #include <signal.h>
 #include <stdio.h>
@@ -30,6 +31,10 @@
 #include <string.h>
 #include <time.h>
 #include <unistd.h>
+
+#ifndef PATH_MAX
+#define PATH_MAX 4096
+#endif
 
 #define KILIX_CAP_VERSION "3.0.0"
 
@@ -788,6 +793,69 @@ static int cmd_interaction_test(void)
     test_expect(scene_item_place(0) == ITEM_LEFT_SHELF,
                 "Storeroom item moves back to the left shelf", &failures);
 
+    /* The Study laptop: click raises exactly one chooser request; the
+     * injected chooser resolves rows by geometry and hands over exactly
+     * one profile id. */
+    {
+        LaptopList profiles;
+        const Object *laptop = scene_object(SCENE_DESK, 13);
+        const char *profile_id = NULL;
+        int laptop_x = 0;
+        int laptop_y = 0;
+        memset(&profiles, 0, sizeof profiles);
+        profiles.count = 2;
+        (void)snprintf(profiles.ids[0], sizeof profiles.ids[0], "alpha");
+        (void)snprintf(profiles.ids[1], sizeof profiles.ids[1], "beta");
+        scene_goto(SCENE_DESK);
+        test_expect(laptop != NULL && laptop->kind == OBJ_LAPTOP &&
+                        strcmp(laptop->name, "Laptop") == 0,
+                    "the Study keeps a laptop beside the postcard",
+                    &failures);
+        test_expect(object_hit_point(laptop, &laptop_x, &laptop_y),
+                    "laptop responds on its visible pixels", &failures);
+        test_expect(!scene_take_laptop_menu_request(),
+                    "no chooser request before the laptop is touched",
+                    &failures);
+        click_object(laptop);
+        test_expect(scene_take_laptop_menu_request() &&
+                        !scene_take_laptop_menu_request(),
+                    "laptop click raises one chooser request", &failures);
+        scene_set_laptop_profiles(&profiles);
+        scene_open_laptop_menu();
+        test_expect(scene_laptop_menu_open(),
+                    "chooser opens with injected profiles", &failures);
+        /* Two profiles: card is 264x110 at (108, 97); the first profile
+         * row spans y 127..150. */
+        send_mouse(IN_MOUSE_DOWN, 240, 139, 0, true);
+        send_mouse(IN_MOUSE_UP, 240, 139, 0, true);
+        test_expect(!scene_laptop_menu_open() &&
+                        scene_take_laptop_request(&profile_id) &&
+                        profile_id != NULL &&
+                        strcmp(profile_id, "alpha") == 0,
+                    "choosing the first row launches profile alpha",
+                    &failures);
+        test_expect(!scene_take_laptop_request(&profile_id),
+                    "laptop launch request is consumed exactly once",
+                    &failures);
+        scene_open_laptop_menu();
+        send_mouse(IN_MOUSE_DOWN, 20, 40, 0, true);
+        test_expect(!scene_laptop_menu_open() &&
+                        !scene_take_laptop_request(&profile_id),
+                    "clicking outside the card dismisses without launching",
+                    &failures);
+        scene_open_laptop_menu();
+        send_mouse(IN_MOUSE_DOWN, 240, 139, 0, true);
+        send_mouse(IN_MOUSE_UP, 240, 139 + 24, 0, true);
+        test_expect(scene_laptop_menu_open() &&
+                        !scene_take_laptop_request(&profile_id),
+                    "releasing on a different row arms nothing", &failures);
+        send_mouse(IN_MOUSE_DOWN, 240, 139 + 2 * 24, 0, true);
+        send_mouse(IN_MOUSE_UP, 240, 139 + 2 * 24, 0, true);
+        test_expect(!scene_laptop_menu_open() &&
+                        !scene_take_laptop_request(&profile_id),
+                    "the Close row dismisses without launching", &failures);
+    }
+
     if (failures == 0) printf("interaction-test: ok\n");
     return failures == 0 ? 0 : 1;
 }
@@ -959,6 +1027,32 @@ static int cmd_visual_test(const char *argv0)
                         "transparent game-media pixel is not clickable",
                         &failures);
     }
+    /* The optional small-prop atlas is validated only when present; its
+     * absence is the review-pending state and every prop then keeps its
+     * procedural drawing (already proven by the scenes above). */
+    if (art_mansion_items_ready()) {
+        const Object *item = scene_object(SCENE_STOREROOM, 1);
+        const Object *laptop = scene_object(SCENE_DESK, 13);
+        int hit_x = 0;
+        int hit_y = 0;
+        int clear_x = 0;
+        int clear_y = 0;
+        test_expect(item != NULL && object_hit_point(item, &hit_x, &hit_y),
+                    "generated Storeroom prop has an alpha hit pixel",
+                    &failures);
+        test_expect(item != NULL &&
+                        object_transparent_point(item, &clear_x, &clear_y) &&
+                        !ui_object_hit(item, clear_x, clear_y),
+                    "transparent Storeroom prop pixel is not clickable",
+                    &failures);
+        test_expect(laptop != NULL &&
+                        object_hit_point(laptop, &hit_x, &hit_y),
+                    "generated laptop has an alpha hit pixel", &failures);
+        printf("visual-test: optional mansion-items atlas loaded\n");
+    } else {
+        printf("visual-test: optional mansion-items atlas absent "
+               "(procedural props)\n");
+    }
     art_shutdown();
     canvas_free(&canvas);
     if (failures == 0)
@@ -1087,6 +1181,11 @@ static int cmd_render_test(const char *argv0, const char *dir)
         canvas_free(&canvas);
         return 1;
     }
+    /* Hash-pinned frames must not depend on the OPTIONAL small-prop
+     * atlas, which is absent while generated art awaits review; these
+     * fixtures always render the procedural props. --render-review keeps
+     * the atlas so reviewers see the shipped composition. */
+    art_set_extra_items_enabled(false);
     scene_init();
 
     for (int s = 0; s < SCENE_COUNT; s++) {
@@ -1506,12 +1605,64 @@ static void launch_game_and_report(const char *id, GameLaunchKind kind)
     }
 }
 
+/* Bundled example profiles ship beside the art: <exe>/../assets/laptop.
+ * They seed the shared profile directory once on first use. */
+static bool laptop_seed_directory(char *path, size_t size)
+{
+    char executable[PATH_MAX];
+    ssize_t length = readlink("/proc/self/exe", executable,
+                              sizeof executable - 1u);
+    const char *slash;
+    if (length <= 0 || (size_t)length >= sizeof executable) {
+        return snprintf(path, size, "assets/laptop") < (int)size;
+    }
+    executable[length] = '\0';
+    slash = strrchr(executable, '/');
+    if (slash == NULL) return false;
+    return snprintf(path, size, "%.*s/../assets/laptop",
+                    (int)(slash - executable), executable) < (int)size;
+}
+
+static void service_laptop_menu(void)
+{
+    char seed[PATH_MAX];
+    LaptopList profiles;
+    if (!scene_take_laptop_menu_request()) return;
+    if (laptop_scan(laptop_seed_directory(seed, sizeof seed) ? seed : NULL,
+                    &profiles) < 0)
+        memset(&profiles, 0, sizeof profiles);
+    scene_set_laptop_profiles(&profiles);
+    scene_open_laptop_menu();
+}
+
+static void launch_laptop_and_report(const char *profile_id)
+{
+    char status[96];
+    if (launcher_open_laptop(profile_id)) {
+        (void)snprintf(status, sizeof status,
+                       "Opened laptop profile %s.", profile_id);
+        scene_set_status(status, true);
+        sound_play(SOUND_MAGIC);
+    } else {
+        (void)snprintf(status, sizeof status, "%s",
+                       launcher_last_error()[0] != '\0'
+                           ? launcher_last_error()
+                           : "The laptop profile could not open.");
+        scene_set_status(status, false);
+        sound_play(SOUND_ERROR);
+    }
+}
+
 static void service_requests(void)
 {
     const char *target;
+    const char *laptop_profile;
     GameLaunchKind game_kind;
     LaunchAppId app;
     LaunchToolId tool;
+    service_laptop_menu();
+    while (scene_take_laptop_request(&laptop_profile))
+        launch_laptop_and_report(laptop_profile);
     while (scene_take_mail_registration(&target)) {
         if (launcher_save_mail_target(target)) {
             panel_set_mail_target(launcher_mail_target());
@@ -1686,6 +1837,7 @@ static void usage(void)
            "  --audio-test           strict-load and offline-mix the sound bank\n"
            "  --font-test            verify the original bitmap face\n"
            "  --launcher-test        verify safe desktop-app handoff\n"
+           "  --laptop-test          verify laptop profile parsing/sessions\n"
            "  --game-catalog-test    verify Kilix 95 catalog discovery\n"
            "  --visual-test          verify RGB art and opaque scene output\n"
            "  --render-test DIR      write hash-pinned release frames\n"
@@ -1754,6 +1906,11 @@ int main(int argc, char **argv)
     if (strcmp(argv[1], "--font-test") == 0) return cmd_font_test();
     if (strcmp(argv[1], "--launcher-test") == 0)
         return cmd_launcher_test();
+    if (strcmp(argv[1], "--laptop-test") == 0) {
+        if (!laptop_selftest()) return 1;
+        printf("laptop-test: ok (profiles, sessions, rejections)\n");
+        return 0;
+    }
     if (strcmp(argv[1], "--game-catalog-test") == 0)
         return cmd_game_catalog_test(argv[0]);
     if (strcmp(argv[1], "--visual-test") == 0)
