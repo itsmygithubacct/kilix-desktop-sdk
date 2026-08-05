@@ -861,13 +861,16 @@ static int cmd_interaction_test(void)
          * machine. Card is 232x134 at (124, 85): row 0 spans y 115..139,
          * row 1 139..163, the Close row 187..211. */
         {
-            const Object *breaker = scene_object(SCENE_DESK, 14);
+            const Object *breaker = NULL;
             LaunchPowerId power = LAUNCH_POWER_COUNT;
             int bx = 0, by = 0;
+            scene_goto(SCENE_SERVER_ROOM);
+            breaker = scene_object(SCENE_SERVER_ROOM,
+                                   SCENE_SERVER_BREAKER_INDEX);
             test_expect(breaker != NULL && breaker->kind == OBJ_BREAKER &&
                             strcmp(breaker->name,
                                    "Master breaker panel") == 0,
-                        "the Study wall carries a master breaker",
+                        "the Server Room wall carries a master breaker",
                         &failures);
             test_expect(object_hit_point(breaker, &bx, &by),
                         "breaker responds on its visible pixels", &failures);
@@ -915,6 +918,7 @@ static int cmd_interaction_test(void)
                             !scene_take_power_request(&power),
                         "pressing outside the breaker card dismisses it",
                         &failures);
+            scene_goto(SCENE_DESK);
         }
 
         /* Running state, injected exactly like the profile list: the lid

@@ -20,13 +20,11 @@ typedef struct Container {
 enum {
     DESK_ITEMS = 13,
     DESK_LAPTOP_INDEX = DESK_ITEMS,
-    DESK_BREAKER_INDEX = DESK_ITEMS + 1,
-    /* props + laptop + breaker + hallway door */
-    DESK_OBJS = DESK_ITEMS + 3,
+    DESK_OBJS = DESK_ITEMS + 2, /* props + laptop + hallway door */
     HALL_OBJS = 7,
     STORE_ITEMS = 3,
     STORE_OBJS = STORE_ITEMS + 1,
-    SERVER_OBJS = 7,
+    SERVER_OBJS = 8,
     GAME_OBJS_MAX = GAME_CATALOG_MAX + 1,
     LIBRARY_BOOKS = 5,
     LIBRARY_OBJS = LIBRARY_BOOKS + 1,
@@ -48,6 +46,8 @@ static Object desk_objs[DESK_OBJS];
 static Object hall_objs[HALL_OBJS];
 static Object store_objs[STORE_OBJS];
 static Object server_objs[SERVER_OBJS];
+_Static_assert((int)SCENE_SERVER_BREAKER_INDEX < (int)SERVER_OBJS,
+               "the breaker index must stay inside the Server Room");
 static Object game_objs[GAME_OBJS_MAX];
 static Object library_objs[LIBRARY_OBJS];
 static Object cleaning_objs[CLEANING_OBJS];
@@ -298,14 +298,7 @@ static void build_desk(void)
      * closed until the run registry says a session is live. */
     desk_objs[DESK_LAPTOP_INDEX].container =
         (int)(laptop_lid_t + 0.5);
-    /* The master breaker hangs on the clear left wall, above the laptop and
-     * clear of every desk prop. Power is the one thing in the mansion that
-     * can end the session it is being touched from, so it gets an object of
-     * its own rather than a row on a panel that also opens documents. */
-    set_object(&desk_objs[DESK_BREAKER_INDEX], "Master breaker panel",
-               "Power", OBJ_BREAKER, ICON_BREAKER, ui_rect(14, 62, 36, 50),
-               -1, false);
-    set_object(&desk_objs[DESK_ITEMS + 2], "Hallway door", "Hall", OBJ_DOOR,
+    set_object(&desk_objs[DESK_ITEMS + 1], "Hallway door", "Hall", OBJ_DOOR,
                ICON_NONE, ui_rect(386, 44, 50, 150), SCENE_HALLWAY, true);
 }
 
@@ -385,6 +378,16 @@ static void build_server_room(void)
     set_object(&server_objs[5], "Network patch panel",
                "Network", OBJ_APPLIANCE, ICON_NONE, ui_rect(361, 61, 53, 137),
                LAUNCH_TOOL_NETWORK, false);
+    /* The master breaker: mounted on the wall between the Gallery door and
+     * the monitors, where a panel actually goes, with the room's conduit
+     * running past its corner. Power is the one thing in the mansion that
+     * can end the session it is being touched from, so it is an object of
+     * its own rather than a row on a console that also opens documents —
+     * and this is the room that already keeps the house's machinery. */
+    set_object(&server_objs[SCENE_SERVER_BREAKER_INDEX],
+               "Master breaker panel",
+               "Power", OBJ_BREAKER, ICON_BREAKER, ui_rect(92, 56, 30, 50),
+               -1, false);
     set_object(&server_objs[6], "Software administration cabinet",
                "Software", OBJ_APPLIANCE, ICON_NONE, ui_rect(419, 36, 55, 188),
                LAUNCH_TOOL_SOFTWARE, false);

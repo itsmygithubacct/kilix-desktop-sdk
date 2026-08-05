@@ -6,18 +6,18 @@
   "sha256": {
     "base-balcony.ppm": "f43d0fdb5d1a49ed2ed01cc3a4b8d3f2f32acd3788785141fe8f6e6415f0b1e9",
     "base-cleaning-room.ppm": "5c20797434eff7095cb117e5e13f7c41dc2fcab4ea3596bb8001c7af21241786",
-    "base-desk.ppm": "ba0f5c87d8d16a5785bc7a19e390a4f601c1e1d526094113834a32a987f05d73",
+    "base-desk.ppm": "96a28e163ed005e720ce291bdd4e0a784e377f9ef7f10f452c79319641f3d308",
     "base-game-room.ppm": "da0c384aa6e68266329dea2cc38122f748554b29034470c4ae9239e73bd9df5f",
     "base-hallway.ppm": "dd9a108cedd9fb4fab8935fc1c70d1354b548e962bfbdb3b401bee02d1bffbb3",
     "base-library.ppm": "56b1ed863bc3be81a8e6c001e6e002941ad20199ab7e9771ec5b2b07d1a736ff",
-    "base-server-room.ppm": "3051f92efc72f145772555383d5d060ad5a4840131a7cc29303bcca1785d2d2f",
+    "base-server-room.ppm": "4954047dd2ec37211b29069c7cd3363b4cb2749cc7dbaf5689cccdcae424be13",
     "base-storeroom.ppm": "f5fe9e3cd7d523a37a622e55fc1948ee923f09f4f1f40bcdae625f90be663c3b",
     "state-cleaning-hover.ppm": "a22fb481037220688519d13fb8de4993bf440d94b89b5647b0592c5d8017eec1",
-    "state-desk-hover.ppm": "c29e20e7ee2c0cde27db668daedab0ce80833d732798f21739dcf9b442086fcb",
-    "state-desk-web-boot.ppm": "c31f61e8760b8c14779a7a4f96a95c63bfc1eaf4235c7d9afc1f4d8f01da7200",
+    "state-desk-hover.ppm": "3bcfdfce7f30b8e01085607bdd33dbbca881858cf43014c188ec71be5bb05e13",
+    "state-desk-web-boot.ppm": "0e1c57395ba2e691737cd6fae95a75d357f98d5c444f28d233368391e3927789",
     "state-desk-web-zoom.ppm": "e83dae6535fab36a7e7c3a28bdce0ab2f54a73e69d90f9acab3224e7a82e4334",
     "state-game-hover.ppm": "9a487340cc6f1f3cc1ce73671be367ae676064856d9e22547178014ce1bf069f",
-    "state-server-hover.ppm": "f77ee69d517fa83c64a909d73abb294339f9e8081d785d82f76b39d4b49bc8c1",
+    "state-server-hover.ppm": "9f255d86f83d150fef8303950860a6fdd06d2c617f1854a4771f0fb2505cb0d3",
     "state-store-moved.ppm": "63cb6b09f2e7787fb46432275e843019e5c405663027a8e34a4136dd9e5b586f"
   }
 }
