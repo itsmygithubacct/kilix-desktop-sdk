@@ -556,6 +556,24 @@ class Taskbar:
                    ]),
                 MI("Install Software", icon="folder",
                    action=lambda: shell.open_install()),
+                # Every desktop offers this, so the answer never depends on
+                # which desktop you happen to be standing in.
+                MI("Default Desktop", icon="desktop",
+                   action=lambda: shell.open_default_desktop(),
+                   context=[
+                       MI("Kilix 95",
+                          action=lambda: shell.open_default_desktop("external")),
+                       MI("Kilix XP",
+                          action=lambda: shell.open_default_desktop("xp")),
+                       MI("Kilix Cap",
+                          action=lambda: shell.open_default_desktop("cap")),
+                       MI("Kilix TUI",
+                          action=lambda: shell.open_default_desktop("tui")),
+                       MI("Kilix Land",
+                          action=lambda: shell.open_default_desktop("land")),
+                       MI("Automatic",
+                          action=lambda: shell.open_default_desktop("auto")),
+                   ]),
                 MI("Web Browser", icon="browser",
                    action=lambda: shell.open_browser("firefox"),
                    context=[

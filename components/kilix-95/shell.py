@@ -1002,6 +1002,25 @@ class Shell:
             return [executable, "install"] + ([item] if item else [])
         return None
 
+    @staticmethod
+    def default_desktop_target(name=""):
+        """`kilix default-desktop`, resolved like every other entry."""
+        kilix = os.path.join(KILIX_HOME, "kilix")
+        if not (os.path.isfile(kilix) and os.access(kilix, os.X_OK)):
+            kilix = shutil.which("kilix") or ""
+        if not kilix:
+            return None
+        return [kilix, "default-desktop"] + (["set", name] if name else ["show"])
+
+    def open_default_desktop(self, name=""):
+        """Choose the desktop every later session starts with."""
+        target = self.default_desktop_target(name)
+        if target is None:
+            wm.msgbox(self.desk, "Default Desktop",
+                      "The Kilix launcher could not be found.", icon="error")
+            return False
+        return self._tab(target, "Default Desktop", os.path.expanduser("~"))
+
     def open_install(self, item=""):
         """Browse everything installable, or install one thing by id."""
         target = self.install_target(item)
