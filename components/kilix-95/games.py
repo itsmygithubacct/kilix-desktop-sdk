@@ -20,6 +20,7 @@ import configparser
 import hashlib
 import os
 import shutil
+import subprocess
 import sys
 import tarfile
 import tempfile
@@ -664,6 +665,63 @@ def _launch_native(exe):
     os.execv(exe, [exe])
 
 
+def host_game_ready(game):
+    """Whether the HOST already has `game` installed and runnable.
+
+    Once the play verb exists the install truth lives host-side, so the
+    menu's play-immediately-or-ask-first decision must ask the authority
+    that will do the installing — otherwise a game the host installed would
+    prompt "isn't set up yet" forever. `kilix install --json` is that
+    authority's own report. Only called behind a host_play_argv() probe, so
+    an old host is never handed a subcommand it does not know.
+    """
+    import json
+    kilix = os.path.join(KILIX_HOME, "kilix")
+    if not os.access(kilix, os.X_OK):
+        return False
+    try:
+        result = subprocess.run(
+            [kilix, "install", "--json"], stdin=subprocess.DEVNULL,
+            capture_output=True, text=True, timeout=15)
+    except (OSError, subprocess.TimeoutExpired):
+        return False
+    if result.returncode != 0:
+        return False
+    try:
+        rows = json.loads(result.stdout)
+    except ValueError:
+        return False
+    return any(row.get("id") == game and row.get("installed")
+               for row in rows if isinstance(row, dict))
+
+
+def host_play_argv(game, setup_only=False):
+    """argv for the host's `kilix games play`, or None when the host
+    predates the verb.
+
+    The host verb is the one install-and-boot implementation, backed by the
+    same pinned content catalog: delegating keeps a Start-menu launch, a
+    typed command, and every other desktop's launch on one build, installed
+    once in the host's private data directory. Probed rather than assumed so
+    this checkout still boots games by itself on an older host.
+    """
+    kilix = os.path.join(KILIX_HOME, "kilix")
+    if not os.access(kilix, os.X_OK):
+        return None
+    try:
+        probe = subprocess.run(
+            [kilix, "games", "help"], stdin=subprocess.DEVNULL,
+            capture_output=True, text=True, timeout=10)
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+    if probe.returncode != 0 or "play GAME" not in probe.stdout:
+        return None
+    argv = [kilix, "games", "play", game]
+    if setup_only:
+        argv.append("--setup-only")
+    return argv
+
+
 def main():
     try:
         shared_settings.ensure_file()
@@ -679,6 +737,15 @@ def main():
         raise SystemExit(
             f"kilix games: {label} is disabled; "
             f"run 'kilix games enable {game}' to make it available")
+    # A working local install keeps working — offline boxes and pre-verb
+    # setups must never be forced through a reinstall. Everything else is
+    # delegated to the host, which owns install-and-boot from here on.
+    host_argv = None if game_ready(game) else host_play_argv(game, setup_only)
+    if host_argv:
+        try:
+            os.execv(host_argv[0], host_argv)
+        except OSError:
+            pass                # fall back to this checkout's own installer
     try:
         payload = ensure(game)
     except Exception as e:      # BadZipFile/TarError/configparser.Error too

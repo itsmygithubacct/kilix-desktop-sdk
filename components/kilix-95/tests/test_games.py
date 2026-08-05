@@ -378,6 +378,7 @@ def boom(game, report=print):
 
 
 games.ensure = boom
+games.host_play_argv = lambda *a, **k: None   # exercise the local error path
 builtins.input = lambda *a: (_ for _ in ()).throw(EOFError())
 sys.argv = ["games.py", "doom"]
 try:

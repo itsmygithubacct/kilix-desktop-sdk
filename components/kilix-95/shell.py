@@ -1395,6 +1395,11 @@ class Shell:
                       meta["label"], None)
 
         ready = games.game_ready(game)
+        if not ready and games.host_play_argv(game):
+            # games.py delegates install-and-boot to `kilix games play`, so
+            # the host owns install state; asking it here keeps a game the
+            # host already installed from prompting "isn't set up yet".
+            ready = games.host_game_ready(game)
         if ready:
             go()
             return
