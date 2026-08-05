@@ -541,6 +541,21 @@ class Taskbar:
                 # one of the models this downloads, and they share one copy.
                 MI("BitNet Models", icon="bonsai",
                    action=shell.open_kilix_bonsai),
+                # The coding agents install and update through their vendors'
+                # own scripts; `kilix install` prints each command before
+                # running it. Right-click reaches one directly.
+                MI("Coding Agents", icon="terminal",
+                   action=lambda: shell.open_install(),
+                   context=[
+                       MI("Claude Code",
+                          action=lambda: shell.open_install("claude")),
+                       MI("Codex",
+                          action=lambda: shell.open_install("codex")),
+                       MI("Kimi Code",
+                          action=lambda: shell.open_install("kimi")),
+                   ]),
+                MI("Install Software", icon="folder",
+                   action=lambda: shell.open_install()),
                 MI("Web Browser", icon="browser",
                    action=lambda: shell.open_browser("firefox"),
                    context=[

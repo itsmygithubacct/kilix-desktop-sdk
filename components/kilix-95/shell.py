@@ -988,6 +988,32 @@ class Shell:
             return [kilix, "kilix-tui"]
         return None
 
+    @staticmethod
+    def install_target(item=""):
+        """`kilix install`, resolved the way every other entry resolves.
+
+        The Kilix launcher owns the list; the Start menu asks it rather than
+        keeping a catalogue of its own, so what this offers and what
+        `kilix install` prints cannot drift apart."""
+        kilix = os.path.join(KILIX_HOME, "kilix")
+        if os.path.isfile(kilix) and os.access(kilix, os.X_OK):
+            return [kilix, "install"] + ([item] if item else [])
+        if executable := shutil.which("kilix"):
+            return [executable, "install"] + ([item] if item else [])
+        return None
+
+    def open_install(self, item=""):
+        """Browse everything installable, or install one thing by id."""
+        target = self.install_target(item)
+        if target is not None:
+            title = "Install Software" if not item else f"Install {item}"
+            return self._tab(target, title, os.path.expanduser("~"))
+        wm.msgbox(
+            self.desk, "Install Software",
+            "The Kilix launcher could not be found, so the installable list is "
+            "unavailable.", icon="error")
+        return False
+
     def open_kilix_tui(self):
         """The text-native desktop, in a tab of its own.
 
