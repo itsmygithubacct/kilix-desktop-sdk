@@ -14,6 +14,8 @@ from __future__ import annotations
 import os
 from pathlib import Path
 import re
+import shutil
+import subprocess
 import sys
 import tempfile
 
@@ -175,17 +177,68 @@ def native_build_command(repo: str, binary: str) -> list[str]:
     return ["make", "all"]
 
 
-def run_game(root: Path, game: str) -> None:
-    """Run one Kilix 95 registry game, preserving its normal installer UI.
+def resolve_kilix() -> str | None:
+    """The kilix launcher, installed home first, then PATH."""
+    candidates = []
+    home = os.environ.get("KILIX_HOME")
+    if home:
+        candidates.append(os.path.join(home, "kilix"))
+    source = os.environ.get("GPU_TERMINAL_SOURCE_HOME")
+    if source:
+        candidates.append(
+            os.path.join(os.path.expanduser(source), "kilix", "kilix"))
+    found = shutil.which("kilix")
+    if found:
+        candidates.append(found)
+    for candidate in candidates:
+        if os.access(candidate, os.X_OK):
+            return candidate
+    return None
 
-    The current native-game repositories include the shared game-kit Makefile
-    before their own ``all`` target.  A bare ``make`` therefore selects a
-    library target, exits successfully, and leaves no game executable.  Kilix
-    95's compatibility installer still invokes bare ``make``; replace only
-    that compatibility seam with the equivalent pinned installer request and
-    an explicit ``all`` goal before entering its normal ``games.main()``.
+
+def host_plays_games(kilix: str) -> bool:
+    """True when this kilix knows ``games play``.
+
+    Asked without a game id, which every version refuses — the answer is in
+    *how* it refuses: a launcher that has the verb names it in its own usage
+    line.  Nothing launches either way, so the probe has no side effects.
+    (The same detection kilix-land-desktop's games menu uses.)
+    """
+    try:
+        probe = subprocess.run([kilix, "games", "play"],
+                               stdin=subprocess.DEVNULL,
+                               capture_output=True, text=True, timeout=15)
+    except (OSError, subprocess.SubprocessError):
+        return False
+    if probe.returncode == 0:
+        return True
+    message = (probe.stderr or "") + (probe.stdout or "")
+    if "usage:" not in message.lower():
+        return False
+    return "play" in message
+
+
+def run_game(root: Path, game: str) -> None:
+    """Run one Kilix 95 registry game.
+
+    Preferred path: the host owns games.  When this machine's ``kilix``
+    knows ``kilix games play GAME``, hand the id over and never touch the
+    Kilix 95 checkout — a mansion on a box that installed only Kilix Cap
+    has no other desktop's source tree to shell into.
+
+    Fallback path (a kilix that predates the verb): import the checkout's
+    games module, preserving its normal installer UI.  The current
+    native-game repositories include the shared game-kit Makefile before
+    their own ``all`` target.  A bare ``make`` therefore selects a library
+    target, exits successfully, and leaves no game executable.  Kilix 95's
+    compatibility installer still invokes bare ``make``; replace only that
+    compatibility seam with the equivalent pinned installer request and an
+    explicit ``all`` goal before entering its normal ``games.main()``.
     """
     game = clean_id(game)
+    kilix = resolve_kilix()
+    if kilix and host_plays_games(kilix):
+        os.execv(kilix, [kilix, "games", "play", game])
     root = root.expanduser().resolve(strict=True)
     games_path = root / "games.py"
     if not games_path.is_file():
