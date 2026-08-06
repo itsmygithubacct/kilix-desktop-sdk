@@ -1,18 +1,32 @@
 # Third-party code
 
-The repository vendors source snapshots so a build does not fetch code from
-the network.
+The shared stack arrives as one pinned submodule, `third_party/kilix-game-sdk`,
+the way every SDK-backed game in this workspace takes it. The SDK pins
+`kilix-game-kit`, which pins the components below; a build resolves them from
+that closure rather than fetching anything itself.
 
-| Component | Version macros | Location |
+Separately vendored copies used to sit here instead. They drifted: the
+framebuffer snapshot had reached 0.2.0 carrying a local patch while upstream
+was at 0.3.0 with a shared-memory frame transport. A pin cannot drift without
+saying so, which is the reason for the change.
+
+| Component | Version macros | Location under `third_party/kilix-game-sdk/kilix-game-kit/third_party/` |
 |---|---:|---|
-| kitty-terminal-session | 0.1.0 | `third_party/kitty-terminal-session/` |
-| kitty-framebuffer | 0.2.0 | `third_party/kitty-terminal-session/third_party/kitty-framebuffer/` |
-| kitty-keyboard | 0.1.0 | `third_party/kitty-terminal-session/third_party/kitty_keyboard/` |
-| soft-raster | 0.2.0 | `third_party/soft-raster/` |
-| pcm-mixer | commit `9cc695cde53a` | `third_party/pcm-mixer/` |
+| kitty-terminal-session | 0.2.0 | `kitty-terminal-session/` |
+| kitty-framebuffer | 0.3.0 | `kitty-terminal-session/third_party/kitty-framebuffer/` |
+| kitty-input | 0.1.0 | `kitty-terminal-session/third_party/kitty-input/` |
+| kitty-keyboard | 0.1.0 | `kitty-terminal-session/third_party/kitty-input/third_party/kitty_keyboard/` |
+| soft-raster | 0.2.0 | `soft-raster/` |
+| pcm-mixer | — | `pcm-mixer/` |
 
-Each component's license is retained as `LICENSE` in its directory. The audio
-wrapper uses pcm-mixer's strict WAV loader and optional POSIX sink
+Each component's license is retained as `LICENSE` in its directory.
+
+Text is drawn with soft-raster's embedded 8x16 face, scaled by whole pixels to
+the canvas. Cap carried its own authored 7x14 face until 2026-08-06; it was
+retired rather than left unused, and is preserved with its clean-room
+provenance record outside this repository.
+
+The audio wrapper uses pcm-mixer's strict WAV loader and optional POSIX sink
 transport. Audio source provenance is separate from code provenance and is
 recorded in [audio-provenance.json](audio-provenance.json).
 
@@ -40,7 +54,7 @@ Cleaning Room, and Balcony text-to-image sources. No third-party or
 commercial-product image was an input.
 
 Pillow 9.4.0 was used locally by tools/prepare_visual.py to produce the eight
-480×256 P6 room plates and by tools/prepare_workdesk_items.py to produce the
+1440×768 P6 room plates and by tools/prepare_workdesk_items.py to produce the
 Desk RGB object layer, anti-aliased visual mask, and semantic hit-ID map.
 The same offline Pillow preparation produces the nine-cell game-media
 RGB/alpha atlas after local chroma-key removal. These

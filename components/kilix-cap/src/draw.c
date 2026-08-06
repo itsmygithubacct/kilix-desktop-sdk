@@ -1,7 +1,8 @@
 /* draw.c — opaque full-color drawing. Contract: src/draw.h. */
 #include "draw.h"
 
-#include "font.h"
+#include "soft_raster.h"
+#include "types.h"
 
 static uint8_t channel_mix(uint8_t a, uint8_t b, unsigned t)
 {
@@ -177,26 +178,43 @@ void draw_plate_pressed(Canvas *c, int x, int y, int w, int h)
 
 /* ---- Text ---- */
 
+/* Text comes from soft-raster's embedded 8x16 face, scaled by whole pixels
+ * to the canvas. Cap carried its own authored 7x14 face until 2026-08-06;
+ * it is preserved, with its clean-room provenance record, outside this
+ * repository rather than left here unused. The advance matches what it had
+ * (24px at this scale); the cap height is taller, 48 against 42. */
+enum { TEXT_SCALE = CANVAS_SCALE, TEXT_CELL_H = 16 };
+
+static void wrap_canvas(sr_canvas *sc, Canvas *c)
+{
+    sr_canvas_wrap(sc, c->px, c->w, c->h);
+}
+
 int draw_text_width(const char *s)
 {
-    return font_text_width(s != NULL ? s : "");
+    return sr_text_width(s != NULL ? s : "", TEXT_SCALE);
 }
 
 int draw_text_height(void)
 {
-    return FONT_CAP_H;
+    return TEXT_CELL_H * TEXT_SCALE;
 }
 
 void draw_text(Canvas *c, int x, int y, const char *s, uint32_t rgb)
 {
+    sr_canvas sc;
     if (c == NULL || c->px == NULL || s == NULL) return;
-    font_draw(c, x, y, s, rgb & 0xffffffu);
+    wrap_canvas(&sc, c);
+    sr_text(&sc, (float)x, (float)y, s, rgb & 0xffffffu, 1.0f, TEXT_SCALE);
 }
 
 void draw_text_center(Canvas *c, int cx, int y, const char *s, uint32_t rgb)
 {
-    if (s == NULL) return;
-    draw_text(c, cx - draw_text_width(s) / 2, y, s, rgb);
+    sr_canvas sc;
+    if (c == NULL || c->px == NULL || s == NULL) return;
+    wrap_canvas(&sc, c);
+    sr_text_center(&sc, (float)cx, (float)y, s, rgb & 0xffffffu, 1.0f,
+                   TEXT_SCALE);
 }
 
 /* ---- Cursor ---- */

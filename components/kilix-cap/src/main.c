@@ -9,7 +9,6 @@
 #include "canvas.h"
 #include "art.h"
 #include "draw.h"
-#include "font.h"
 #include "game_catalog.h"
 #include "game_icons.h"
 #include "input.h"
@@ -1192,13 +1191,16 @@ static int cmd_font_test(void)
     int failures = 0;
     int ink = 0;
 
-    test_expect(FONT_CAP_H == 42 && FONT_LINE_H == 60,
-                "font metrics are 14px cap / 20px line", &failures);
-    for (int ch = 32; ch <= 126; ch++)
-        test_expect(font_has_glyph((unsigned char)ch),
-                    "font printable-ASCII coverage", &failures);
-    test_expect(font_text_width("Desk") == 4 * FONT_ADVANCE,
-                "font text advance", &failures);
+    /* soft-raster's embedded 8x16 face, scaled to the canvas. The advance
+     * is what the layout is built on, so it is pinned; coverage is checked
+     * by drawing rather than by asking, because a glyph the shared module
+     * renders blank would pass a has-glyph query and still leave a hole. */
+    test_expect(draw_text_height() == 16 * CANVAS_SCALE,
+                "text cell is the scaled 8x16 face", &failures);
+    test_expect(draw_text_width("Desk") == 4 * 8 * CANVAS_SCALE,
+                "text advance is 8px per character, scaled", &failures);
+    test_expect(draw_text_width("") == 0, "empty string has no width",
+                &failures);
 
     if (!canvas_init(&canvas, CANVAS_W, CANVAS_H)) return 2;
     draw_clear(&canvas, MC_WHITE);
