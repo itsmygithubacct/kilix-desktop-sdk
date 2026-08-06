@@ -694,12 +694,40 @@ class Shell:
                 "bash", "-lc", script]
         return self._popen(argv)
 
+    @staticmethod
+    def _resolve_program(name):
+        """An absolute path for `name`, resolved in the desktop's environment.
+
+        The terminal spawns a tab's child from its own environment, whose
+        PATH does not reliably include ~/.local/bin — a bare name it cannot
+        resolve dies before its first prompt and leaves a dead tab whose only
+        trace is a resize warning. PATH first, then ~/.local/bin explicitly,
+        which is where the stack installs its tools; names that are already
+        paths only have to be executable.
+        """
+        if os.path.sep in name:
+            return name if os.access(name, os.X_OK) else None
+        found = shutil.which(name)
+        if found:
+            return found
+        local = os.path.join(os.path.expanduser("~"), ".local", "bin", name)
+        return local if os.access(local, os.X_OK) else None
+
     def _tab(self, argv, title, cwd=None, env=None):
         kitten = self._kitten()
         if not kitten or not os.environ.get("KITTY_LISTEN_ON"):
             wm.msgbox(self.desk, "kilix", "Cannot reach kilix remote control\n"
                       "(KITTY_LISTEN_ON is not set).", icon="error")
             return False
+        program = self._resolve_program(argv[0])
+        if program is None:
+            # Words instead of a corpse: a tab whose child cannot even start
+            # renders as an instantly dead pane with no explanation.
+            wm.msgbox(self.desk, title or "kilix",
+                      f"{argv[0]} could not be found\n"
+                      "(not on PATH or in ~/.local/bin).", icon="error")
+            return False
+        argv = [program, *argv[1:]]
         env_args = []
         for k, v in (env or {}).items():
             env_args.extend(["--env", f"{k}={v}"])
