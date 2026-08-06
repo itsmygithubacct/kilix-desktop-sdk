@@ -14,18 +14,31 @@
 #include <stddef.h>
 #include <stdint.h>
 
+/* The canvas is authored at 3x its original 480x320: every layout number
+ * below and every asset is three times what it was, so the room plates are
+ * sampled near their generated resolution instead of being replicated by
+ * the presenter. CANVAS_SCALE exists to document that relationship and to
+ * let the render fixtures state it; nothing derives coordinates from it at
+ * runtime, because a layout that computed itself would be harder to read
+ * than one that says where things are. */
+enum { CANVAS_SCALE = 3 };
+
 enum {
-    CANVAS_W = 480,
-    CANVAS_H = 320,
+    CANVAS_W = 1440,
+    CANVAS_H = 960,
 
     /* Three stacked zones; the split is a release contract. */
     NAMEBAR_Y    = 0,
-    NAMEBAR_H    = 24,
-    CONTENT_Y    = 24,
-    CONTENT_H    = 256,
-    CONTROLBAR_Y = 280,
-    CONTROLBAR_H = 40
+    NAMEBAR_H    = 72,
+    CONTENT_Y    = 72,
+    CONTENT_H    = 768,
+    CONTROLBAR_Y = 840,
+    CONTROLBAR_H = 120
 };
+
+_Static_assert(CANVAS_W == 480 * CANVAS_SCALE &&
+                   CANVAS_H == 320 * CANVAS_SCALE,
+               "the canvas must stay an exact multiple of its original size");
 
 _Static_assert(NAMEBAR_H + CONTENT_H + CONTROLBAR_H == CANVAS_H,
                "zone heights must sum to the canvas height");
@@ -36,7 +49,8 @@ _Static_assert(CONTROLBAR_Y == CONTENT_Y + CONTENT_H,
 
 /* Minimum conventional-control target (docs/ENGINE.md §3.1). Physical room
  * objects instead use exact visible-pixel targets with no expansion. */
-enum { MIN_TARGET_W = 32, MIN_TARGET_H = 32 };
+enum { MIN_TARGET_W = 32 * CANVAS_SCALE,
+       MIN_TARGET_H = 32 * CANVAS_SCALE };
 
 static inline int imini(int a, int b) { return a < b ? a : b; }
 static inline int imaxi(int a, int b) { return a > b ? a : b; }

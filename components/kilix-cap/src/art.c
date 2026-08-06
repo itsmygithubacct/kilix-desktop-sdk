@@ -37,33 +37,33 @@ static const char *const background_names[BACKGROUND_COUNT] = {
 };
 
 static const DeskSprite desk_sprites[] = {
-    {ICON_CLOCK,      140, 140, 45, 41},
-    {ICON_INBOX,       71, 150, 70, 25},
-    {ICON_OUTBOX,      71, 169, 70, 30},
-    {ICON_POSTCARD,    55, 195, 58, 28},
-    {ICON_NAMECARD,   250, 194, 25, 17},
-    {ICON_NOTEBOOK,   139, 192, 53, 34},
-    {ICON_DATEBOOK,   280,  96, 35, 43},
-    {ICON_CARDFILE,   277, 149, 42, 35},
-    {ICON_CABINET,    319, 143, 45, 44},
-    {ICON_PHONE,      340, 146, 92, 53},
-    {ICON_STATIONERY, 296, 184, 54, 31},
-    {ICON_TOOLBOX,    343, 200, 52, 37},
-    {ICON_GLOBE,      187, 105, 89, 73}
+    {ICON_CLOCK,       420, 420, 135, 123},
+    {ICON_INBOX,       213, 450, 210,  75},
+    {ICON_OUTBOX,      213, 507, 210,  90},
+    {ICON_POSTCARD,    165, 585, 174,  84},
+    {ICON_NAMECARD,    750, 582,  75,  51},
+    {ICON_NOTEBOOK,    417, 576, 159, 102},
+    {ICON_DATEBOOK,    840, 288, 105, 129},
+    {ICON_CARDFILE,    831, 447, 126, 105},
+    {ICON_CABINET,     957, 429, 135, 132},
+    {ICON_PHONE,      1020, 438, 276, 159},
+    {ICON_STATIONERY,  888, 552, 162,  93},
+    {ICON_TOOLBOX,    1029, 600, 156, 111},
+    {ICON_GLOBE,       561, 315, 267, 219}
 };
 
 enum {
     DESK_SPRITE_COUNT = (int)(sizeof desk_sprites / sizeof desk_sprites[0]),
     GAME_MEDIA_COLS = 3,
     GAME_MEDIA_ROWS = 3,
-    GAME_MEDIA_CELL_W = 48,
-    GAME_MEDIA_CELL_H = 56,
+    GAME_MEDIA_CELL_W = 144,
+    GAME_MEDIA_CELL_H = 168,
     GAME_MEDIA_W = GAME_MEDIA_COLS * GAME_MEDIA_CELL_W,
     GAME_MEDIA_H = GAME_MEDIA_ROWS * GAME_MEDIA_CELL_H,
     MANSION_ITEM_COLS = 2,
     MANSION_ITEM_ROWS = 2,
-    MANSION_ITEM_CELL_W = 48,
-    MANSION_ITEM_CELL_H = 56,
+    MANSION_ITEM_CELL_W = 144,
+    MANSION_ITEM_CELL_H = 168,
     MANSION_ITEM_W = MANSION_ITEM_COLS * MANSION_ITEM_CELL_W,
     MANSION_ITEM_H = MANSION_ITEM_ROWS * MANSION_ITEM_CELL_H,
     LAPTOP_LID_COLS = 2,
@@ -75,8 +75,8 @@ enum {
 };
 
 enum {
-    BREAKER_W = 30,
-    BREAKER_H = 50
+    BREAKER_W = 90,
+    BREAKER_H = 150
 };
 
 _Static_assert(LAPTOP_LID_COLS * LAPTOP_LID_ROWS == ART_LAPTOP_LID_FRAMES,

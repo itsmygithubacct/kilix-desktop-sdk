@@ -162,8 +162,12 @@ void font_draw(Canvas *c, int x, int y, const char *text, uint32_t rgb)
         for (int gy = 0; gy < 7; gy++) {
             for (int gx = 0; gx < FONT_GLYPH_W; gx++) {
                 if ((rows[gy] & (uint8_t)(1u << (6 - gx))) == 0) continue;
-                draw_px(c, pen_x + gx, pen_y + gy * 2, rgb);
-                draw_px(c, pen_x + gx, pen_y + gy * 2 + 1, rgb);
+                /* One authored pixel is FONT_SCALE wide and twice that
+                 * tall: the face has always been drawn two vertical
+                 * pixels per mask row, and scaling must not flatten it. */
+                draw_rect(c, pen_x + gx * FONT_SCALE,
+                          pen_y + gy * 2 * FONT_SCALE,
+                          FONT_SCALE, 2 * FONT_SCALE, rgb);
             }
         }
         pen_x += FONT_ADVANCE;

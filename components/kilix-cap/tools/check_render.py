@@ -11,8 +11,8 @@ from pathlib import Path
 import sys
 
 
-WIDTH = 480
-HEIGHT = 320
+WIDTH = 1440
+HEIGHT = 960
 CHANNELS = 3
 RASTER_BYTES = WIDTH * HEIGHT * CHANNELS
 DEFAULT_EXPECTED = (
@@ -45,7 +45,7 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description=(
             "Validate that a render directory contains the exact expected P6 "
-            "files and deterministic 480x320 full-color RGB pixels."
+            "files and deterministic 1440x960 full-color RGB pixels."
         )
     )
     parser.add_argument("directory", type=Path, help="render directory to validate")

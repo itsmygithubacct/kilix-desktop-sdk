@@ -33,16 +33,16 @@
       "height": 1024
     },
     "assets/art/mansion-items.ppm": {
-      "sha256": "7d504c0e0ef29ceda3018af2b8a5b38194bd330bfe9a35e6e45cd8335f29fc4e",
+      "sha256": "c92391736c9c0cf1b9fb6fd53162a217827096c3f46800cee1872c6e08b18389",
       "format": "P6",
-      "width": 96,
-      "height": 112
+      "width": 288,
+      "height": 336
     },
     "assets/art/mansion-items-mask.ppm": {
-      "sha256": "a39b268426c4c567cb2dde1fddf6eca4af942dbf5e1e42f4597d2e67983263da",
+      "sha256": "233bb72bff36e3ceb714843ac4fc843822d38654cc3664def3385e7d174d41b8",
       "format": "P6",
-      "width": 96,
-      "height": 112
+      "width": 288,
+      "height": 336
     }
   }
 }

@@ -23,9 +23,9 @@ from pathlib import Path
 from PIL import Image
 
 
-CELL_W = 30
-CELL_H = 50
-PADDING = 1
+CELL_W = 90
+CELL_H = 150
+PADDING = 3
 
 
 def parse_args() -> argparse.Namespace:

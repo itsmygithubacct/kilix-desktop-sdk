@@ -124,18 +124,18 @@ static bool power_request_pending;
 static LaunchPowerId pending_power_action;
 
 enum {
-    POWER_MENU_W = 232,
-    POWER_MENU_HEADER_H = 30,
-    POWER_MENU_ROW_H = 24,
-    POWER_MENU_FOOTER_H = 8,
+    POWER_MENU_W = 696,
+    POWER_MENU_HEADER_H = 90,
+    POWER_MENU_ROW_H = 72,
+    POWER_MENU_FOOTER_H = 24,
     POWER_MENU_ROWS = LAUNCH_POWER_COUNT + 1  /* actions + Close */
 };
 
 enum {
-    LAPTOP_MENU_W = 264,
-    LAPTOP_MENU_HEADER_H = 30,
-    LAPTOP_MENU_ROW_H = 24,
-    LAPTOP_MENU_FOOTER_H = 8
+    LAPTOP_MENU_W = 792,
+    LAPTOP_MENU_HEADER_H = 90,
+    LAPTOP_MENU_ROW_H = 72,
+    LAPTOP_MENU_FOOTER_H = 24
 };
 
 #define TRANS_PHASE 0.18
@@ -218,9 +218,9 @@ static void layout_container_items(void)
         for (int i = 1; i < STORE_OBJS; i++) {
             Object *o = &store_objs[i];
             if (!o->visible || o->container != ci) continue;
-            o->visual.x = store_containers[ci].rect.x + 8 + slot * 52;
+            o->visual.x = store_containers[ci].rect.x + 24 + slot * 156;
             o->visual.y = store_containers[ci].rect.y +
-                          store_containers[ci].rect.h - 56;
+                          store_containers[ci].rect.h - 168;
             o->hit = o->visual;
             slot++;
         }
@@ -292,14 +292,14 @@ static void build_desk(void)
      * sprite comes from the optional small-prop atlas (procedural drawing
      * as fallback), not from the pre-composed workdesk item layer. */
     set_object(&desk_objs[DESK_LAPTOP_INDEX], "Laptop", "Laptop",
-               OBJ_LAPTOP, ICON_LAPTOP, ui_rect(12, 204, 42, 49), -1,
+               OBJ_LAPTOP, ICON_LAPTOP, ui_rect(36, 612, 126, 147), -1,
                false);
     /* The lid frame rides in container (game media's variant pattern):
      * closed until the run registry says a session is live. */
     desk_objs[DESK_LAPTOP_INDEX].container =
         (int)(laptop_lid_t + 0.5);
     set_object(&desk_objs[DESK_ITEMS + 1], "Hallway door", "Hall", OBJ_DOOR,
-               ICON_NONE, ui_rect(386, 44, 50, 150), SCENE_HALLWAY, true);
+               ICON_NONE, ui_rect(1158, 132, 150, 450), SCENE_HALLWAY, true);
 }
 
 static void build_hallway(void)
@@ -318,13 +318,13 @@ static void build_hallway(void)
         {"Storeroom", "Store", SCENE_STOREROOM}
     };
     static const UiRect openings[HALL_OBJS] = {
-        { 72, 49, 54, 171},
-        {146, 66, 34, 143},
-        {180, 78, 25, 125},
-        {211, 80, 58, 132},
-        {279, 78, 25, 125},
-        {314, 66, 34, 143},
-        {358, 49, 54, 171}
+        { 216,  147,  162,  513},
+        { 438,  198,  102,  429},
+        { 540,  234,   75,  375},
+        { 633,  240,  174,  396},
+        { 837,  234,   75,  375},
+        { 942,  198,  102,  429},
+        {1074,  147,  162,  513}
     };
     for (int i = 0; i < HALL_OBJS; i++) {
         ObjKind kind = i == 3 ? OBJ_PORTAL : OBJ_DOOR;
@@ -346,14 +346,14 @@ static void build_storeroom(void)
     };
 
     store_containers[0].name = "Left shelf";
-    store_containers[0].rect = ui_rect(103, 68, 164, 160);
+    store_containers[0].rect = ui_rect(309, 204, 492, 480);
     store_containers[1].name = "Right shelf";
-    store_containers[1].rect = ui_rect(282, 68, 164, 160);
+    store_containers[1].rect = ui_rect(846, 204, 492, 480);
     set_object(&store_objs[0], "Hallway door", "Out", OBJ_DOOR, ICON_NONE,
-               ui_rect(15, 37, 49, 190), SCENE_HALLWAY, true);
+               ui_rect(45, 111, 147, 570), SCENE_HALLWAY, true);
     for (int i = 0; i < STORE_ITEMS; i++) {
         set_object(&store_objs[i + 1], items[i].name, items[i].label,
-                   OBJ_ITEM, items[i].icon, ui_rect(0, 0, 44, 44), -1, false);
+                   OBJ_ITEM, items[i].icon, ui_rect(0, 0, 132, 132), -1, false);
         store_objs[i + 1].container = ITEM_LEFT_SHELF;
     }
     layout_container_items();
@@ -362,21 +362,21 @@ static void build_storeroom(void)
 static void build_server_room(void)
 {
     set_object(&server_objs[0], "Grand Gallery door", "Out", OBJ_DOOR,
-               ICON_NONE, ui_rect(20, 45, 70, 180), SCENE_HALLWAY, true);
+               ICON_NONE, ui_rect(60, 135, 210, 540), SCENE_HALLWAY, true);
     set_object(&server_objs[1], "Logs, alerts, and system mail monitor",
-               "Logs", OBJ_APPLIANCE, ICON_NONE, ui_rect(123, 96, 68, 84),
+               "Logs", OBJ_APPLIANCE, ICON_NONE, ui_rect(369, 288, 204, 252),
                LAUNCH_TOOL_LOGS, false);
     set_object(&server_objs[2], "Processes and network monitor",
-               "Activity", OBJ_APPLIANCE, ICON_NONE, ui_rect(193, 96, 68, 84),
+               "Activity", OBJ_APPLIANCE, ICON_NONE, ui_rect(579, 288, 204, 252),
                LAUNCH_TOOL_ACTIVITY, false);
     set_object(&server_objs[3], "System settings console",
-               "Settings", OBJ_APPLIANCE, ICON_NONE, ui_rect(263, 69, 46, 104),
+               "Settings", OBJ_APPLIANCE, ICON_NONE, ui_rect(789, 207, 138, 312),
                LAUNCH_TOOL_SETTINGS, false);
     set_object(&server_objs[4], "Storage administration rack",
-               "Disks", OBJ_APPLIANCE, ICON_NONE, ui_rect(318, 61, 38, 137),
+               "Disks", OBJ_APPLIANCE, ICON_NONE, ui_rect(954, 183, 114, 411),
                LAUNCH_TOOL_STORAGE, false);
     set_object(&server_objs[5], "Network patch panel",
-               "Network", OBJ_APPLIANCE, ICON_NONE, ui_rect(361, 61, 53, 137),
+               "Network", OBJ_APPLIANCE, ICON_NONE, ui_rect(1083, 183, 159, 411),
                LAUNCH_TOOL_NETWORK, false);
     /* The master breaker: mounted on the wall between the Gallery door and
      * the monitors, where a panel actually goes, with the room's conduit
@@ -386,10 +386,10 @@ static void build_server_room(void)
      * and this is the room that already keeps the house's machinery. */
     set_object(&server_objs[SCENE_SERVER_BREAKER_INDEX],
                "Master breaker panel",
-               "Power", OBJ_BREAKER, ICON_BREAKER, ui_rect(92, 56, 30, 50),
+               "Power", OBJ_BREAKER, ICON_BREAKER, ui_rect(276, 168, 90, 150),
                -1, false);
     set_object(&server_objs[6], "Software administration cabinet",
-               "Software", OBJ_APPLIANCE, ICON_NONE, ui_rect(419, 36, 55, 188),
+               "Software", OBJ_APPLIANCE, ICON_NONE, ui_rect(1257, 108, 165, 564),
                LAUNCH_TOOL_SOFTWARE, false);
 }
 
@@ -399,25 +399,25 @@ typedef struct GamePlacement {
 } GamePlacement;
 
 static const UiRect game_cd_slots[10] = {
-    {95, 51, 28, 40}, {130, 51, 28, 40}, {165, 51, 28, 40},
-    {200, 51, 28, 40}, {235, 51, 28, 40},
-    {95, 84, 28, 40}, {130, 84, 28, 40}, {165, 84, 28, 40},
-    {200, 84, 28, 40}, {235, 84, 28, 40}
+    { 285,  153,   84,  120}, { 390,  153,   84,  120}, { 495,  153,   84,  120},
+    { 600,  153,   84,  120}, { 705,  153,   84,  120},
+    { 285,  252,   84,  120}, { 390,  252,   84,  120}, { 495,  252,   84,  120},
+    { 600,  252,   84,  120}, { 705,  252,   84,  120}
 };
 
 static const UiRect game_floppy_slots[10] = {
-    {185, 212, 42, 30}, {235, 226, 42, 30}, {285, 210, 42, 30},
-    {335, 232, 42, 30}, {430, 214, 40, 29},
-    {170, 245, 42, 29}, {220, 245, 42, 29}, {270, 245, 42, 29},
-    {320, 245, 42, 29}, {420, 245, 42, 29}
+    { 555,  636,  126,   90}, { 705,  678,  126,   90}, { 855,  630,  126,   90},
+    {1005,  696,  126,   90}, {1290,  642,  120,   87},
+    { 510,  735,  126,   87}, { 660,  735,  126,   87}, { 810,  735,  126,   87},
+    { 960,  735,  126,   87}, {1260,  735,  126,   87}
 };
 
 static const UiRect game_book_slots[10] = {
-    {314, 55, 17, 32}, {334, 55, 17, 32},
-    {314, 91, 17, 32}, {334, 91, 17, 32},
-    {314, 127, 17, 32}, {334, 127, 17, 32},
-    {314, 163, 17, 32}, {334, 163, 17, 32},
-    {270, 127, 36, 29}, {270, 162, 36, 29}
+    { 942,  165,   51,   96}, {1002,  165,   51,   96},
+    { 942,  273,   51,   96}, {1002,  273,   51,   96},
+    { 942,  381,   51,   96}, {1002,  381,   51,   96},
+    { 942,  489,   51,   96}, {1002,  489,   51,   96},
+    { 810,  381,  108,   87}, { 810,  486,  108,   87}
 };
 
 static const GameCatalogEntry default_game_entries[] = {
@@ -458,7 +458,7 @@ static GamePlacement game_placement(int index)
 static void build_game_room(void)
 {
     set_object(&game_objs[0], "Hallway door", "Out", OBJ_DOOR, ICON_NONE,
-               ui_rect(15, 37, 49, 190), SCENE_HALLWAY, true);
+               ui_rect(45, 111, 147, 570), SCENE_HALLWAY, true);
     for (int i = 0; i < game_entry_count; i++) {
         GamePlacement placement = game_placement(i);
         game_icon_ensure(game_entries[i].id, game_entries[i].icon_pixels);
@@ -480,14 +480,14 @@ static void build_library(void)
         LAUNCH_TOOL_DOC_ENGINE
     };
     static const UiRect volumes[LIBRARY_BOOKS] = {
-        { 89, 142, 54, 67},
-        {153, 142, 48, 67},
-        {213, 142, 46, 67},
-        {271, 142, 45, 67},
-        {329, 142, 45, 67}
+        { 267,  426,  162,  201},
+        { 459,  426,  144,  201},
+        { 639,  426,  138,  201},
+        { 813,  426,  135,  201},
+        { 987,  426,  135,  201}
     };
     set_object(&library_objs[0], "Grand Gallery door", "Out", OBJ_DOOR,
-               ICON_NONE, ui_rect(14, 48, 51, 178), SCENE_HALLWAY, true);
+               ICON_NONE, ui_rect(42, 144, 153, 534), SCENE_HALLWAY, true);
     for (int i = 0; i < LIBRARY_BOOKS; i++)
         set_object(&library_objs[i + 1], names[i], names[i], OBJ_APPLIANCE,
                    ICON_NONE, volumes[i], tools[i], false);
@@ -496,31 +496,31 @@ static void build_library(void)
 static void build_cleaning_room(void)
 {
     set_object(&cleaning_objs[0], "Grand Gallery door", "Out", OBJ_DOOR,
-               ICON_NONE, ui_rect(19, 45, 69, 181), SCENE_HALLWAY, true);
+               ICON_NONE, ui_rect(57, 135, 207, 543), SCENE_HALLWAY, true);
     set_object(&cleaning_objs[1], "Temporary-file wash basin",
-               "Temp", OBJ_APPLIANCE, ICON_NONE, ui_rect(108, 111, 103, 111),
+               "Temp", OBJ_APPLIANCE, ICON_NONE, ui_rect(324, 333, 309, 333),
                LAUNCH_TOOL_CLEAN_TEMP, false);
     set_object(&cleaning_objs[2], "Trash copper bin",
-               "Trash", OBJ_APPLIANCE, ICON_NONE, ui_rect(222, 119, 56, 105),
+               "Trash", OBJ_APPLIANCE, ICON_NONE, ui_rect(666, 357, 168, 315),
                LAUNCH_TOOL_CLEAN_TRASH, false);
     set_object(&cleaning_objs[3], "User cache drawers",
-               "Cache", OBJ_APPLIANCE, ICON_NONE, ui_rect(280, 98, 64, 127),
+               "Cache", OBJ_APPLIANCE, ICON_NONE, ui_rect(840, 294, 192, 381),
                LAUNCH_TOOL_CLEAN_CACHE, false);
     set_object(&cleaning_objs[4], "Package cache and housekeeping terminal",
-               "Packages", OBJ_APPLIANCE, ICON_NONE, ui_rect(349, 93, 78, 129),
+               "Packages", OBJ_APPLIANCE, ICON_NONE, ui_rect(1047, 279, 234, 387),
                LAUNCH_TOOL_CLEAN_ALL, false);
 }
 
 static void build_balcony(void)
 {
     set_object(&balcony_objs[0], "Grand Gallery entrance", "Inside",
-               OBJ_PORTAL, ICON_NONE, ui_rect(13, 42, 78, 174),
+               OBJ_PORTAL, ICON_NONE, ui_rect(39, 126, 234, 522),
                SCENE_HALLWAY, true);
     set_object(&balcony_objs[1], "Weather instrument",
-               "Weather", OBJ_APPLIANCE, ICON_NONE, ui_rect(289, 137, 48, 71),
+               "Weather", OBJ_APPLIANCE, ICON_NONE, ui_rect(867, 411, 144, 213),
                LAUNCH_TOOL_WEATHER, false);
     set_object(&balcony_objs[2], "Brass telescope",
-               "Stars", OBJ_APPLIANCE, ICON_NONE, ui_rect(363, 83, 86, 151),
+               "Stars", OBJ_APPLIANCE, ICON_NONE, ui_rect(1089, 249, 258, 453),
                LAUNCH_TOOL_STARGAZING, false);
 }
 
@@ -535,7 +535,7 @@ static void build_bar(void)
     };
     for (int i = 0; i < BAR_OBJS; i++)
         set_object(&bar_objs[i], names[i], labels[i], OBJ_BUTTON, ICON_NONE,
-                   ui_rect(4 + i * 68, CONTROLBAR_Y + 6, 64, 28), i, false);
+                   ui_rect(12 + i * 204, CONTROLBAR_Y + 18, 192, 84), i, false);
 }
 
 static void register_scenes(void)
@@ -836,7 +836,7 @@ static int laptop_menu_rows(void)
 static int laptop_menu_header_height(void)
 {
     return LAPTOP_MENU_HEADER_H +
-           (laptop_menu.profiles.count == 0 ? 14 : 0);
+           (laptop_menu.profiles.count == 0 ? 42 : 0);
 }
 
 void scene_open_power_menu(void)
@@ -944,10 +944,10 @@ static void draw_power_menu(Canvas *c)
     if (!power_menu.open) return;
     card = power_menu_card();
     draw_shadow(c, card.x, card.y, card.w, card.h);
-    draw_round_rect(c, card.x, card.y, card.w, card.h, 6, MC_WHITE);
-    draw_frame(c, card.x, card.y, card.w, card.h, 2, UI_NAVY);
-    draw_rect(c, card.x + 2, card.y + 2, card.w - 4, 3, UI_TEAL);
-    draw_text_center(c, card.x + card.w / 2, card.y + 9,
+    draw_round_rect(c, card.x, card.y, card.w, card.h, 18, MC_WHITE);
+    draw_frame(c, card.x, card.y, card.w, card.h, 6, UI_NAVY);
+    draw_rect(c, card.x + 6, card.y + 6, card.w - 12, 9, UI_TEAL);
+    draw_text_center(c, card.x + card.w / 2, card.y + 27,
                      "MASTER BREAKER", UI_NAVY);
     for (int row = 0; row < POWER_MENU_ROWS; row++) {
         int row_y = card.y + POWER_MENU_HEADER_H + row * POWER_MENU_ROW_H;
@@ -959,12 +959,12 @@ static void draw_power_menu(Canvas *c)
                                          : launcher_power_title(
                                                (LaunchPowerId)row));
         if (power_menu.pressed_row == row)
-            draw_rect(c, card.x + 4, row_y, card.w - 8, POWER_MENU_ROW_H - 2,
-                      MC_LIGHT);
+            draw_rect(c, card.x + 12, row_y, card.w - 24,
+                      POWER_MENU_ROW_H - 6, MC_LIGHT);
         else if (armed)
-            draw_rect(c, card.x + 4, row_y, card.w - 8, POWER_MENU_ROW_H - 2,
-                      UI_TEAL);
-        draw_text(c, card.x + 14, row_y + 8, label,
+            draw_rect(c, card.x + 12, row_y, card.w - 24,
+                      POWER_MENU_ROW_H - 6, UI_TEAL);
+        draw_text(c, card.x + 42, row_y + 24, label,
                   armed ? MC_WHITE : UI_NAVY);
     }
 }
@@ -1059,10 +1059,10 @@ static void draw_laptop_menu(Canvas *c)
     card = laptop_menu_card();
     rows = laptop_menu_rows();
     draw_shadow(c, card.x, card.y, card.w, card.h);
-    draw_round_rect(c, card.x, card.y, card.w, card.h, 6, MC_WHITE);
-    draw_frame(c, card.x, card.y, card.w, card.h, 2, UI_NAVY);
-    draw_rect(c, card.x + 2, card.y + 2, card.w - 4, 3, UI_TEAL);
-    draw_text_center(c, card.x + card.w / 2, card.y + 9,
+    draw_round_rect(c, card.x, card.y, card.w, card.h, 18, MC_WHITE);
+    draw_frame(c, card.x, card.y, card.w, card.h, 6, UI_NAVY);
+    draw_rect(c, card.x + 6, card.y + 6, card.w - 12, 9, UI_TEAL);
+    draw_text_center(c, card.x + card.w / 2, card.y + 27,
                      "LAPTOP - OPEN A SESSION", UI_NAVY);
     for (int row = 0; row < rows; row++) {
         int row_y = card.y + laptop_menu_header_height() +
@@ -1503,9 +1503,9 @@ static void draw_namebar(Canvas *c)
                        : MC_WHITE;
     draw_gradient_v(c, 0, NAMEBAR_Y, CANVAS_W, NAMEBAR_H,
                     UI_NAVY_LIGHT, UI_NAVY);
-    draw_rect(c, 0, NAMEBAR_Y + NAMEBAR_H - 2, CANVAS_W, 2, UI_GOLD);
-    draw_text(c, 8, NAMEBAR_Y + 4, "KILIX CAP", UI_GOLD);
-    draw_text_center(c, CANVAS_W / 2, NAMEBAR_Y + 4, center, ink);
+    draw_rect(c, 0, NAMEBAR_Y + NAMEBAR_H - 6, CANVAS_W, 6, UI_GOLD);
+    draw_text(c, 24, NAMEBAR_Y + 12, "KILIX CAP", UI_GOLD);
+    draw_text_center(c, CANVAS_W / 2, NAMEBAR_Y + 12, center, ink);
 }
 
 static void draw_controlbar(Canvas *c)
@@ -1515,7 +1515,7 @@ static void draw_controlbar(Canvas *c)
     };
     draw_gradient_v(c, 0, CONTROLBAR_Y, CANVAS_W, CONTROLBAR_H,
                     UI_SLATE, UI_NAVY);
-    draw_rect(c, 0, CONTROLBAR_Y, CANVAS_W, 2, UI_GOLD);
+    draw_rect(c, 0, CONTROLBAR_Y, CANVAS_W, 6, UI_GOLD);
     for (int i = 0; i < BAR_OBJS; i++) {
         const Object *o = &bar_objs[i];
         int x = o->visual.x;
@@ -1538,9 +1538,9 @@ static void draw_controlbar(Canvas *c)
             border = MC_WHITE;
             ink = UI_NAVY;
         }
-        draw_round_rect(c, x, y, w, h, 6, fill);
-        draw_frame(c, x, y, w, h, 1, border);
-        draw_rect(c, x + 4, y + 5, 3, h - 10, accents[i]);
+        draw_round_rect(c, x, y, w, h, 18, fill);
+        draw_frame(c, x, y, w, h, 3, border);
+        draw_rect(c, x + 12, y + 15, 9, h - 30, accents[i]);
         draw_text_center(c, x + w / 2, y + (h - draw_text_height()) / 2,
                          o->label, ink);
     }
@@ -1553,7 +1553,7 @@ static void draw_desk_bg(Canvas *c)
                     UI_WOOD, UI_WOOD_DARK);
     draw_rect(c, 0, DESK_EDGE_Y, CANVAS_W,
               CONTENT_Y + CONTENT_H - DESK_EDGE_Y, UI_WOOD_DARK);
-    draw_rect(c, 0, DESK_EDGE_Y, CANVAS_W, 2, UI_GOLD);
+    draw_rect(c, 0, DESK_EDGE_Y, CANVAS_W, 6, UI_GOLD);
 }
 
 static void draw_hallway_bg(Canvas *c)
@@ -1561,8 +1561,8 @@ static void draw_hallway_bg(Canvas *c)
     draw_gradient_v(c, 0, CONTENT_Y, CANVAS_W, 196, 0xe8d6b7, UI_WALL);
     draw_gradient_v(c, 0, CONTENT_Y + 196, CANVAS_W, CONTENT_H - 196,
                     UI_WOOD, UI_WOOD_DARK);
-    draw_rect(c, 0, CONTENT_Y + 196, CANVAS_W, 2, UI_GOLD);
-    draw_text(c, 16, 238, "Choose a room", MC_WHITE);
+    draw_rect(c, 0, CONTENT_Y + 588, CANVAS_W, 6, UI_GOLD);
+    draw_text(c, 48, 714, "Choose a room", MC_WHITE);
 }
 
 static void draw_room_shell(Canvas *c, const char *caption)

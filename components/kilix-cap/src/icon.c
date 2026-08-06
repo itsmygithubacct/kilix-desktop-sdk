@@ -365,7 +365,12 @@ void icon_draw(Canvas *c, IconId id, int x, int y, int w, int h)
 
 bool icon_hit(IconId id, int x, int y, int w, int h, int px, int py)
 {
-    enum { MASK_MAX = 128 };
+    /* Big enough for the largest object drawn at the canvas scale: the
+     * Desk telephone is 276x159 and the monitor 267x219. A mask smaller
+     * than the prop makes icon_hit refuse every pixel, which reads as a
+     * prop that cannot be clicked rather than as a buffer that is too
+     * small. */
+    enum { MASK_MAX = 128 * CANVAS_SCALE };
     static uint32_t pixels[MASK_MAX * MASK_MAX];
     const uint32_t untouched = 0x00123456u;
     Canvas mask;

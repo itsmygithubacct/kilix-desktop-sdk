@@ -14,8 +14,8 @@ import zlib
 ROOT = Path(__file__).resolve().parents[1]
 MANIFEST = ROOT / "docs" / "visual-provenance.json"
 ART_DIRECTORY = ROOT / "assets" / "art"
-WIDTH = 480
-HEIGHT = 256
+WIDTH = 1440
+HEIGHT = 768
 
 SOURCE_PNGS = {
     "assets/art/workdesk-items-source.png",
@@ -79,10 +79,10 @@ MANSION_ATLAS = "assets/art/mansion-items.ppm"
 MANSION_ALPHA = "assets/art/mansion-items-mask.ppm"
 MANSION_PATHS = {MANSION_SOURCE, MANSION_KEYED, MANSION_ATLAS,
                  MANSION_ALPHA}
-MANSION_W = 96
-MANSION_H = 112
-MANSION_CELL_W = 48
-MANSION_CELL_H = 56
+MANSION_W = 288
+MANSION_H = 336
+MANSION_CELL_W = 144
+MANSION_CELL_H = 168
 MANSION_VARIANTS = 4
 
 # The OPTIONAL laptop-lid group: two frames (closed, half-open) that
@@ -96,8 +96,8 @@ LID_KEYED = "assets/art/laptop-lid.png"
 LID_ATLAS = "assets/art/laptop-lid.ppm"
 LID_ALPHA = "assets/art/laptop-lid-mask.ppm"
 LID_PATHS = {LID_SOURCE, LID_KEYED, LID_ATLAS, LID_ALPHA}
-LID_W = 96
-LID_H = 56
+LID_W = 288
+LID_H = 168
 
 # The OPTIONAL breaker group: one 30x50 face for the Server Room's master
 # breaker. Same rules as the two groups above — all-or-none plus its own
@@ -109,10 +109,10 @@ BREAKER_KEYED = "assets/art/breaker.png"
 BREAKER_FACE = "assets/art/breaker.ppm"
 BREAKER_ALPHA = "assets/art/breaker-mask.ppm"
 BREAKER_PATHS = {BREAKER_SOURCE, BREAKER_KEYED, BREAKER_FACE, BREAKER_ALPHA}
-BREAKER_W = 30
-BREAKER_H = 50
-LID_CELL_W = 48
-LID_CELL_H = 56
+BREAKER_W = 90
+BREAKER_H = 150
+LID_CELL_W = 144
+LID_CELL_H = 168
 LID_FRAMES = 2
 
 SEMANTIC_IDS = {
@@ -969,10 +969,10 @@ def run() -> str:
         else:
             dimensions = ppm_raster(data)[:2]
             if relative in (GAME_MEDIA, GAME_MEDIA_ALPHA):
-                if dimensions != (144, 168):
+                if dimensions != (432, 504):
                     raise VisualError(
                         f"{relative} is {dimensions[0]}x{dimensions[1]}; "
-                        "expected 144x168"
+                        "expected 432x504"
                     )
                 rasters[relative] = ppm_raster(data)[2]
             else:

@@ -338,12 +338,12 @@ void ui_draw_object(Canvas *c, const Object *o)
     }
 
     if (o->icon != ICON_NONE) {
-        int label_h = (label[0] != '\0') ? draw_text_height() + 6 : 0;
-        icon_draw(c, o->icon, x + 4, y + 5, w - 8, h - 9 - label_h);
+        int label_h = (label[0] != '\0') ? draw_text_height() + 18 : 0;
+        icon_draw(c, o->icon, x + 12, y + 15, w - 24, h - 27 - label_h);
     }
 
     if (label[0] != '\0') {
-        int ty = y + h - draw_text_height() - 4;
+        int ty = y + h - draw_text_height() - 12;
         uint32_t ink = (o->pressed || (!ui_touchable(o) && !o->tall))
                            ? MC_WHITE : UI_NAVY;
         draw_text_center(c, x + w / 2, ty, label, ink);

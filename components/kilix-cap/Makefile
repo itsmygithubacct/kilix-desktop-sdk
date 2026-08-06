@@ -117,9 +117,9 @@ test-code: $(BIN)
 	@set -e; \
 	a=$$(./$(BIN) --selftest 1337 400); \
 	b=$$(./$(BIN) --selftest 1337 400); \
-	e1='selftest: seed=1337 steps=400 digest=6a6f78cb scene=Storeroom'; \
-	e2='selftest: seed=42 steps=900 digest=5a537f64 scene=Server Room'; \
-	e3='selftest: seed=90210 steps=1500 digest=a5d1b279 scene=Balcony'; \
+	e1='selftest: seed=1337 steps=400 digest=1f57e554 scene=Grand Gallery'; \
+	e2='selftest: seed=42 steps=900 digest=8e35d73f scene=Server Room'; \
+	e3='selftest: seed=90210 steps=1500 digest=adb3e8e0 scene=Study'; \
 	[ "$$a" = "$$b" ] || { echo "FAIL selftest is not deterministic"; \
 	  echo "  run 1: $$a"; echo "  run 2: $$b"; exit 1; }; \
 	[ "$$a" = "$$e1" ] || { echo "FAIL selftest 1337 regression"; \

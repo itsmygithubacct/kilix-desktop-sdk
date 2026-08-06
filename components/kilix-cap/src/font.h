@@ -1,4 +1,5 @@
-/* font.h — original 7x14 bitmap face with 20px line advance.
+/* font.h — original 7x14 bitmap face, drawn at FONT_SCALE runtime pixels
+ * per authored pixel (21x42 with a 60px line advance at the shipped 3x).
  *
  * kilix-cap. FROZEN CONTRACT. Owning .c: src/font.c (LOC ~220).
  * Spec: docs/ENGINE.md §3 and docs/FONT.md.
@@ -15,10 +16,14 @@
 #include "canvas.h"
 
 enum {
-    FONT_GLYPH_W = 7,
-    FONT_CAP_H = 14,
-    FONT_ADVANCE = 8,
-    FONT_LINE_H = 20
+    /* Runtime pixels per authored pixel. The authored masks are the source
+     * of truth at any scale: raising this enlarges the face by replication,
+     * never by resampling, so no glyph edge is ever interpolated. */
+    FONT_SCALE = 3,
+    FONT_GLYPH_W = 7,               /* authored mask width, in mask pixels */
+    FONT_CAP_H = 7 * 2 * FONT_SCALE,
+    FONT_ADVANCE = 8 * FONT_SCALE,
+    FONT_LINE_H = 20 * FONT_SCALE
 };
 
 int  font_text_width(const char *text);

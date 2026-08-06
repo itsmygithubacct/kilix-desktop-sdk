@@ -9,8 +9,8 @@ from pathlib import Path
 from PIL import Image, ImageOps
 
 
-WIDTH = 480
-HEIGHT = 256
+WIDTH = 1440
+HEIGHT = 768
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument(

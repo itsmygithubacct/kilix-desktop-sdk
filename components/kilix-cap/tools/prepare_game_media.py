@@ -11,9 +11,9 @@ from PIL import Image
 
 COLS = 3
 ROWS = 3
-CELL_W = 48
-CELL_H = 56
-PADDING = 2
+CELL_W = 144
+CELL_H = 168
+PADDING = 6
 ATLAS_W = COLS * CELL_W
 ATLAS_H = ROWS * CELL_H
 

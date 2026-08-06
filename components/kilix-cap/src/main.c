@@ -328,8 +328,8 @@ static int cmd_input_test(void)
     static const uint8_t wheels[] =
         "\x1b[<64;2;2M\x1b[<65;2;2M";
     static const uint8_t pixel_second[] = "\x1b[<35;22;62M";
-    static const uint8_t pixel_last[] = "\x1b[<35;980;700M";
-    static const uint8_t pixel_outside[] = "\x1b[<35;981;701M";
+    static const uint8_t pixel_last[] = "\x1b[<35;2900;1980M";
+    static const uint8_t pixel_outside[] = "\x1b[<35;2901;1981M";
     input_event ev;
     int failures = 0;
 
@@ -375,7 +375,7 @@ static int cmd_input_test(void)
 
     /* SGR-pixel coordinates are one-based.  With a 2x framebuffer beginning
      * at terminal pixel 21,61, both 21,61 and 22,62 belong to canvas pixel
-     * 0,0; 980,700 is the final displayed physical pixel. */
+     * 0,0; 2900,1980 is the final displayed physical pixel. */
     input_set_geometry(80, 24, 10, 20, 3, 4, 2, 0, 0);
     input_mouse_feed(pixel_second, sizeof pixel_second - 1u);
     test_expect(input_next(&ev) && ev.kind == IN_MOUSE_MOVE &&
@@ -516,21 +516,21 @@ static int cmd_scene_test(void)
                 "movable item has an opaque pickup point", &failures);
 
     send_mouse(IN_MOUSE_DOWN, ix, iy, 0, true);
-    send_mouse(IN_MOUSE_MOVE, 350, 130, 0, true);
-    send_mouse(IN_MOUSE_UP, 350, 130, 1, true);
+    send_mouse(IN_MOUSE_MOVE, 1050, 390, 0, true);
+    send_mouse(IN_MOUSE_UP, 1050, 390, 1, true);
     test_expect(item->container == 0 && !item->held,
                 "wrong-button release cancels drag", &failures);
 
     send_mouse(IN_MOUSE_DOWN, ix, iy, 0, true);
-    send_mouse(IN_MOUSE_MOVE, 350, 130, 0, true);
-    send_mouse(IN_MOUSE_UP, 350, 130, 0, true);
+    send_mouse(IN_MOUSE_MOVE, 1050, 390, 0, true);
+    send_mouse(IN_MOUSE_UP, 1050, 390, 0, true);
     test_expect(item->container == 1 && !item->held,
                 "left-button drag moves item between shelves", &failures);
 
     test_expect(object_hit_point(item, &ix, &iy),
                 "moved item keeps an opaque pickup point", &failures);
     send_mouse(IN_MOUSE_DOWN, ix, iy, 0, true);
-    send_mouse(IN_MOUSE_UP, 350, 130, 0, false);
+    send_mouse(IN_MOUSE_UP, 1050, 390, 0, false);
     test_expect(item->container == 1 && !item->held,
                 "off-view release snaps item home", &failures);
 
@@ -787,10 +787,10 @@ static int cmd_interaction_test(void)
     }
 
     scene_goto(SCENE_STOREROOM);
-    drag_object_to(scene_object(SCENE_STOREROOM, 1), 350, 130);
+    drag_object_to(scene_object(SCENE_STOREROOM, 1), 1050, 390);
     test_expect(scene_item_place(0) == ITEM_RIGHT_SHELF,
                 "Storeroom item moves to the right shelf", &failures);
-    drag_object_to(scene_object(SCENE_STOREROOM, 1), 160, 130);
+    drag_object_to(scene_object(SCENE_STOREROOM, 1), 480, 390);
     test_expect(scene_item_place(0) == ITEM_LEFT_SHELF,
                 "Storeroom item moves back to the left shelf", &failures);
 
@@ -825,10 +825,10 @@ static int cmd_interaction_test(void)
         scene_open_laptop_menu();
         test_expect(scene_laptop_menu_open(),
                     "chooser opens with injected profiles", &failures);
-        /* Two profiles: card is 264x110 at (108, 97); the first profile
-         * row spans y 127..150. */
-        send_mouse(IN_MOUSE_DOWN, 240, 139, 0, true);
-        send_mouse(IN_MOUSE_UP, 240, 139, 0, true);
+        /* Two profiles: card is 792x330 at (324, 291); the first profile
+         * row spans y 381..452. */
+        send_mouse(IN_MOUSE_DOWN, 720, 417, 0, true);
+        send_mouse(IN_MOUSE_UP, 720, 417, 0, true);
         test_expect(!scene_laptop_menu_open() &&
                         scene_take_laptop_request(&profile_id) &&
                         profile_id != NULL &&
@@ -845,21 +845,21 @@ static int cmd_interaction_test(void)
                     "clicking outside the card dismisses without launching",
                     &failures);
         scene_open_laptop_menu();
-        send_mouse(IN_MOUSE_DOWN, 240, 139, 0, true);
-        send_mouse(IN_MOUSE_UP, 240, 139 + 24, 0, true);
+        send_mouse(IN_MOUSE_DOWN, 720, 417, 0, true);
+        send_mouse(IN_MOUSE_UP, 720, 417 + 72, 0, true);
         test_expect(scene_laptop_menu_open() &&
                         !scene_take_laptop_request(&profile_id),
                     "releasing on a different row arms nothing", &failures);
-        send_mouse(IN_MOUSE_DOWN, 240, 139 + 2 * 24, 0, true);
-        send_mouse(IN_MOUSE_UP, 240, 139 + 2 * 24, 0, true);
+        send_mouse(IN_MOUSE_DOWN, 720, 417 + 2 * 72, 0, true);
+        send_mouse(IN_MOUSE_UP, 720, 417 + 2 * 72, 0, true);
         test_expect(!scene_laptop_menu_open() &&
                         !scene_take_laptop_request(&profile_id),
                     "the Close row dismisses without launching", &failures);
 
         /* The master breaker. Its rows ARM before they act, so no single
          * touch anywhere in the mansion can end the session or the
-         * machine. Card is 232x134 at (124, 85): row 0 spans y 115..139,
-         * row 1 139..163, the Close row 187..211. */
+         * machine. Card is 696x402 at (372, 255): row 0 spans y 345..416,
+         * row 1 417..488, the Close row 561..632. */
         {
             const Object *breaker = NULL;
             LaunchPowerId power = LAUNCH_POWER_COUNT;
@@ -881,14 +881,14 @@ static int cmd_interaction_test(void)
             test_expect(scene_power_menu_open(),
                         "touching the breaker opens the power menu",
                         &failures);
-            send_mouse(IN_MOUSE_DOWN, 240, 127, 0, true);
-            send_mouse(IN_MOUSE_UP, 240, 127, 0, true);
+            send_mouse(IN_MOUSE_DOWN, 720, 381, 0, true);
+            send_mouse(IN_MOUSE_UP, 720, 381, 0, true);
             test_expect(scene_power_menu_open() &&
                             !scene_take_power_request(&power),
                         "the first touch of a power row only arms it",
                         &failures);
-            send_mouse(IN_MOUSE_DOWN, 240, 127, 0, true);
-            send_mouse(IN_MOUSE_UP, 240, 127, 0, true);
+            send_mouse(IN_MOUSE_DOWN, 720, 381, 0, true);
+            send_mouse(IN_MOUSE_UP, 720, 381, 0, true);
             test_expect(!scene_power_menu_open() &&
                             scene_take_power_request(&power) &&
                             power == LAUNCH_POWER_LOGOUT,
@@ -899,15 +899,15 @@ static int cmd_interaction_test(void)
             /* Arming one row then touching another must leave nothing
                armed and act on nothing. */
             scene_open_power_menu();
-            send_mouse(IN_MOUSE_DOWN, 240, 127, 0, true);
-            send_mouse(IN_MOUSE_UP, 240, 127, 0, true);
-            send_mouse(IN_MOUSE_DOWN, 240, 151, 0, true);
-            send_mouse(IN_MOUSE_UP, 240, 151, 0, true);
+            send_mouse(IN_MOUSE_DOWN, 720, 381, 0, true);
+            send_mouse(IN_MOUSE_UP, 720, 381, 0, true);
+            send_mouse(IN_MOUSE_DOWN, 720, 453, 0, true);
+            send_mouse(IN_MOUSE_UP, 720, 453, 0, true);
             test_expect(scene_power_menu_open() &&
                             !scene_take_power_request(&power),
                         "arming a second row acts on neither", &failures);
-            send_mouse(IN_MOUSE_DOWN, 240, 199, 0, true);
-            send_mouse(IN_MOUSE_UP, 240, 199, 0, true);
+            send_mouse(IN_MOUSE_DOWN, 720, 597, 0, true);
+            send_mouse(IN_MOUSE_UP, 720, 597, 0, true);
             test_expect(!scene_power_menu_open() &&
                             !scene_take_power_request(&power),
                         "the breaker's Close row leaves the power alone",
@@ -939,8 +939,8 @@ static int cmd_interaction_test(void)
                     "a live session settles the lid fully open",
                     &failures);
         scene_open_laptop_menu();
-        send_mouse(IN_MOUSE_DOWN, 240, 139, 0, true);
-        send_mouse(IN_MOUSE_UP, 240, 139, 0, true);
+        send_mouse(IN_MOUSE_DOWN, 720, 417, 0, true);
+        send_mouse(IN_MOUSE_UP, 720, 417, 0, true);
         test_expect(!scene_laptop_menu_open() &&
                         !scene_take_laptop_request(&profile_id) &&
                         scene_take_laptop_close_request(&profile_id) &&
@@ -1004,7 +1004,7 @@ static int cmd_audio_trigger_test(void)
 
     scene_goto(SCENE_STOREROOM);
     sound_reset_trace();
-    drag_object_to(scene_object(SCENE_STOREROOM, 1), 350, 130);
+    drag_object_to(scene_object(SCENE_STOREROOM, 1), 1050, 390);
     test_expect(sound_trace_count(SOUND_CONTAIN) == 1,
                 "contain fires on a changed shelf", &failures);
 
@@ -1192,7 +1192,7 @@ static int cmd_font_test(void)
     int failures = 0;
     int ink = 0;
 
-    test_expect(FONT_CAP_H == 14 && FONT_LINE_H == 20,
+    test_expect(FONT_CAP_H == 42 && FONT_LINE_H == 60,
                 "font metrics are 14px cap / 20px line", &failures);
     for (int ch = 32; ch <= 126; ch++)
         test_expect(font_has_glyph((unsigned char)ch),
@@ -1387,7 +1387,7 @@ static int cmd_render_test(const char *argv0, const char *dir)
     written++;
 
     scene_goto(SCENE_STOREROOM);
-    drag_object_to(scene_object(SCENE_STOREROOM, 1), 350, 130);
+    drag_object_to(scene_object(SCENE_STOREROOM, 1), 1050, 390);
     if (!write_render_fixture(dir, "state-store-moved")) goto render_fail;
     written++;
 

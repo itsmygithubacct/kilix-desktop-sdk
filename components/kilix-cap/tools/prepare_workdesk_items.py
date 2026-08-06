@@ -20,15 +20,23 @@ from pathlib import Path
 from PIL import Image, ImageChops, ImageDraw, ImageOps
 
 
-WIDTH = 480
-HEIGHT = 256
+WIDTH = 1440
+HEIGHT = 768
 SCALE = 4
+# The shapes below are authored in the original 480x256 room space. ART_SCALE
+# carries them to the canvas the runtime actually uses; SCALE stays what it
+# always was, the supersampling factor the drawing is antialiased through.
+# Multiplying only the output size would leave every shape in the top-left
+# corner at its original size, which is exactly what a stale ART_SCALE looks
+# like.
+ART_SCALE = 3
+PEN = SCALE * ART_SCALE
 WHITE = 255
 PHONE_ICON = 10
-PHONE_X = 340
-PHONE_Y = 122  # content-local; the full-canvas y coordinate is 146
-PHONE_W = 92
-PHONE_H = 53
+PHONE_X = 1020
+PHONE_Y = 366  # content-local; the full-canvas y coordinate is 438
+PHONE_W = 276
+PHONE_H = 159
 
 
 def parse_args() -> argparse.Namespace:
@@ -62,13 +70,13 @@ def parse_args() -> argparse.Namespace:
 
 
 def scaled_box(box: tuple[int, int, int, int]) -> tuple[int, int, int, int]:
-    return tuple(value * SCALE for value in box)  # type: ignore[return-value]
+    return tuple(value * PEN for value in box)  # type: ignore[return-value]
 
 
 def scaled_points(
     points: list[tuple[int, int]],
 ) -> list[tuple[int, int]]:
-    return [(x * SCALE, y * SCALE) for x, y in points]
+    return [(x * PEN, y * PEN) for x, y in points]
 
 
 def draw_clock(draw: ImageDraw.ImageDraw) -> None:
@@ -114,7 +122,7 @@ def draw_notebook(draw: ImageDraw.ImageDraw) -> None:
         fill=WHITE,
     )
     draw.line(scaled_points([(143, 196), (165, 199)]), fill=WHITE,
-              width=3 * SCALE)
+              width=3 * PEN)
 
 
 def draw_name_card(draw: ImageDraw.ImageDraw) -> None:
@@ -127,7 +135,7 @@ def draw_name_card(draw: ImageDraw.ImageDraw) -> None:
 
 def draw_calendar(draw: ImageDraw.ImageDraw) -> None:
     draw.rounded_rectangle(
-        scaled_box((281, 78, 313, 114)), radius=2 * SCALE, fill=WHITE
+        scaled_box((281, 78, 313, 114)), radius=2 * PEN, fill=WHITE
     )
     draw.ellipse(scaled_box((285, 73, 291, 82)), fill=WHITE)
     draw.ellipse(scaled_box((304, 73, 310, 82)), fill=WHITE)
@@ -136,7 +144,7 @@ def draw_calendar(draw: ImageDraw.ImageDraw) -> None:
 def draw_card_file(draw: ImageDraw.ImageDraw) -> None:
     """Tray plus the fanned cards standing in it."""
     draw.rounded_rectangle(
-        scaled_box((278, 137, 318, 159)), radius=2 * SCALE, fill=WHITE
+        scaled_box((278, 137, 318, 159)), radius=2 * PEN, fill=WHITE
     )
     for left, top, right in (
         (282, 128, 290), (289, 126, 299), (297, 127, 307),
@@ -152,7 +160,7 @@ def draw_card_file(draw: ImageDraw.ImageDraw) -> None:
 def draw_cabinet(draw: ImageDraw.ImageDraw) -> None:
     """Compact wooden file cabinet."""
     draw.rounded_rectangle(
-        scaled_box((320, 120, 363, 162)), radius=2 * SCALE, fill=WHITE
+        scaled_box((320, 120, 363, 162)), radius=2 * PEN, fill=WHITE
     )
 
 
@@ -177,7 +185,7 @@ def draw_monitor(draw: ImageDraw.ImageDraw) -> None:
     """Bezel, neck, and foot. The screen face itself is physical and therefore
     deliberately belongs to the semantic hit mask."""
     draw.rounded_rectangle(
-        scaled_box((188, 82, 275, 137)), radius=3 * SCALE, fill=WHITE
+        scaled_box((188, 82, 275, 137)), radius=3 * PEN, fill=WHITE
     )
     draw.rectangle(scaled_box((226, 136, 239, 149)), fill=WHITE)
     draw.polygon(
@@ -193,20 +201,24 @@ def draw_monitor(draw: ImageDraw.ImageDraw) -> None:
 # genuine ties, where two silhouettes cover one pixel equally.  The replacement
 # telephone has no hand-authored outline: it is composited later from its own
 # generated RGBA source and so carries its exact alpha as coverage.
+# Declared bounds are in the runtime canvas space (content-local), and must
+# stay in step with src/art.c's desk_sprites table: build_hit() lets a prop
+# claim pixels only inside these, so a stale table silently empties the mask
+# of every prop rather than failing loudly.
 ITEMS: tuple[tuple[int, tuple[int, int, int, int], object], ...] = (
-    (5, (250, 170, 25, 17), draw_name_card),
-    (6, (139, 168, 53, 34), draw_notebook),
-    (11, (296, 160, 54, 31), draw_paper),
-    (12, (343, 176, 52, 37), draw_calculator),
+    (5, (750, 510, 75, 51), draw_name_card),
+    (6, (417, 504, 159, 102), draw_notebook),
+    (11, (888, 480, 162, 93), draw_paper),
+    (12, (1029, 528, 156, 111), draw_calculator),
     (PHONE_ICON, (PHONE_X, PHONE_Y, PHONE_W, PHONE_H), None),
-    (1, (140, 116, 45, 41), draw_clock),
-    (2, (71, 126, 70, 25), draw_in_tray),
-    (3, (71, 145, 70, 30), draw_out_tray),
-    (4, (55, 171, 58, 28), draw_envelope),
-    (7, (280, 72, 35, 43), draw_calendar),
-    (8, (277, 125, 42, 35), draw_card_file),
-    (9, (319, 119, 45, 44), draw_cabinet),
-    (13, (187, 81, 89, 73), draw_monitor),
+    (1, (420, 348, 135, 123), draw_clock),
+    (2, (213, 378, 210, 75), draw_in_tray),
+    (3, (213, 435, 210, 90), draw_out_tray),
+    (4, (165, 513, 174, 84), draw_envelope),
+    (7, (840, 216, 105, 129), draw_calendar),
+    (8, (831, 375, 126, 105), draw_card_file),
+    (9, (957, 357, 135, 132), draw_cabinet),
+    (13, (561, 243, 267, 219), draw_monitor),
 )
 
 
@@ -220,7 +232,7 @@ def erase_phone_remnants(draw: ImageDraw.ImageDraw) -> None:
     appear clipped in the final 480px scene.
     """
     draw.rounded_rectangle(
-        scaled_box((350, 140, 432, 175)), radius=8 * SCALE, fill=0
+        scaled_box((350, 140, 432, 175)), radius=8 * PEN, fill=0
     )
     draw.ellipse(scaled_box((401, 151, 433, 198)), fill=0)
 

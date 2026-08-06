@@ -39,7 +39,7 @@ static int scale = 1, off_x, off_y;
 static struct winsize last_ws;
 static int64_t esc_since_ms = -1;
 
-enum { MIN_PRESENT_SCALE = 2, CELL_SNAP_HEADROOM = 64 };
+enum { MIN_PRESENT_SCALE = 1, CELL_SNAP_HEADROOM = 64 };
 
 static int64_t now_ms(void)
 {
@@ -75,7 +75,8 @@ static bool alloc_present_buffer(int w, int h)
     return present_buf != NULL;
 }
 
-/* scale = min(fbw/480, fbh/320); min bounds 960x640 guarantee >= 2 and max
+/* scale = min(fbw/1440, fbh/960); the canvas is already authored at 3x,
+ * so 1 is the floor and min bounds 1440x960 guarantee it; max
  * 2400x1600 caps it at 5 (docs/ENGINE.md §2). */
 static void compute_placement(void)
 {

@@ -98,7 +98,7 @@
       "output_sha256": "014faa34d7b78979f5bc6cc5c8b404d6da0a0b844f2f20fd0e2d61cd223a6331",
       "output_width": 1717,
       "output_height": 916,
-      "prompt": "Use case: stylized-concept\nAsset type: immersive Server Room background for a layered 480x256 mansion-interface terminal application\nPrimary request: create a hidden technological operations room inside an old elegant mansion, where physical consoles can open system settings, administration tools, logs, alerts, mail, process views, and network views\nScene/backdrop: a warm walnut-paneled basement command room transformed into a sophisticated server room; exposed copper pipes and bundled cables trace the walls, patch panels glow softly, dark server racks stand along the right wall, and old-house architecture remains visible behind the technology\nSubject layout: leave a tall empty door recess at the far left for a separately composited walnut exit door. Across the center place one substantial operations desk with exactly two distinct widescreen CRT-style monitors side by side, both with blank near-black glass screens and clearly separated silhouettes. Behind and to the right, include three visually distinct clickable equipment zones: a brass-and-bakelite settings console, a tall server/service rack, and a network patch panel with colored cables. Keep each zone unobstructed.\nStyle/medium: polished realistic editorial interior illustration, painterly 3D realism, coherent with a classic walnut mansion; subtle retrofuturism, not sci-fi fantasy\nComposition/framing: very wide 15:8 landscape, straight-on slightly elevated view, all two monitor screens and three equipment zones readable after downscaling to 480x256; door recess occupies only the leftmost edge\nLighting/mood: moody but legible amber work lights, cool teal monitor glow, small green and orange status LEDs; vigilant, capable, matrix-like atmosphere\nColor palette: deep navy, charcoal, walnut brown, oxidized copper, muted teal, phosphor green, amber\nMaterials/textures: walnut, brass, bakelite, brushed steel, glass, braided wire, painted masonry\nConstraints: room background only; exactly two blank main monitor screens; no people; no readable text, letters, numbers, logos, brands, watermark, UI panels, floating controls, or labels; do not place any object in front of the door recess\nAvoid: generic data center aisle, white modern office, ne\u006fn cyberpunk overload, illegible darkness, duplicated monitors, tiny clutter, text on screens"
+      "prompt": "Use case: stylized-concept\nAsset type: immersive Server Room background for a layered 480x256 mansion-interface terminal application\nPrimary request: create a hidden technological operations room inside an old elegant mansion, where physical consoles can open system settings, administration tools, logs, alerts, mail, process views, and network views\nScene/backdrop: a warm walnut-paneled basement command room transformed into a sophisticated server room; exposed copper pipes and bundled cables trace the walls, patch panels glow softly, dark server racks stand along the right wall, and old-house architecture remains visible behind the technology\nSubject layout: leave a tall empty door recess at the far left for a separately composited walnut exit door. Across the center place one substantial operations desk with exactly two distinct widescreen CRT-style monitors side by side, both with blank near-black glass screens and clearly separated silhouettes. Behind and to the right, include three visually distinct clickable equipment zones: a brass-and-bakelite settings console, a tall server/service rack, and a network patch panel with colored cables. Keep each zone unobstructed.\nStyle/medium: polished realistic editorial interior illustration, painterly 3D realism, coherent with a classic walnut mansion; subtle retrofuturism, not sci-fi fantasy\nComposition/framing: very wide 15:8 landscape, straight-on slightly elevated view, all two monitor screens and three equipment zones readable after downscaling to 480x256; door recess occupies only the leftmost edge\nLighting/mood: moody but legible amber work lights, cool teal monitor glow, small green and orange status LEDs; vigilant, capable, matrix-like atmosphere\nColor palette: deep navy, charcoal, walnut brown, oxidized copper, muted teal, phosphor green, amber\nMaterials/textures: walnut, brass, bakelite, brushed steel, glass, braided wire, painted masonry\nConstraints: room background only; exactly two blank main monitor screens; no people; no readable text, letters, numbers, logos, brands, watermark, UI panels, floating controls, or labels; do not place any object in front of the door recess\nAvoid: generic data center aisle, white modern office, neon cyberpunk overload, illegible darkness, duplicated monitors, tiny clutter, text on screens"
     },
     {
       "id": "library-room",
@@ -150,7 +150,7 @@
       "output_sha256": "453230299da1e5a2f2743994e1dc3707b2e80d4b17f0f96e70ddacd8966386b9",
       "output_width": 1717,
       "output_height": 916,
-      "prompt": "Use case: stylized-concept\nAsset type: object-free Game Room environment plate for a layered interactive room-metaphor desktop application, designed to downscale cleanly to a 480x256 content area\nInput images: Image 1 is an architectural, walnut-material, shelf, doorway, camera, and lighting reference only; Image 2 is a cozy office style, furniture, palette, and lighting reference only. Generate a new room rather than editing either image.\nPrimary request: create a delightful late-1990s-inspired home game room whose separately rendered game-media sprites can appear and disappear as a live catalog changes\nScene/backdrop: warm residential-office game den with a narrow empty doorway recess at the far left aligned like Image 1; a broad walnut media cabinet across the rear wall containing three long, clearly empty horizontal shelves for upright CD jewel cases; a substantial clean walnut game table or desk across the lower foreground with open surface for loose 3.5-inch floppy disks; one smaller side bookcase with several clearly empty upright slots for game manuals; tasteful fixed decor may include a blank CRT monitor, joystick, desk lamp, upholstered chair, a few unlabeled decorative books, plants, and framed abstract art\nStyle/medium: polished realistic editorial interior illustration, painterly 3D environment art, consistent with the warm generated rooms in Images 1 and 2; rich full color and readable after downscaling\nComposition/framing: very wide 15:8 landscape, straight-on with a slightly elevated view; reserve the narrow far-left doorway for the existing separate door sprite; keep three long shelf surfaces unobstructed; keep multiple clear patches on the foreground tabletop; keep the side manual shelf visible; moderate perspective and clean silhouettes\nLighting/mood: warm daylight mixed with gentle amber practical lamps; nostalgic, welcoming, playful, tidy, lived-in\nColor palette: walnut brown, warm cream, muted teal, moss green, rust orange, golden amber, and deep navy\nMaterials/textures: believable wood grain, glass CRT, fabric, brass, paper, and plaster\nConstraints: background environment only; every catalog-linked CD case, game box, floppy disk, and game manual will be rendered later as a separate sprite, so do not bake any game media into the reserved shelves, tabletop patches, or manual slots; no people; no game titles; no readable text; no letters; no numbers; no labels; no logos; no trademarks; no watermarks; no UI chrome; no floating buttons; no highlighted regions; no cropped furniture; no extreme perspective\nAvoid: arcade cabinets, ne\u006fn cyberpunk styling, modern RGB gaming rigs, branded consoles, clutter blocking the reserved dynamic-placement surfaces"
+      "prompt": "Use case: stylized-concept\nAsset type: object-free Game Room environment plate for a layered interactive room-metaphor desktop application, designed to downscale cleanly to a 480x256 content area\nInput images: Image 1 is an architectural, walnut-material, shelf, doorway, camera, and lighting reference only; Image 2 is a cozy office style, furniture, palette, and lighting reference only. Generate a new room rather than editing either image.\nPrimary request: create a delightful late-1990s-inspired home game room whose separately rendered game-media sprites can appear and disappear as a live catalog changes\nScene/backdrop: warm residential-office game den with a narrow empty doorway recess at the far left aligned like Image 1; a broad walnut media cabinet across the rear wall containing three long, clearly empty horizontal shelves for upright CD jewel cases; a substantial clean walnut game table or desk across the lower foreground with open surface for loose 3.5-inch floppy disks; one smaller side bookcase with several clearly empty upright slots for game manuals; tasteful fixed decor may include a blank CRT monitor, joystick, desk lamp, upholstered chair, a few unlabeled decorative books, plants, and framed abstract art\nStyle/medium: polished realistic editorial interior illustration, painterly 3D environment art, consistent with the warm generated rooms in Images 1 and 2; rich full color and readable after downscaling\nComposition/framing: very wide 15:8 landscape, straight-on with a slightly elevated view; reserve the narrow far-left doorway for the existing separate door sprite; keep three long shelf surfaces unobstructed; keep multiple clear patches on the foreground tabletop; keep the side manual shelf visible; moderate perspective and clean silhouettes\nLighting/mood: warm daylight mixed with gentle amber practical lamps; nostalgic, welcoming, playful, tidy, lived-in\nColor palette: walnut brown, warm cream, muted teal, moss green, rust orange, golden amber, and deep navy\nMaterials/textures: believable wood grain, glass CRT, fabric, brass, paper, and plaster\nConstraints: background environment only; every catalog-linked CD case, game box, floppy disk, and game manual will be rendered later as a separate sprite, so do not bake any game media into the reserved shelves, tabletop patches, or manual slots; no people; no game titles; no readable text; no letters; no numbers; no labels; no logos; no trademarks; no watermarks; no UI chrome; no floating buttons; no highlighted regions; no cropped furniture; no extreme perspective\nAvoid: arcade cabinets, neon cyberpunk styling, modern RGB gaming rigs, branded consoles, clutter blocking the reserved dynamic-placement surfaces"
     },
     {
       "id": "game-media-sprite-sheet",
@@ -172,7 +172,7 @@
       "output_sha256": "82beddf2edfd1070e914e9eb291d1342bdb77c03a8732c7e0a3c7e440dbdbcea",
       "output_width": 1536,
       "output_height": 1024,
-      "prompt": "Use case: stylized-concept\nAsset type: isolated game-media sprite sheet for a layered 480x320 interactive room\nInput images: Image 1 is the new Game Room's exact walnut, lighting, camera-angle, and palette reference; Image 2 is an object rendering and material reference only. Do not reproduce either background.\nPrimary request: create exactly nine separate blank late-1990s game-media props arranged in a precise invisible 3-column by 3-row grid, for later cropping into individual interactive sprites\nGrid contents: top row, three distinct upright CD game-package variants suitable for a shelf—one clear jewel case facing front, one thicker dark plastic game case at a restrained three-quarter angle, and one slim colorful cardboard PC game box leaning slightly; middle row, three distinct 3.5-inch floppy-disk variants suitable for lying on a desk—one charcoal floppy seen from a gently elevated top view, one muted teal floppy rotated slightly, and a tidy stack of two rust-and-cream floppies; bottom row, three distinct compact game-manual/book variants suitable for a shelf—one upright deep-navy cloth manual facing front, one moss-green manual leaning slightly, and one short stack of two rust-and-cream illustrated manuals\nStyle/medium: polished realistic editorial interior-object illustration matching the generated room; believable clear plastic, dark plastic, cardboard, paper, cloth, metal shutter, and adhesive label textures; clean silhouettes readable at small size\nComposition/framing: exact evenly spaced 3×3 grid; one complete isolated prop centered inside each equal cell; generous clear green padding around every prop; no props touching, overlapping, crossing a cell boundary, or cropped; upright cases/manuals nearly front-on; floppies viewed from a gently elevated top angle\nLighting/mood: warm upper-right office light consistent across all nine objects, restrained highlights\nScene/backdrop: perfectly flat solid #00ff00 chroma-key background covering the entire image; the background must be one exact uniform color with no shadows, gradients, texture, reflections, floor plane, grid lines, dividers, or lighting variation\nConstraints: exactly nine separate props and no extras; all package faces and labels blank enough for runtime identification; no readable text; no letters; no numbers; no game art; no game titles; no logos; no trademarks; no watermark; no cast shadows; no contact shadows; no reflections on the green background; do not use #00ff00 anywhere inside a subject; crisp separated edges and generous padding\nAvoid: discs outside cases, optical discs, console cartridges, modern USB drives, controllers, dice, duplicate objects, melted geometry, green spill"
+      "prompt": "Use case: stylized-concept\nAsset type: isolated game-media sprite sheet for a layered 480x320 interactive room\nInput images: Image 1 is the new Game Room's exact walnut, lighting, camera-angle, and palette reference; Image 2 is an object rendering and material reference only. Do not reproduce either background.\nPrimary request: create exactly nine separate blank late-1990s game-media props arranged in a precise invisible 3-column by 3-row grid, for later cropping into individual interactive sprites\nGrid contents: top row, three distinct upright CD game-package variants suitable for a shelf\u2014one clear jewel case facing front, one thicker dark plastic game case at a restrained three-quarter angle, and one slim colorful cardboard PC game box leaning slightly; middle row, three distinct 3.5-inch floppy-disk variants suitable for lying on a desk\u2014one charcoal floppy seen from a gently elevated top view, one muted teal floppy rotated slightly, and a tidy stack of two rust-and-cream floppies; bottom row, three distinct compact game-manual/book variants suitable for a shelf\u2014one upright deep-navy cloth manual facing front, one moss-green manual leaning slightly, and one short stack of two rust-and-cream illustrated manuals\nStyle/medium: polished realistic editorial interior-object illustration matching the generated room; believable clear plastic, dark plastic, cardboard, paper, cloth, metal shutter, and adhesive label textures; clean silhouettes readable at small size\nComposition/framing: exact evenly spaced 3\u00d73 grid; one complete isolated prop centered inside each equal cell; generous clear green padding around every prop; no props touching, overlapping, crossing a cell boundary, or cropped; upright cases/manuals nearly front-on; floppies viewed from a gently elevated top angle\nLighting/mood: warm upper-right office light consistent across all nine objects, restrained highlights\nScene/backdrop: perfectly flat solid #00ff00 chroma-key background covering the entire image; the background must be one exact uniform color with no shadows, gradients, texture, reflections, floor plane, grid lines, dividers, or lighting variation\nConstraints: exactly nine separate props and no extras; all package faces and labels blank enough for runtime identification; no readable text; no letters; no numbers; no game art; no game titles; no logos; no trademarks; no watermark; no cast shadows; no contact shadows; no reflections on the green background; do not use #00ff00 anywhere inside a subject; crisp separated edges and generous padding\nAvoid: discs outside cases, optical discs, console cartridges, modern USB drives, controllers, dice, duplicate objects, melted geometry, green spill"
     },
     {
       "id": "telephone-sprite",
@@ -321,33 +321,33 @@
       "path": "assets/art/workdesk-room.ppm",
       "role": "opaque runtime Study plate prepared from its room-native door edition",
       "format": "P6",
-      "width": 480,
-      "height": 256,
-      "sha256": "cf0386a25548bdd24a58dd66892fdca30cddaf6e0b45190af78fe29d6c318f34"
+      "width": 1440,
+      "height": 768,
+      "sha256": "0686b12b6fcfb1a6d4a7ac0f44b4ac993c665ab52dc3957de34e09372e9848ab"
     },
     {
       "path": "assets/art/workdesk-items.ppm",
       "role": "black-backed runtime RGB Desk object overlay",
       "format": "P6",
-      "width": 480,
-      "height": 256,
-      "sha256": "5e5c023baa16bd1f34f0a1690c0ab63834ff3daabbb2a52c7ac418e75d0c27a1"
+      "width": 1440,
+      "height": 768,
+      "sha256": "962d88ae337a34ea9f3548112ccdcb73adf1b34816c680f06fc776499fc529e0"
     },
     {
       "path": "assets/art/workdesk-items-mask.ppm",
       "role": "RGB-encoded grayscale anti-aliased coverage mask for compositing the Desk object overlay",
       "format": "P6",
-      "width": 480,
-      "height": 256,
-      "sha256": "5a9f41d558320d2ee93446b625d0285a732e61a2abb23ef9a8f94d37a0502cb8"
+      "width": 1440,
+      "height": 768,
+      "sha256": "0bc71d979f150fb699000643042d06e1d6e394b02be8c56e29bd7bc8949848f4"
     },
     {
       "path": "assets/art/workdesk-items-hit.ppm",
       "role": "RGB-encoded semantic hit-ID map: zero is background and values 1 through 13 identify only physical Desk props",
       "format": "P6",
-      "width": 480,
-      "height": 256,
-      "sha256": "f7b46fa759ef1c0307379946e48032fbfb7da7d24264a70a8064c4f86533719b"
+      "width": 1440,
+      "height": 768,
+      "sha256": "8b613d9de6e1df6b83687aa86c0a619bb83e982317f221f2a26e57778dd79768"
     },
     {
       "path": "assets/art/hallway-room.png",
@@ -369,9 +369,9 @@
       "path": "assets/art/hallway-room.ppm",
       "role": "opaque runtime Grand Gallery plate prepared from its six-door edition",
       "format": "P6",
-      "width": 480,
-      "height": 256,
-      "sha256": "318ceca87176b597fbaa3644e0bc684e8ce168fc123aebf3d914512d3b560061"
+      "width": 1440,
+      "height": 768,
+      "sha256": "9ace5acdb6ce8f988d5a5ed9825832b68218190e5943e00978eb76763878684c"
     },
     {
       "path": "assets/art/storeroom-room.png",
@@ -393,9 +393,9 @@
       "path": "assets/art/storeroom-room.ppm",
       "role": "opaque runtime Storeroom plate prepared from its room-native door edition beneath movable objects",
       "format": "P6",
-      "width": 480,
-      "height": 256,
-      "sha256": "b56ed859db4a56849db2679874f76873b23bb6c386ecba44899b6f92ba6904fc"
+      "width": 1440,
+      "height": 768,
+      "sha256": "8894f41bcf055f1a94d87798cc9a8d6d6ea84e9ce8958507c85f028c3a5f478b"
     },
     {
       "path": "assets/art/server-room.png",
@@ -417,9 +417,9 @@
       "path": "assets/art/server-room.ppm",
       "role": "opaque runtime Server Room plate prepared from its room-native door edition",
       "format": "P6",
-      "width": 480,
-      "height": 256,
-      "sha256": "3c51edb5417a2b0819284aa59735a63417b291fb7460c2142f75cd6cd6d5b96d"
+      "width": 1440,
+      "height": 768,
+      "sha256": "b64666f827b2d676cabd374088bc8344dc2884db1439c80cadaad5a7930b9033"
     },
     {
       "path": "assets/art/game-room.png",
@@ -441,9 +441,9 @@
       "path": "assets/art/game-room.ppm",
       "role": "opaque runtime Game Room door edition beneath the live Kilix 95 media catalog",
       "format": "P6",
-      "width": 480,
-      "height": 256,
-      "sha256": "24722d7d01e71ee160d856a468c7dae956353d3199c9aa43b74347e1e33dd3cb"
+      "width": 1440,
+      "height": 768,
+      "sha256": "eb8ba0dc5484706e772245c67b0a40d516dc93ad42ae3de0a23af16a8f107905"
     },
     {
       "path": "assets/art/library-room.png",
@@ -465,9 +465,9 @@
       "path": "assets/art/library-room.ppm",
       "role": "opaque runtime Library plate prepared from its room-native door edition",
       "format": "P6",
-      "width": 480,
-      "height": 256,
-      "sha256": "558b394b38903e4fe0e125a6f1ea441b0a3686a7a2d96cf1740901fdfc7ec47d"
+      "width": 1440,
+      "height": 768,
+      "sha256": "5177a72dde5b17454c2d75775d78843b6b8eb60cd66c1a4d7f7603a9960554e9"
     },
     {
       "path": "assets/art/cleaning-room.png",
@@ -489,9 +489,9 @@
       "path": "assets/art/cleaning-room.ppm",
       "role": "opaque runtime Cleaning Room plate prepared from its room-native door edition",
       "format": "P6",
-      "width": 480,
-      "height": 256,
-      "sha256": "b851f0f19d2f8405be4a14f5d7f0905ba64756658c8f81cb20e45b30d37dbe68"
+      "width": 1440,
+      "height": 768,
+      "sha256": "41b468250b9d60c46a4de825ae620e360f047d5357834ddda870b5e376b0cb0a"
     },
     {
       "path": "assets/art/balcony-room.png",
@@ -505,9 +505,9 @@
       "path": "assets/art/balcony-room.ppm",
       "role": "opaque runtime Balcony background plate",
       "format": "P6",
-      "width": 480,
-      "height": 256,
-      "sha256": "c878f9a23b614fea32cd34c3f12f34f9ce6ec599f6f5b597b07aa1f5b68c03d6"
+      "width": 1440,
+      "height": 768,
+      "sha256": "97642f517ec745e5fd8f837e4fca44f62aa1e19fed4fdfad8d857099816e96e8"
     },
     {
       "path": "assets/art/game-media-source.png",
@@ -529,17 +529,17 @@
       "path": "assets/art/game-media.ppm",
       "role": "black-backed 3x3 runtime RGB atlas with nine 48x56 game-media variants",
       "format": "P6",
-      "width": 144,
-      "height": 168,
-      "sha256": "b9fd32b1f565da15ad055c2c8d94025c3cc2d91ec0ccdb7e020ba6a525b0011f"
+      "width": 432,
+      "height": 504,
+      "sha256": "b086ccbc0c1f162a2946239cb759230a7cdaf984f6f9c14ea640ebbace6ba4af"
     },
     {
       "path": "assets/art/game-media-mask.ppm",
       "role": "RGB-encoded grayscale anti-aliased alpha for all nine game-media variants",
       "format": "P6",
-      "width": 144,
-      "height": 168,
-      "sha256": "e2573448574a495326f7e6c45f8f939029cf0e377637ef6633e19eae65e00a48"
+      "width": 432,
+      "height": 504,
+      "sha256": "e5abe2a6d0b8896f60b3b34a0fa70e3efa78a2685f5967e1a4fa08d365c2513d"
     }
   ],
   "semantic_hit_ids": {
