@@ -1,6 +1,7 @@
 # kilix-cap — an original room-metaphor interface for kitty-protocol
 # terminals. Dependencies are stdlib + POSIX + pthreads + zlib + libm only;
-# everything else is vendored under third_party/ and built from source here.
+# everything else comes from the pinned kilix-game-sdk submodule and is
+# built from source here.
 
 CC      ?= cc
 CFLAGS  ?= -O2 -Wall -Wextra -Wpedantic -std=c11
@@ -10,11 +11,20 @@ O       := obj
 BINDIR  := bin
 BIN     := $(BINDIR)/kilix-cap
 
-KTS := third_party/kitty-terminal-session
+# One pinned submodule brings the whole shared stack, the way the SDK-backed
+# games take it: kilix-game-sdk pins kilix-game-kit, which pins the terminal
+# session (and through it the framebuffer and input), the rasterizer, and the
+# mixer. Three separately vendored copies used to sit here instead, and they
+# drifted — the framebuffer had reached 0.2.0 with a local patch while
+# upstream was at 0.3.0 with a shared-memory transport worth 150x on present.
+SDK := third_party/kilix-game-sdk
+KIT := $(SDK)/kilix-game-kit/third_party
+KTS := $(KIT)/kitty-terminal-session
 KFB := $(KTS)/third_party/kitty-framebuffer
-KKB := $(KTS)/third_party/kitty_keyboard
-SR  := third_party/soft-raster
-PCM := third_party/pcm-mixer
+KIN := $(KTS)/third_party/kitty-input
+KKB := $(KIN)/third_party/kitty_keyboard
+SR  := $(KIT)/soft-raster
+PCM := $(KIT)/pcm-mixer
 
 # -I$(KFB)/src is deliberate: term.c calls kittyfb_derive_geometry() from the
 # framebuffer's internal header to mirror image placement into the mouse map.
@@ -25,7 +35,8 @@ PCM := third_party/pcm-mixer
 # values at runtime. Keep the flags out of CPPFLAGS so syntax-only header
 # checks do not leak a-*.d files into the repository root.
 override CPPFLAGS += -Isrc -I$(KTS)/include -I$(KFB)/include -I$(KFB)/src \
-                     -I$(KKB)/include -I$(SR)/include -I$(PCM)/include \
+                     -I$(KIN)/include -I$(KKB)/include -I$(SR)/include \
+                     -I$(PCM)/include \
                      -D_DEFAULT_SOURCE -D_POSIX_C_SOURCE=200809L
 DEPFLAGS := -MMD -MP
 
@@ -37,6 +48,8 @@ VENDOR_OBJ := \
   $(O)/vendor_kitty_framebuffer.o \
   $(O)/vendor_kitty_keyboard.o \
   $(O)/vendor_kitty_keyboard_posix.o \
+  $(O)/vendor_kitty_input.o \
+  $(O)/vendor_kitty_input_posix.o \
   $(O)/vendor_soft_raster.o \
   $(O)/vendor_pcm_mixer.o \
   $(O)/vendor_pcm_wav.o
@@ -74,6 +87,14 @@ $(O)/vendor_kitty_keyboard.o: $(KKB)/src/kitty_keyboard.c \
 $(O)/vendor_kitty_keyboard_posix.o: $(KKB)/src/kitty_keyboard_posix.c \
     $(KKB)/include/kitty_keyboard_posix.h $(KKB)/include/kitty_keyboard.h | $(O)
 	$(CC) $(CPPFLAGS) $(DEPFLAGS) $(CFLAGS) -c -o $@ $<
+
+$(O)/vendor_kitty_input.o: $(KIN)/src/kitty_input.c \
+    $(KIN)/include/kitty_input.h | $(O)
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(DEPFLAGS) -c -o $@ $<
+
+$(O)/vendor_kitty_input_posix.o: $(KIN)/src/kitty_input_posix.c \
+    $(KIN)/include/kitty_input_posix.h | $(O)
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(DEPFLAGS) -c -o $@ $<
 
 $(O)/vendor_soft_raster.o: $(SR)/src/soft_raster.c \
     $(SR)/include/soft_raster.h $(SR)/src/font8x16.h | $(O)
