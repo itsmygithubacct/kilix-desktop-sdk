@@ -21,7 +21,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--output",
         type=Path,
-        default=Path("assets/art/workdesk-room.ppm"),
+        default=Path("assets/art/runtime/workdesk-room.png"),
     )
     return parser.parse_args()
 
@@ -36,7 +36,7 @@ def main() -> int:
             centering=(0.5, 0.5),
         )
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    image.save(args.output, format="PPM")
+    image.save(args.output, format="PNG", optimize=True)
     print(
         f"prepare_visual: {args.source} -> {args.output} "
         f"({WIDTH}x{HEIGHT}, full RGB)"

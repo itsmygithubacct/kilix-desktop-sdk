@@ -40,20 +40,20 @@ SOURCE_PNGS = {
     "assets/art/cleaning-room-door-source.png",
 }
 BACKGROUND_PPMS = {
-    "assets/art/workdesk-room.ppm",
-    "assets/art/hallway-room.ppm",
-    "assets/art/storeroom-room.ppm",
-    "assets/art/server-room.ppm",
-    "assets/art/game-room.ppm",
-    "assets/art/library-room.ppm",
-    "assets/art/cleaning-room.ppm",
-    "assets/art/balcony-room.ppm",
+    "assets/art/runtime/workdesk-room.png",
+    "assets/art/runtime/hallway-room.png",
+    "assets/art/runtime/storeroom-room.png",
+    "assets/art/runtime/server-room.png",
+    "assets/art/runtime/game-room.png",
+    "assets/art/runtime/library-room.png",
+    "assets/art/runtime/cleaning-room.png",
+    "assets/art/runtime/balcony-room.png",
 }
-ITEM_ATLAS = "assets/art/workdesk-items.ppm"
-ITEM_ALPHA = "assets/art/workdesk-items-mask.ppm"
-ITEM_HIT = "assets/art/workdesk-items-hit.ppm"
-GAME_MEDIA = "assets/art/game-media.ppm"
-GAME_MEDIA_ALPHA = "assets/art/game-media-mask.ppm"
+ITEM_ATLAS = "assets/art/runtime/workdesk-items.png"
+ITEM_ALPHA = "assets/art/runtime/workdesk-items-mask.png"
+ITEM_HIT = "assets/art/runtime/workdesk-items-hit.png"
+GAME_MEDIA = "assets/art/runtime/game-media.png"
+GAME_MEDIA_ALPHA = "assets/art/runtime/game-media-mask.png"
 EXPECTED_PATHS = SOURCE_PNGS | BACKGROUND_PPMS | {
     ITEM_ATLAS,
     ITEM_ALPHA,
@@ -75,8 +75,8 @@ NORMALIZED_SOURCE_PNGS = {
 MANSION_MANIFEST = ROOT / "docs" / "visual-provenance-gemini.json"
 MANSION_SOURCE = "assets/art/mansion-items-source.png"
 MANSION_KEYED = "assets/art/mansion-items.png"
-MANSION_ATLAS = "assets/art/mansion-items.ppm"
-MANSION_ALPHA = "assets/art/mansion-items-mask.ppm"
+MANSION_ATLAS = "assets/art/runtime/mansion-items.png"
+MANSION_ALPHA = "assets/art/runtime/mansion-items-mask.png"
 MANSION_PATHS = {MANSION_SOURCE, MANSION_KEYED, MANSION_ATLAS,
                  MANSION_ALPHA}
 MANSION_W = 288
@@ -93,8 +93,8 @@ MANSION_VARIANTS = 4
 LID_MANIFEST = ROOT / "docs" / "visual-provenance-laptop-lid.json"
 LID_SOURCE = "assets/art/laptop-lid-source.png"
 LID_KEYED = "assets/art/laptop-lid.png"
-LID_ATLAS = "assets/art/laptop-lid.ppm"
-LID_ALPHA = "assets/art/laptop-lid-mask.ppm"
+LID_ATLAS = "assets/art/runtime/laptop-lid.png"
+LID_ALPHA = "assets/art/runtime/laptop-lid-mask.png"
 LID_PATHS = {LID_SOURCE, LID_KEYED, LID_ATLAS, LID_ALPHA}
 LID_W = 288
 LID_H = 168
@@ -106,8 +106,8 @@ LID_H = 168
 BREAKER_MANIFEST = ROOT / "docs" / "visual-provenance-breaker.json"
 BREAKER_SOURCE = "assets/art/breaker-source.png"
 BREAKER_KEYED = "assets/art/breaker.png"
-BREAKER_FACE = "assets/art/breaker.ppm"
-BREAKER_ALPHA = "assets/art/breaker-mask.ppm"
+BREAKER_FACE = "assets/art/runtime/breaker.png"
+BREAKER_ALPHA = "assets/art/runtime/breaker-mask.png"
 BREAKER_PATHS = {BREAKER_SOURCE, BREAKER_KEYED, BREAKER_FACE, BREAKER_ALPHA}
 BREAKER_W = 90
 BREAKER_H = 150
@@ -193,7 +193,21 @@ def paeth(left: int, up: int, upper_left: int) -> int:
     return upper_left
 
 
-def png_decoded_rgb_sha256(data: bytes) -> str:
+def is_runtime_raster(relative: str) -> bool:
+    """A raster the runtime loads, as opposed to a source or keyed copy.
+
+    Both are PNG now, so the extension no longer tells them apart; the
+    directory does, which is exactly why runtime rasters were given one.
+    """
+    return relative.startswith("assets/art/runtime/")
+
+
+def png_raster(data: bytes) -> tuple[int, int, bytes]:
+    """Decode a non-interlaced 8-bit RGB PNG to (width, height, pixels).
+
+    The same shape ppm_raster() returns, so code validating a runtime raster
+    does not care which container it arrived in.
+    """
     width, height = png_dimensions(data)
     if data[25] != 2 or data[26:29] != b"\x00\x00\x00":
         raise VisualError(
@@ -246,7 +260,11 @@ def png_decoded_rgb_sha256(data: bytes) -> str:
                 )
         decoded.extend(current)
         previous = current
-    return hashlib.sha256(decoded).hexdigest()
+    return width, height, bytes(decoded)
+
+
+def png_decoded_rgb_sha256(data: bytes) -> str:
+    return hashlib.sha256(png_raster(data)[2]).hexdigest()
 
 
 def is_sha256(value: object) -> bool:
@@ -298,7 +316,7 @@ def ppm_raster(data: bytes) -> tuple[int, int, bytes]:
 
 
 def require_runtime_dimensions(path: str, data: bytes) -> bytes:
-    width, height, raster = ppm_raster(data)
+    width, height, raster = png_raster(data)
     if (width, height) != (WIDTH, HEIGHT):
         raise VisualError(
             f"{path} is {width}x{height}; expected {WIDTH}x{HEIGHT}"
@@ -702,19 +720,19 @@ def validate_mansion_group(actual_paths: set[str]) -> str:
             if entry.get("format") != "JPEG-in-png-name":
                 raise VisualError(f"{relative} has the wrong recorded format")
             dimensions = (entry.get("width"), entry.get("height"))
-        elif relative.endswith(".png"):
+        elif not is_runtime_raster(relative):
             dimensions = png_dimensions(data)
             if entry.get("format") != "PNG":
                 raise VisualError(f"{relative} has the wrong recorded format")
         else:
-            width, height, raster = ppm_raster(data)
+            width, height, raster = png_raster(data)
             dimensions = (width, height)
             if dimensions != (MANSION_W, MANSION_H):
                 raise VisualError(
                     f"{relative} is {width}x{height}; expected "
                     f"{MANSION_W}x{MANSION_H}"
                 )
-            if entry.get("format") != "P6":
+            if entry.get("format") != "PNG":
                 raise VisualError(f"{relative} has the wrong recorded format")
             rasters[relative] = raster
         if (entry.get("width"), entry.get("height")) != dimensions:
@@ -813,19 +831,19 @@ def validate_lid_group(actual_paths: set[str],
             if entry.get("format") != "JPEG-in-png-name":
                 raise VisualError(f"{relative} has the wrong recorded format")
             dimensions = (entry.get("width"), entry.get("height"))
-        elif relative.endswith(".png"):
+        elif not is_runtime_raster(relative):
             dimensions = png_dimensions(data)
             if entry.get("format") != "PNG":
                 raise VisualError(f"{relative} has the wrong recorded format")
         else:
-            width, height, raster = ppm_raster(data)
+            width, height, raster = png_raster(data)
             dimensions = (width, height)
             if dimensions != (LID_W, LID_H):
                 raise VisualError(
                     f"{relative} is {width}x{height}; expected "
                     f"{LID_W}x{LID_H}"
                 )
-            if entry.get("format") != "P6":
+            if entry.get("format") != "PNG":
                 raise VisualError(f"{relative} has the wrong recorded format")
             rasters[relative] = raster
         if (entry.get("width"), entry.get("height")) != dimensions:
@@ -892,19 +910,19 @@ def validate_breaker_group(actual_paths: set[str]) -> str:
             if entry.get("format") != "JPEG-in-png-name":
                 raise VisualError(f"{relative} has the wrong recorded format")
             dimensions = (entry.get("width"), entry.get("height"))
-        elif relative.endswith(".png"):
+        elif not is_runtime_raster(relative):
             dimensions = png_dimensions(data)
             if entry.get("format") != "PNG":
                 raise VisualError(f"{relative} has the wrong recorded format")
         else:
-            width, height, raster = ppm_raster(data)
+            width, height, raster = png_raster(data)
             dimensions = (width, height)
             if dimensions != (BREAKER_W, BREAKER_H):
                 raise VisualError(
                     f"{relative} is {width}x{height}; expected "
                     f"{BREAKER_W}x{BREAKER_H}"
                 )
-            if entry.get("format") != "P6":
+            if entry.get("format") != "PNG":
                 raise VisualError(f"{relative} has the wrong recorded format")
             rasters[relative] = raster
         if (entry.get("width"), entry.get("height")) != dimensions:
@@ -920,12 +938,21 @@ def run() -> str:
         raise VisualError("visual provenance root must be an object")
     entries, normalizations = validate_manifest(manifest)
 
+    # Sources and keyed intermediates sit directly in assets/art; the rasters
+    # the runtime actually loads sit in assets/art/runtime. They are separated
+    # because a source and its derived raster want the same stem, and one
+    # silently overwriting the other is a data loss nobody notices until the
+    # next regeneration.
     try:
         art_entries = list(ART_DIRECTORY.iterdir())
+        runtime_directory = ART_DIRECTORY / "runtime"
+        art_entries += list(runtime_directory.iterdir())
     except OSError as exc:
         raise VisualError(f"cannot enumerate assets/art: {exc}") from exc
     actual_paths: set[str] = set()
     for path in art_entries:
+        if path == runtime_directory:
+            continue
         if path.is_symlink() or not path.is_file():
             raise VisualError(
                 f"{path.relative_to(ROOT)} is not a regular visual asset"
@@ -949,7 +976,7 @@ def run() -> str:
         digest = hashlib.sha256(data).hexdigest()
         if digest != entry.get("sha256"):
             raise VisualError(f"{relative} SHA-256 does not match provenance")
-        if relative.endswith(".png"):
+        if not is_runtime_raster(relative):
             dimensions = png_dimensions(data)
             if entry.get("format") != "PNG":
                 raise VisualError(f"{relative} has the wrong recorded format")
@@ -967,17 +994,17 @@ def run() -> str:
                         f"{relative} decoded RGB does not match provenance"
                     )
         else:
-            dimensions = ppm_raster(data)[:2]
+            dimensions = png_raster(data)[:2]
             if relative in (GAME_MEDIA, GAME_MEDIA_ALPHA):
                 if dimensions != (432, 504):
                     raise VisualError(
                         f"{relative} is {dimensions[0]}x{dimensions[1]}; "
                         "expected 432x504"
                     )
-                rasters[relative] = ppm_raster(data)[2]
+                rasters[relative] = png_raster(data)[2]
             else:
                 rasters[relative] = require_runtime_dimensions(relative, data)
-            if entry.get("format") != "P6":
+            if entry.get("format") != "PNG":
                 raise VisualError(f"{relative} has the wrong recorded format")
         expected = (entry.get("width"), entry.get("height"))
         if dimensions != expected:

@@ -38,12 +38,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--output",
         type=Path,
-        default=Path("assets/art/breaker.ppm"),
+        default=Path("assets/art/runtime/breaker.png"),
     )
     parser.add_argument(
         "--mask",
         type=Path,
-        default=Path("assets/art/breaker-mask.ppm"),
+        default=Path("assets/art/runtime/breaker-mask.png"),
     )
     return parser.parse_args()
 
@@ -140,8 +140,8 @@ def main() -> int:
 
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.mask.parent.mkdir(parents=True, exist_ok=True)
-    rgb.save(args.output, format="PPM")
-    alpha_rgb.save(args.mask, format="PPM")
+    rgb.save(args.output, format="PNG", optimize=True)
+    alpha_rgb.save(args.mask, format="PNG", optimize=True)
     print(
         f"prepare_breaker: {args.source} -> {args.output}, {args.mask} "
         f"(one {CELL_W}x{CELL_H} breaker face)"

@@ -37,12 +37,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--output",
         type=Path,
-        default=Path("assets/art/mansion-items.ppm"),
+        default=Path("assets/art/runtime/mansion-items.png"),
     )
     parser.add_argument(
         "--mask",
         type=Path,
-        default=Path("assets/art/mansion-items-mask.ppm"),
+        default=Path("assets/art/runtime/mansion-items-mask.png"),
     )
     return parser.parse_args()
 
@@ -97,8 +97,8 @@ def main() -> int:
 
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.mask.parent.mkdir(parents=True, exist_ok=True)
-    rgb.save(args.output, format="PPM")
-    alpha_rgb.save(args.mask, format="PPM")
+    rgb.save(args.output, format="PNG", optimize=True)
+    alpha_rgb.save(args.mask, format="PNG", optimize=True)
     print(
         f"prepare_mansion_items: {args.source} -> {args.output}, {args.mask} "
         f"({ATLAS_W}x{ATLAS_H}, four {CELL_W}x{CELL_H} sprites)"

@@ -1,6 +1,8 @@
 /* art.c — strict RGB environment plates and masked Desk item composition. */
 #include "art.h"
 
+#include "kilix_assets.h"
+
 #include "soft_raster.h"
 
 #include <limits.h>
@@ -31,9 +33,9 @@ typedef struct DeskSprite {
 } DeskSprite;
 
 static const char *const background_names[BACKGROUND_COUNT] = {
-    "workdesk-room.ppm", "hallway-room.ppm", "storeroom-room.ppm",
-    "server-room.ppm", "game-room.ppm", "library-room.ppm",
-    "cleaning-room.ppm", "balcony-room.ppm"
+    "runtime/workdesk-room.png", "runtime/hallway-room.png", "runtime/storeroom-room.png",
+    "runtime/server-room.png", "runtime/game-room.png", "runtime/library-room.png",
+    "runtime/cleaning-room.png", "runtime/balcony-room.png"
 };
 
 static const DeskSprite desk_sprites[] = {
@@ -176,13 +178,37 @@ static bool load_rgb_size(const char *directory, const char *name,
                           int width, int height, sr_canvas *result)
 {
     char path[PATH_MAX];
+    kilix_asset_image image = {0};
+    kilix_asset_limits limits;
     sr_canvas candidate = {0};
+
+    kilix_asset_limits_init(&limits);
+    limits.max_dimension = 4096u;
+    limits.max_image_bytes = 64u * 1024u * 1024u;
+    limits.max_file_bytes = 64u * 1024u * 1024u;
     if (!join_path(path, sizeof path, directory, name) ||
-        !sr_load_ppm(&candidate, path) || candidate.w != width ||
-        candidate.h != height) {
+        kilix_asset_image_load_png(&image, path, &limits) != KILIX_ASSET_OK ||
+        !kilix_asset_image_is_valid(&image) ||
+        image.width != (uint32_t)width || image.height != (uint32_t)height ||
+        !sr_canvas_init(&candidate, width, height)) {
+        kilix_asset_image_clear(&image);
         sr_canvas_free(&candidate);
         return false;
     }
+    /* The loader hands back straight-alpha RGBA8 rows; the canvas wants
+     * 0xAARRGGBB words. Alpha is carried through so the mask rasters, which
+     * are opaque grayscale, stay byte-identical to what the PPM path
+     * produced. */
+    for (int y = 0; y < height; y++) {
+        const uint8_t *row = image.pixels + (size_t)y * image.stride;
+        for (int x = 0; x < width; x++) {
+            const uint8_t *px = row + (size_t)x * 4u;
+            candidate.px[(size_t)y * (size_t)width + (size_t)x] =
+                ((uint32_t)px[3] << 24) | ((uint32_t)px[0] << 16) |
+                ((uint32_t)px[1] << 8) | (uint32_t)px[2];
+        }
+    }
+    kilix_asset_image_clear(&image);
     *result = candidate;
     return true;
 }
@@ -316,9 +342,9 @@ static void load_mansion_items(const char *directory)
 {
     sr_canvas atlas = {0};
     sr_canvas alpha = {0};
-    if (!load_rgb_size(directory, "mansion-items.ppm", MANSION_ITEM_W,
+    if (!load_rgb_size(directory, "runtime/mansion-items.png", MANSION_ITEM_W,
                        MANSION_ITEM_H, &atlas) ||
-        !load_rgb_size(directory, "mansion-items-mask.ppm", MANSION_ITEM_W,
+        !load_rgb_size(directory, "runtime/mansion-items-mask.png", MANSION_ITEM_W,
                        MANSION_ITEM_H, &alpha) ||
         !mansion_item_layers_valid(&atlas, &alpha)) {
         sr_canvas_free(&atlas);
@@ -364,9 +390,9 @@ static void load_laptop_lid(const char *directory)
     sr_canvas atlas = {0};
     sr_canvas alpha = {0};
     if (!mansion_items_loaded) return;
-    if (!load_rgb_size(directory, "laptop-lid.ppm", LAPTOP_LID_W,
+    if (!load_rgb_size(directory, "runtime/laptop-lid.png", LAPTOP_LID_W,
                        LAPTOP_LID_H, &atlas) ||
-        !load_rgb_size(directory, "laptop-lid-mask.ppm", LAPTOP_LID_W,
+        !load_rgb_size(directory, "runtime/laptop-lid-mask.png", LAPTOP_LID_W,
                        LAPTOP_LID_H, &alpha) ||
         !laptop_lid_layers_valid(&atlas, &alpha)) {
         sr_canvas_free(&atlas);
@@ -401,9 +427,9 @@ static void load_breaker(const char *directory)
 {
     sr_canvas face = {0};
     sr_canvas alpha = {0};
-    if (!load_rgb_size(directory, "breaker.ppm", BREAKER_W, BREAKER_H,
+    if (!load_rgb_size(directory, "runtime/breaker.png", BREAKER_W, BREAKER_H,
                        &face) ||
-        !load_rgb_size(directory, "breaker-mask.ppm", BREAKER_W, BREAKER_H,
+        !load_rgb_size(directory, "runtime/breaker-mask.png", BREAKER_W, BREAKER_H,
                        &alpha) ||
         !breaker_layers_valid(&face, &alpha)) {
         sr_canvas_free(&face);
@@ -427,15 +453,15 @@ static bool load_bundle(const char *directory)
 
     for (int i = 0; i < BACKGROUND_COUNT && ok; i++)
         ok = load_rgb(directory, background_names[i], &plates[i]);
-    if (ok) ok = load_rgb(directory, "workdesk-items.ppm", &atlas);
-    if (ok) ok = load_rgb(directory, "workdesk-items-mask.ppm", &alpha);
-    if (ok) ok = load_rgb(directory, "workdesk-items-hit.ppm", &hit);
+    if (ok) ok = load_rgb(directory, "runtime/workdesk-items.png", &atlas);
+    if (ok) ok = load_rgb(directory, "runtime/workdesk-items-mask.png", &alpha);
+    if (ok) ok = load_rgb(directory, "runtime/workdesk-items-hit.png", &hit);
     if (ok) ok = item_layers_valid(&atlas, &alpha, &hit);
     if (ok)
-        ok = load_rgb_size(directory, "game-media.ppm", GAME_MEDIA_W,
+        ok = load_rgb_size(directory, "runtime/game-media.png", GAME_MEDIA_W,
                            GAME_MEDIA_H, &media);
     if (ok)
-        ok = load_rgb_size(directory, "game-media-mask.ppm", GAME_MEDIA_W,
+        ok = load_rgb_size(directory, "runtime/game-media-mask.png", GAME_MEDIA_W,
                            GAME_MEDIA_H, &media_mask);
     if (ok) ok = game_media_layers_valid(&media, &media_mask);
     if (!ok) {

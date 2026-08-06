@@ -54,17 +54,17 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--atlas",
         type=Path,
-        default=Path("assets/art/workdesk-items.ppm"),
+        default=Path("assets/art/runtime/workdesk-items.png"),
     )
     parser.add_argument(
         "--mask",
         type=Path,
-        default=Path("assets/art/workdesk-items-mask.ppm"),
+        default=Path("assets/art/runtime/workdesk-items-mask.png"),
     )
     parser.add_argument(
         "--hit",
         type=Path,
-        default=Path("assets/art/workdesk-items-hit.ppm"),
+        default=Path("assets/art/runtime/workdesk-items-hit.png"),
     )
     return parser.parse_args()
 
@@ -358,9 +358,9 @@ def main() -> int:
     args.atlas.parent.mkdir(parents=True, exist_ok=True)
     args.mask.parent.mkdir(parents=True, exist_ok=True)
     args.hit.parent.mkdir(parents=True, exist_ok=True)
-    atlas.save(args.atlas, format="PPM")
-    mask_rgb.save(args.mask, format="PPM")
-    hit_rgb.save(args.hit, format="PPM")
+    atlas.save(args.atlas, format="PNG", optimize=True)
+    mask_rgb.save(args.mask, format="PNG", optimize=True)
+    hit_rgb.save(args.hit, format="PNG", optimize=True)
     print(
         f"prepare_workdesk_items: {args.source} -> {args.atlas}, {args.mask}, "
         f"{args.hit} ({WIDTH}x{HEIGHT} full RGB + visual alpha + semantic "

@@ -36,18 +36,18 @@
       "height": 1264,
       "role": "keyed copy, backdrop removed"
     },
-    "assets/art/breaker.ppm": {
-      "sha256": "da6579497941de3cc1c5d94e9aa83f5322d8e4e9f43575896acf09fbf52244f8",
-      "bytes": 40514,
-      "format": "P6",
+    "assets/art/runtime/breaker.png": {
+      "sha256": "07d62efcc5177eec7d2ef31b0b8351b6e804e0667d0a05d64934186f8f574d02",
+      "bytes": 14705,
+      "format": "PNG",
       "width": 90,
       "height": 150,
       "role": "runtime face"
     },
-    "assets/art/breaker-mask.ppm": {
-      "sha256": "509d3b8b98323faf6530e575e4b966a10ac371322fd01df057534ed34fafdc60",
-      "bytes": 40514,
-      "format": "P6",
+    "assets/art/runtime/breaker-mask.png": {
+      "sha256": "9e7ed233f7fd9539cec5014cd317be03ce52c09ecd0975d7bd52c99a894bf594",
+      "bytes": 1884,
+      "format": "PNG",
       "width": 90,
       "height": 150,
       "role": "runtime grayscale coverage mask"

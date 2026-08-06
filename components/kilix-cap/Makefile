@@ -23,6 +23,7 @@ KTS := $(KIT)/kitty-terminal-session
 KFB := $(KTS)/third_party/kitty-framebuffer
 KIN := $(KTS)/third_party/kitty-input
 KKB := $(KIN)/third_party/kitty_keyboard
+KAS := $(SDK)/kilix-assets
 SR  := $(KIT)/soft-raster
 PCM := $(KIT)/pcm-mixer
 
@@ -35,7 +36,8 @@ PCM := $(KIT)/pcm-mixer
 # values at runtime. Keep the flags out of CPPFLAGS so syntax-only header
 # checks do not leak a-*.d files into the repository root.
 override CPPFLAGS += -Isrc -I$(KTS)/include -I$(KFB)/include -I$(KFB)/src \
-                     -I$(KIN)/include -I$(KKB)/include -I$(SR)/include \
+                     -I$(KIN)/include -I$(KKB)/include -I$(KAS)/include \
+                     -I$(SR)/include \
                      -I$(PCM)/include \
                      -D_DEFAULT_SOURCE -D_POSIX_C_SOURCE=200809L
 DEPFLAGS := -MMD -MP
@@ -50,6 +52,7 @@ VENDOR_OBJ := \
   $(O)/vendor_kitty_keyboard_posix.o \
   $(O)/vendor_kitty_input.o \
   $(O)/vendor_kitty_input_posix.o \
+  $(O)/vendor_kilix_assets.o \
   $(O)/vendor_soft_raster.o \
   $(O)/vendor_pcm_mixer.o \
   $(O)/vendor_pcm_wav.o
@@ -94,6 +97,10 @@ $(O)/vendor_kitty_input.o: $(KIN)/src/kitty_input.c \
 
 $(O)/vendor_kitty_input_posix.o: $(KIN)/src/kitty_input_posix.c \
     $(KIN)/include/kitty_input_posix.h | $(O)
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(DEPFLAGS) -c -o $@ $<
+
+$(O)/vendor_kilix_assets.o: $(KAS)/src/kilix_assets.c \
+    $(KAS)/include/kilix_assets.h | $(O)
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(DEPFLAGS) -c -o $@ $<
 
 $(O)/vendor_soft_raster.o: $(SR)/src/soft_raster.c \

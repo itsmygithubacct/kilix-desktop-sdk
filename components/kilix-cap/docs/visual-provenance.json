@@ -318,36 +318,36 @@
       "sha256": "7c02576d53bde66f931c8984f9401058c3f3d510785bdd9cb9e1d8b0e843f2ad"
     },
     {
-      "path": "assets/art/workdesk-room.ppm",
+      "path": "assets/art/runtime/workdesk-room.png",
       "role": "opaque runtime Study plate prepared from its room-native door edition",
-      "format": "P6",
+      "format": "PNG",
       "width": 1440,
       "height": 768,
-      "sha256": "0686b12b6fcfb1a6d4a7ac0f44b4ac993c665ab52dc3957de34e09372e9848ab"
+      "sha256": "b32c708cac3fb773804a199bf78712673c02cff9a2161cdde3d0ceaa121750c2"
     },
     {
-      "path": "assets/art/workdesk-items.ppm",
+      "path": "assets/art/runtime/workdesk-items.png",
       "role": "black-backed runtime RGB Desk object overlay",
-      "format": "P6",
+      "format": "PNG",
       "width": 1440,
       "height": 768,
-      "sha256": "962d88ae337a34ea9f3548112ccdcb73adf1b34816c680f06fc776499fc529e0"
+      "sha256": "b8edde362c340ec9f60249d679de6a39761bf45a62ed4d9d691372f0b3a5896f"
     },
     {
-      "path": "assets/art/workdesk-items-mask.ppm",
+      "path": "assets/art/runtime/workdesk-items-mask.png",
       "role": "RGB-encoded grayscale anti-aliased coverage mask for compositing the Desk object overlay",
-      "format": "P6",
+      "format": "PNG",
       "width": 1440,
       "height": 768,
-      "sha256": "0bc71d979f150fb699000643042d06e1d6e394b02be8c56e29bd7bc8949848f4"
+      "sha256": "4a2b72159dcf0f6a8c8d3398a329a3d1738f36626b6207ddc655d6186caed3c5"
     },
     {
-      "path": "assets/art/workdesk-items-hit.ppm",
+      "path": "assets/art/runtime/workdesk-items-hit.png",
       "role": "RGB-encoded semantic hit-ID map: zero is background and values 1 through 13 identify only physical Desk props",
-      "format": "P6",
+      "format": "PNG",
       "width": 1440,
       "height": 768,
-      "sha256": "8b613d9de6e1df6b83687aa86c0a619bb83e982317f221f2a26e57778dd79768"
+      "sha256": "59932a36e0bfd44736f9863e5a1fa2b9f43ecd1ebe05e939ceee15771fb88d8b"
     },
     {
       "path": "assets/art/hallway-room.png",
@@ -366,12 +366,12 @@
       "sha256": "b00fee6583a21ded2e4cf9c19cdc8ccfdb3873bd0d57b7a29a1a65c4c8e8fddb"
     },
     {
-      "path": "assets/art/hallway-room.ppm",
+      "path": "assets/art/runtime/hallway-room.png",
       "role": "opaque runtime Grand Gallery plate prepared from its six-door edition",
-      "format": "P6",
+      "format": "PNG",
       "width": 1440,
       "height": 768,
-      "sha256": "9ace5acdb6ce8f988d5a5ed9825832b68218190e5943e00978eb76763878684c"
+      "sha256": "73b2abfa789e89f95449eaf381c0589609f3659af9a932481a3d8efda4ebc8ba"
     },
     {
       "path": "assets/art/storeroom-room.png",
@@ -390,12 +390,12 @@
       "sha256": "1c769804e99dd2c05be0529ea59437c9c5734bb226d73b75604f263b202c3ccd"
     },
     {
-      "path": "assets/art/storeroom-room.ppm",
+      "path": "assets/art/runtime/storeroom-room.png",
       "role": "opaque runtime Storeroom plate prepared from its room-native door edition beneath movable objects",
-      "format": "P6",
+      "format": "PNG",
       "width": 1440,
       "height": 768,
-      "sha256": "8894f41bcf055f1a94d87798cc9a8d6d6ea84e9ce8958507c85f028c3a5f478b"
+      "sha256": "6a6ea94a9376e45cbf4ea0c1f4f03cb4835043ddebeb11db98ae83bf2dda8f98"
     },
     {
       "path": "assets/art/server-room.png",
@@ -414,12 +414,12 @@
       "sha256": "bd7237c5649556849ba8651910383caac7fdcb3b8e7a9661490459ceeb8cb553"
     },
     {
-      "path": "assets/art/server-room.ppm",
+      "path": "assets/art/runtime/server-room.png",
       "role": "opaque runtime Server Room plate prepared from its room-native door edition",
-      "format": "P6",
+      "format": "PNG",
       "width": 1440,
       "height": 768,
-      "sha256": "b64666f827b2d676cabd374088bc8344dc2884db1439c80cadaad5a7930b9033"
+      "sha256": "2aa9f44d50a35ef9fdd9eb39d50e13e0868823a546ebd801865072bac03b6217"
     },
     {
       "path": "assets/art/game-room.png",
@@ -438,12 +438,12 @@
       "sha256": "736ee4e07a96fc75ebe91adc1f0025fe3942193f06ecce72324a7094f2ddd61e"
     },
     {
-      "path": "assets/art/game-room.ppm",
+      "path": "assets/art/runtime/game-room.png",
       "role": "opaque runtime Game Room door edition beneath the live Kilix 95 media catalog",
-      "format": "P6",
+      "format": "PNG",
       "width": 1440,
       "height": 768,
-      "sha256": "eb8ba0dc5484706e772245c67b0a40d516dc93ad42ae3de0a23af16a8f107905"
+      "sha256": "046020359d92b16a3f6f24ef30adedddb0f29c45b758b0236ae00b3bc6347b9c"
     },
     {
       "path": "assets/art/library-room.png",
@@ -462,12 +462,12 @@
       "sha256": "6f31a13f7f0fcde72c744d62299e09008b201c6101f5b114ceda6c368b2a30e1"
     },
     {
-      "path": "assets/art/library-room.ppm",
+      "path": "assets/art/runtime/library-room.png",
       "role": "opaque runtime Library plate prepared from its room-native door edition",
-      "format": "P6",
+      "format": "PNG",
       "width": 1440,
       "height": 768,
-      "sha256": "5177a72dde5b17454c2d75775d78843b6b8eb60cd66c1a4d7f7603a9960554e9"
+      "sha256": "29d2948d17c44ef54f2cd226f3a2a7052aff96334f30e4c15946ee766307e30e"
     },
     {
       "path": "assets/art/cleaning-room.png",
@@ -486,12 +486,12 @@
       "sha256": "d4853ea5251c1d3e9edbde9ad10fb23c550574da09331800cccd1b5a2378cacc"
     },
     {
-      "path": "assets/art/cleaning-room.ppm",
+      "path": "assets/art/runtime/cleaning-room.png",
       "role": "opaque runtime Cleaning Room plate prepared from its room-native door edition",
-      "format": "P6",
+      "format": "PNG",
       "width": 1440,
       "height": 768,
-      "sha256": "41b468250b9d60c46a4de825ae620e360f047d5357834ddda870b5e376b0cb0a"
+      "sha256": "e6d6c0ee791e51b6b9b25c77b2c4770daac83af981995f140c24abd95d0e1223"
     },
     {
       "path": "assets/art/balcony-room.png",
@@ -502,12 +502,12 @@
       "sha256": "2c91f429eb94bcc4a65c4befdfe7a4775a2190b5d5112b7df61ded749a61158c"
     },
     {
-      "path": "assets/art/balcony-room.ppm",
+      "path": "assets/art/runtime/balcony-room.png",
       "role": "opaque runtime Balcony background plate",
-      "format": "P6",
+      "format": "PNG",
       "width": 1440,
       "height": 768,
-      "sha256": "97642f517ec745e5fd8f837e4fca44f62aa1e19fed4fdfad8d857099816e96e8"
+      "sha256": "f38ecfc365ab9ca1c2c5a3eddb3563b7ff703f1e969afe1b337a62b34031f309"
     },
     {
       "path": "assets/art/game-media-source.png",
@@ -526,20 +526,20 @@
       "sha256": "fbd86c88353225d798be2e3173f37df8b49ad95125a4d64101500d116d28f482"
     },
     {
-      "path": "assets/art/game-media.ppm",
+      "path": "assets/art/runtime/game-media.png",
       "role": "black-backed 3x3 runtime RGB atlas with nine 48x56 game-media variants",
-      "format": "P6",
+      "format": "PNG",
       "width": 432,
       "height": 504,
-      "sha256": "b086ccbc0c1f162a2946239cb759230a7cdaf984f6f9c14ea640ebbace6ba4af"
+      "sha256": "834188eb64d3d36f892d6569bea500091140dd626ab60b965ca0a2b63664a700"
     },
     {
-      "path": "assets/art/game-media-mask.ppm",
+      "path": "assets/art/runtime/game-media-mask.png",
       "role": "RGB-encoded grayscale anti-aliased alpha for all nine game-media variants",
-      "format": "P6",
+      "format": "PNG",
       "width": 432,
       "height": 504,
-      "sha256": "e5abe2a6d0b8896f60b3b34a0fa70e3efa78a2685f5967e1a4fa08d365c2513d"
+      "sha256": "852cb6ab4b0530c63613b29cbc9241ec0b0dfc92061b5dfd9471cf5c0068e2af"
     }
   ],
   "semantic_hit_ids": {

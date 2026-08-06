@@ -32,15 +32,15 @@
       "width": 1024,
       "height": 1024
     },
-    "assets/art/mansion-items.ppm": {
-      "sha256": "c92391736c9c0cf1b9fb6fd53162a217827096c3f46800cee1872c6e08b18389",
-      "format": "P6",
+    "assets/art/runtime/mansion-items.png": {
+      "sha256": "2786d53de49d98a9b8516616e62816e4ec6814edbc3e0092f267606caf645404",
+      "format": "PNG",
       "width": 288,
       "height": 336
     },
-    "assets/art/mansion-items-mask.ppm": {
-      "sha256": "233bb72bff36e3ceb714843ac4fc843822d38654cc3664def3385e7d174d41b8",
-      "format": "P6",
+    "assets/art/runtime/mansion-items-mask.png": {
+      "sha256": "c19ec85b6df85c4d7c3dfdd345a30e7da431f844254ff93391bb853a335e020a",
+      "format": "PNG",
       "width": 288,
       "height": 336
     }

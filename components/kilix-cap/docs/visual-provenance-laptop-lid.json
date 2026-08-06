@@ -31,15 +31,15 @@
       "width": 1024,
       "height": 1024
     },
-    "assets/art/laptop-lid.ppm": {
-      "sha256": "9a3bd9b1483793354714c004f3c9b6e129bc4ffc2700e1a7a3e8774cfd9b2b11",
-      "format": "P6",
+    "assets/art/runtime/laptop-lid.png": {
+      "sha256": "e42d4e825359f47161288413bf7764e42547289f88d1030d948db73510df1c0d",
+      "format": "PNG",
       "width": 288,
       "height": 168
     },
-    "assets/art/laptop-lid-mask.ppm": {
-      "sha256": "dc98bf563da1b93dfae38c681449b216d33424188ecaeaacd9b158328ce007da",
-      "format": "P6",
+    "assets/art/runtime/laptop-lid-mask.png": {
+      "sha256": "095de57c26f6b8b88ff73efc49dae9b3c6b41d808e1c48a43a287e2ef154b6b8",
+      "format": "PNG",
       "width": 288,
       "height": 168
     }
