@@ -37,14 +37,17 @@
 
 #include "kitty_framebuffer_internal.h"
 
+#include <dirent.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <poll.h>
+#include <signal.h>
 #include <stdio.h>
-#include <stdatomic.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/ioctl.h>
+#include <sys/mman.h>
+#include <sys/stat.h>
 #include <unistd.h>
 #include <zlib.h>
 
@@ -55,26 +58,6 @@
 /* A stalled non-blocking write polls in 50 ms slices; give up after this
  * many consecutive slices without progress. */
 #define KITTYFB_WRITE_STALL_LIMIT 40
-
-/* presenter_disabled is written from the emergency signal path and both
- * flags are observed by the presenter thread.  volatile sig_atomic_t alone
- * only makes signal/main-thread access safe; these lock-free operations also
- * establish valid inter-thread access without calling into libatomic from a
- * signal handler.  This library already requires GCC-compatible __sync
- * atomics for its one-shot shutdown claim. */
-_Static_assert(sizeof(sig_atomic_t) == sizeof(int) &&
-                   ATOMIC_INT_LOCK_FREE == 2,
-               "sig_atomic_t must use lock-free integer atomics");
-
-static bool presenter_flag_load(const volatile sig_atomic_t *flag)
-{
-    return __atomic_load_n(flag, __ATOMIC_ACQUIRE) != 0;
-}
-
-static void presenter_flag_store(volatile sig_atomic_t *flag, bool value)
-{
-    __atomic_store_n(flag, value ? 1 : 0, __ATOMIC_RELEASE);
-}
 
 static const char BASE64_TABLE[] =
     "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
@@ -128,6 +111,38 @@ size_t kittyfb_base64_encode(const uint8_t *input, size_t length, char *output)
     return out;
 }
 
+int kittyfb_snap_axis(int value, int cell, int minimum, int maximum)
+{
+    int64_t step;
+    int64_t snapped;
+
+    if (cell <= 0 || minimum <= 0 || maximum < minimum) {
+        return 0;
+    }
+    if (value < minimum) {
+        value = minimum;
+    } else if (value > maximum) {
+        value = maximum;
+    }
+
+    /* An odd cell dimension needs a two-cell step for an even pixel size. */
+    step = (cell % 2 == 0) ? cell : (int64_t)cell * 2;
+    snapped = ((int64_t)value / step) * step;
+    if (snapped < minimum) {
+        int64_t rounded_minimum =
+            (((int64_t)minimum + step - 1) / step) * step;
+
+        snapped = rounded_minimum <= maximum
+            ? rounded_minimum
+            : ((int64_t)maximum / step) * step;
+    }
+    if (snapped <= 0) {
+        /* No cell-aligned value fits. Preserve the hard maximum bound. */
+        snapped = (int64_t)maximum & ~INT64_C(1);
+    }
+    return (int)snapped;
+}
+
 bool kittyfb_derive_geometry(
     int columns,
     int rows,
@@ -173,12 +188,13 @@ bool kittyfb_derive_geometry(
     if (height > options->max_height) {
         height = options->max_height;
     }
-    /* snap to whole cells so the image doesn't end in a ragged
-     * partially-covered cell column/row, then force even dimensions */
-    width -= width % cell_width;
-    height -= height % cell_height;
-    width &= ~1;
-    height &= ~1;
+    /* Snap to whole, even cell groups without crossing back below the
+     * requested minimum. A minimum can encode a required integer scale,
+     * so rounding below it is more harmful than covering one extra cell. */
+    width = kittyfb_snap_axis(
+        width, cell_width, options->min_width, options->max_width);
+    height = kittyfb_snap_axis(
+        height, cell_height, options->min_height, options->max_height);
     if (width <= 0 || height <= 0) {
         return false;
     }
@@ -288,6 +304,76 @@ size_t kittyfb_build_packet(
     return (size_t)(at - output);
 }
 
+size_t kittyfb_build_shm_packet(
+    char *output,
+    size_t capacity,
+    const char *shm_name,
+    int new_id,
+    int old_id,
+    int width,
+    int height,
+    const char *origin,
+    bool clear_first)
+{
+    char encoded[KITTYFB_SHM_NAME_MAX * 4 / 3 + 8];
+    char *at = output;
+    size_t remaining = capacity;
+    size_t name_length;
+    size_t encoded_length;
+    int printed;
+
+    if (output == NULL || shm_name == NULL || origin == NULL ||
+        new_id <= 0 || old_id <= 0 || width <= 0 || height <= 0) {
+        return 0;
+    }
+    name_length = strlen(shm_name);
+    if (name_length == 0 || name_length >= KITTYFB_SHM_NAME_MAX) {
+        return 0;
+    }
+    encoded_length = kittyfb_base64_encode(
+        (const uint8_t *)shm_name, name_length, encoded);
+
+    printed = snprintf(
+        at,
+        remaining,
+        "\x1b[?2026h%s%s",
+        clear_first ? "\x1b[2J" : "",
+        origin);
+    if (printed < 0 || (size_t)printed >= remaining) {
+        return 0;
+    }
+    at += printed;
+    remaining -= (size_t)printed;
+
+    /* f=32: the object holds RGBA.  t=s: the payload is a name, not
+     * pixels, so there is nothing to chunk and nothing to compress. */
+    printed = snprintf(
+        at,
+        remaining,
+        "\x1b_Ga=T,f=32,i=%d,q=2,t=s,s=%d,v=%d;%.*s\x1b\\",
+        new_id,
+        width,
+        height,
+        (int)encoded_length,
+        encoded);
+    if (printed < 0 || (size_t)printed >= remaining) {
+        return 0;
+    }
+    at += printed;
+    remaining -= (size_t)printed;
+
+    printed = snprintf(
+        at,
+        remaining,
+        "\x1b_Ga=d,d=I,i=%d,q=2\x1b\\\x1b[?2026l",
+        old_id);
+    if (printed < 0 || (size_t)printed >= remaining) {
+        return 0;
+    }
+    at += printed;
+    return (size_t)(at - output);
+}
+
 /* ------------------------------ small utils ----------------------------- */
 
 /* Growth always goes through a temporary so a failed realloc keeps the
@@ -331,8 +417,8 @@ static bool write_all(kittyfb_session *session, const char *data, size_t size)
     int stalled_polls = 0;
 
     while (offset < size) {
-        if (presenter_flag_load(&session->presenter_disabled) ||
-            presenter_flag_load(&session->write_cancel)) {
+        if (__atomic_load_n(&session->presenter_disabled, __ATOMIC_ACQUIRE) ||
+            __atomic_load_n(&session->write_cancel, __ATOMIC_ACQUIRE)) {
             return false;
         }
         ssize_t count = write(session->output_fd, data + offset, size - offset);
@@ -415,6 +501,8 @@ void kittyfb_options_init(kittyfb_options *options)
     options->image_id_a = 1;
     options->image_id_b = 2;
     options->zlib_level = 1;
+    options->transport = KITTYFB_TRANSPORT_AUTO;
+    options->shm_slots = 3;
 }
 
 void kittyfb_session_init(kittyfb_session *session)
@@ -454,12 +542,13 @@ bool kittyfb_failed(const kittyfb_session *session)
 {
     bool failed;
     kittyfb_session *mutable_session;
+
     if (session == NULL) return false;
-    /* The public query is logically const, but presenter_failed belongs to
-     * the frame_lock domain and may be latched by the worker at any time. */
+    /* Locking is logically const: it protects the snapshot without changing
+     * the session's observable state. */
     mutable_session = (kittyfb_session *)session;
     pthread_mutex_lock(&mutable_session->frame_lock);
-    failed = session->presenter_failed;
+    failed = mutable_session->presenter_failed;
     pthread_mutex_unlock(&mutable_session->frame_lock);
     return failed;
 }
@@ -474,20 +563,322 @@ void kittyfb_get_stats(kittyfb_session *session, kittyfb_stats *out)
     pthread_mutex_unlock(&session->frame_lock);
 }
 
+/* -------------------------- shared-memory ring -------------------------- */
+
+/*
+ * Slot names must be unique across concurrent sessions in this process
+ * and across processes.  The pid separates processes and this counter
+ * separates sessions within one; a pid recycled from a dead process can
+ * still collide with its leaked objects, which shm_slot_publish() handles
+ * by unlinking the stale name and retrying once.
+ */
+static unsigned shm_session_serial;
+
+static void shm_slot_release(struct kittyfb_shm_slot *slot)
+{
+    if (slot->mapping != NULL) {
+        (void)munmap(slot->mapping, slot->mapping_size);
+        slot->mapping = NULL;
+    }
+    if (slot->fd >= 0) {
+        (void)close(slot->fd);
+        slot->fd = -1;
+    }
+    slot->mapping_size = 0;
+    slot->busy = false;
+}
+
+/*
+ * Free every slot the terminal has consumed.  Kitty unlinks a t=s object
+ * as soon as it has read it, so a name that no longer resolves is an
+ * acknowledgement.  Returns the number of free slots.
+ */
+static int shm_ring_reap(kittyfb_session *session)
+{
+    int free_count = 0;
+
+    for (int index = 0; index < session->shm_slot_count; index++) {
+        struct kittyfb_shm_slot *slot = &session->shm_slots[index];
+        if (!slot->busy) {
+            free_count++;
+            continue;
+        }
+        int probe = shm_open(slot->name, O_RDONLY, 0);
+        if (probe >= 0) {
+            (void)close(probe);
+            continue;   /* still unread */
+        }
+        if (errno == ENOENT) {
+            shm_slot_release(slot);
+            free_count++;
+        }
+        /* Any other errno leaves the slot busy: it will be retried on the
+         * next frame, and the ring degrades to fewer slots rather than
+         * handing the terminal an object it may still be reading. */
+    }
+    return free_count;
+}
+
+/*
+ * Copy `size` bytes into a free slot and return its name, or NULL when
+ * every slot is still in flight (the caller drops the frame) or the
+ * object could not be created.  *saturated distinguishes the two.
+ */
+static const char *shm_ring_publish(
+    kittyfb_session *session,
+    const uint8_t *data,
+    size_t size,
+    bool *saturated)
+{
+    struct kittyfb_shm_slot *slot = NULL;
+
+    *saturated = false;
+    if (shm_ring_reap(session) == 0) {
+        *saturated = true;
+        return NULL;
+    }
+    for (int index = 0; index < session->shm_slot_count; index++) {
+        if (!session->shm_slots[index].busy) {
+            slot = &session->shm_slots[index];
+            break;
+        }
+    }
+    if (slot == NULL) {
+        *saturated = true;
+        return NULL;
+    }
+
+    int fd = shm_open(slot->name, O_RDWR | O_CREAT | O_EXCL, 0600);
+    if (fd < 0 && errno == EEXIST) {
+        /* A leaked object from a dead process whose pid we now carry.
+         * Nothing live can own it: the name embeds our own pid. */
+        (void)shm_unlink(slot->name);
+        fd = shm_open(slot->name, O_RDWR | O_CREAT | O_EXCL, 0600);
+    }
+    if (fd < 0) {
+        return NULL;
+    }
+    if (ftruncate(fd, (off_t)size) != 0) {
+        (void)close(fd);
+        (void)shm_unlink(slot->name);
+        return NULL;
+    }
+    void *mapping = mmap(NULL, size, PROT_WRITE, MAP_SHARED, fd, 0);
+    if (mapping == MAP_FAILED) {
+        (void)close(fd);
+        (void)shm_unlink(slot->name);
+        return NULL;
+    }
+    memcpy(mapping, data, size);
+
+    slot->fd = fd;
+    slot->mapping = mapping;
+    slot->mapping_size = size;
+    slot->busy = true;
+    return slot->name;
+}
+
+static void shm_ring_destroy(kittyfb_session *session)
+{
+    if (session->shm_slots == NULL) {
+        return;
+    }
+    for (int index = 0; index < session->shm_slot_count; index++) {
+        struct kittyfb_shm_slot *slot = &session->shm_slots[index];
+        /* Unlink unconditionally: a slot still in flight at teardown was
+         * never read, and leaving it behind leaks a frame of tmpfs until
+         * the next reboot. */
+        (void)shm_unlink(slot->name);
+        shm_slot_release(slot);
+    }
+    free(session->shm_slots);
+    session->shm_slots = NULL;
+    session->shm_slot_count = 0;
+    session->shm_active = false;
+}
+
+/*
+ * Allocate the ring and prove shared memory actually works by creating
+ * and removing one object.  Returns false when the transport is
+ * unavailable, which for AUTO means falling back to INLINE.
+ */
+static bool shm_ring_create(kittyfb_session *session, int slot_count)
+{
+    unsigned serial = shm_session_serial++;
+    struct kittyfb_shm_slot *slots =
+        calloc((size_t)slot_count, sizeof(*slots));
+
+    if (slots == NULL) {
+        return false;
+    }
+    for (int index = 0; index < slot_count; index++) {
+        slots[index].fd = -1;
+        int printed = snprintf(
+            slots[index].name,
+            sizeof(slots[index].name),
+            "/kilix-fb-%ld-%u-%d",
+            (long)getpid(),
+            serial,
+            index);
+        if (printed < 0 || (size_t)printed >= sizeof(slots[index].name)) {
+            free(slots);
+            return false;
+        }
+    }
+
+    /* A probe is the only way to know shm_open() is usable here: it fails
+     * on systems without /dev/shm mounted, and inside containers that
+     * deny it, and neither is visible any other way. */
+    int probe = shm_open(slots[0].name, O_RDWR | O_CREAT | O_EXCL, 0600);
+    if (probe < 0 && errno == EEXIST) {
+        (void)shm_unlink(slots[0].name);
+        probe = shm_open(slots[0].name, O_RDWR | O_CREAT | O_EXCL, 0600);
+    }
+    if (probe < 0) {
+        free(slots);
+        return false;
+    }
+    (void)close(probe);
+    (void)shm_unlink(slots[0].name);
+
+    session->shm_slots = slots;
+    session->shm_slot_count = slot_count;
+    return true;
+}
+
+/*
+ * Best-effort cleanup of objects left behind by a process that died
+ * without unwinding - a SIGKILL, or a crash before kittyfb_stop().  The
+ * emergency restore deliberately does not do this: it is async-signal
+ * safe and unlinking a slot array in a signal handler is not worth the
+ * risk, so the names carry the owning pid instead and a later run
+ * reclaims them.
+ *
+ * Only objects whose pid no longer exists are removed, so a running
+ * session's frames are never pulled out from under it.  Linux exposes
+ * shared memory as a directory; elsewhere this does nothing, which is
+ * correct rather than merely tolerable - the leak is bounded by
+ * shm_slots frames per crashed process and tmpfs is cleared on reboot.
+ */
+int kittyfb_reap_orphans(void)
+{
+    static const char prefix[] = "kilix-fb-";
+    DIR *directory = opendir("/dev/shm");
+    struct dirent *entry;
+    int reaped = 0;
+
+    if (directory == NULL) {
+        return 0;
+    }
+    while ((entry = readdir(directory)) != NULL) {
+        char name[KITTYFB_SHM_NAME_MAX];
+        long owner;
+        char *end;
+        int printed;
+
+        if (strncmp(entry->d_name, prefix, sizeof(prefix) - 1u) != 0) {
+            continue;
+        }
+        errno = 0;
+        owner = strtol(entry->d_name + sizeof(prefix) - 1u, &end, 10);
+        if (errno != 0 || end == entry->d_name + sizeof(prefix) - 1u ||
+            *end != '-' || owner <= 0) {
+            continue;
+        }
+        /* ESRCH is the only answer that proves the owner is gone.  EPERM
+         * means a live process this user may not signal. */
+        if (kill((pid_t)owner, 0) == 0 || errno != ESRCH) {
+            continue;
+        }
+        printed = snprintf(name, sizeof(name), "/%s", entry->d_name);
+        if (printed < 0 || (size_t)printed >= sizeof(name)) {
+            continue;
+        }
+        if (shm_unlink(name) == 0) {
+            reaped++;
+        }
+    }
+    (void)closedir(directory);
+    return reaped;
+}
+
 /* ------------------------------- encoding ------------------------------- */
 
 /* Runs on the presenter thread, or on the caller when thread creation
  * failed; either way it is the only user of the encoder scratch. */
+/*
+ * The shared-memory path: no alpha strip and no compression, because
+ * neither byte saving buys anything once the pixels stop travelling down
+ * the terminal connection.  The frame is copied once, into the slot.
+ *
+ * Returns true when the packet was written.  On a saturated ring it
+ * returns false with *dropped set: that is a dropped frame, matching the
+ * newest-frame-wins policy, and must not be mistaken for a failure.
+ */
+static bool publish_shm(
+    kittyfb_session *session,
+    const uint8_t *rgba,
+    int width,
+    int height,
+    const char *origin,
+    bool clear_first,
+    bool *dropped)
+{
+    size_t size = (size_t)width * (size_t)height * 4u;
+    bool saturated = false;
+    const char *name = shm_ring_publish(session, rgba, size, &saturated);
+
+    if (name == NULL) {
+        *dropped = saturated;
+        return false;
+    }
+
+    int new_id = session->shown_image_id == session->options.image_id_a
+                     ? session->options.image_id_b
+                     : session->options.image_id_a;
+
+    size_t packet_needed = KITTYFB_SHM_NAME_MAX * 2u + 512u;
+    if (!grow_chars(&session->packet_buffer, &session->packet_capacity,
+                    packet_needed)) {
+        return false;
+    }
+    size_t packet_length = kittyfb_build_shm_packet(
+        session->packet_buffer,
+        session->packet_capacity,
+        name,
+        new_id,
+        session->shown_image_id,
+        width,
+        height,
+        origin,
+        clear_first);
+    if (packet_length == 0) {
+        return false;
+    }
+
+    if (__atomic_load_n(&session->presenter_disabled, __ATOMIC_ACQUIRE)) {
+        return false;
+    }
+    if (!write_all(session, session->packet_buffer, packet_length)) {
+        return false;
+    }
+    session->shown_image_id = new_id;
+    return true;
+}
+
 static bool encode_and_write(
     kittyfb_session *session,
     const uint8_t *rgba,
     int width,
     int height,
     const char *origin,
-    bool clear_first)
+    bool clear_first,
+    bool *dropped)
 {
+    *dropped = false;
+
     /* A signal-time restore has fenced the presenter: emit nothing. */
-    if (presenter_flag_load(&session->presenter_disabled)) {
+    if (__atomic_load_n(&session->presenter_disabled, __ATOMIC_ACQUIRE)) {
         return false;
     }
     if (rgba == NULL || width <= 0 || height <= 0) {
@@ -495,6 +886,11 @@ static bool encode_and_write(
     }
     if ((size_t)width > SIZE_MAX / 4u / (size_t)height) {
         return false;
+    }
+
+    if (session->shm_active) {
+        return publish_shm(session, rgba, width, height, origin, clear_first,
+                           dropped);
     }
 
     /* strip the (ignored) alpha channel: 25% less data to compress,
@@ -575,7 +971,7 @@ static bool encode_and_write(
 
     /* Re-check the fence right before the write: if a restore raced in
      * after the top check, this frame's packet must not go out at all. */
-    if (presenter_flag_load(&session->presenter_disabled)) {
+    if (__atomic_load_n(&session->presenter_disabled, __ATOMIC_ACQUIRE)) {
         return false;
     }
     if (!write_all(session, session->packet_buffer, packet_length)) {
@@ -620,19 +1016,27 @@ static void *presenter_main(void *opaque)
         session->frame_pending = false;
         pthread_mutex_unlock(&session->frame_lock);
 
+        bool dropped = false;
         bool encoded = encode_and_write(
             session,
             session->encode_buffer,
             width,
             height,
             origin,
-            clear_first);
+            clear_first,
+            &dropped);
 
         pthread_mutex_lock(&session->frame_lock);
         if (encoded) {
             session->stats.frames_encoded++;
-        } else if (!presenter_flag_load(&session->write_cancel) &&
-                   !presenter_flag_load(&session->presenter_disabled)) {
+        } else if (dropped) {
+            /* Every shared-memory slot is still unread.  Dropping the
+             * newest frame is the same bargain the pending slot already
+             * makes: a slow terminal costs frames, never a stall. */
+            session->stats.frames_dropped++;
+        } else if (!__atomic_load_n(&session->write_cancel, __ATOMIC_ACQUIRE) &&
+                   !__atomic_load_n(&session->presenter_disabled,
+                                    __ATOMIC_ACQUIRE)) {
             /* A cancelled or fenced write is shutdown noise, not a
              * failure; anything else latches so the caller can stop. */
             session->stats.encode_failures++;
@@ -690,16 +1094,22 @@ bool kittyfb_present(
             session->clear_pending = false;
             session->stats.frames_presented++;
             pthread_mutex_unlock(&session->frame_lock);
+            bool dropped = false;
             bool encoded = encode_and_write(
-                session, rgba, width, height, origin, clear_first);
+                session, rgba, width, height, origin, clear_first, &dropped);
             pthread_mutex_lock(&session->frame_lock);
             if (encoded) {
                 session->stats.frames_encoded++;
+            } else if (dropped) {
+                session->stats.frames_dropped++;
             } else {
                 session->stats.encode_failures++;
             }
             pthread_mutex_unlock(&session->frame_lock);
-            return encoded;
+            /* A dropped frame is not a presentation failure: the caller
+             * should keep sending frames, exactly as it does when the
+             * pending slot is overwritten. */
+            return encoded || dropped;
         }
         session->presenter_started = true;
     }
@@ -717,10 +1127,14 @@ bool kittyfb_present(
     return true;
 }
 
-/* Join the presenter and release its memory.  Safe when never started. */
-static void presenter_shutdown(kittyfb_session *session)
+/* Join the presenter.  Suspension retains high-water buffers so a
+ * stop/start job-control cycle does not churn multi-megabyte allocations;
+ * final shutdown releases them.  Safe when the thread was never started. */
+static void presenter_shutdown(
+    kittyfb_session *session,
+    bool release_buffers)
 {
-    presenter_flag_store(&session->write_cancel, true);
+    __atomic_store_n(&session->write_cancel, 1, __ATOMIC_RELEASE);
     pthread_mutex_lock(&session->frame_lock);
     bool must_join = session->presenter_started;
     session->presenter_running = false;
@@ -733,26 +1147,32 @@ static void presenter_shutdown(kittyfb_session *session)
 
     pthread_mutex_lock(&session->frame_lock);
     session->presenter_started = false;
-    free(session->pending_buffer);
-    free(session->encode_buffer);
-    session->pending_buffer = NULL;
-    session->encode_buffer = NULL;
-    session->pending_capacity = 0;
-    session->encode_capacity = 0;
-    free(session->rgb_buffer);
-    free(session->z_buffer);
-    free(session->b64_buffer);
-    free(session->packet_buffer);
-    session->rgb_buffer = NULL;
-    session->z_buffer = NULL;
-    session->b64_buffer = NULL;
-    session->packet_buffer = NULL;
-    session->rgb_capacity = 0;
-    session->z_capacity = 0;
-    session->b64_capacity = 0;
-    session->packet_capacity = 0;
+    if (release_buffers) {
+        free(session->pending_buffer);
+        free(session->encode_buffer);
+        session->pending_buffer = NULL;
+        session->encode_buffer = NULL;
+        session->pending_capacity = 0;
+        session->encode_capacity = 0;
+        free(session->rgb_buffer);
+        free(session->z_buffer);
+        free(session->b64_buffer);
+        free(session->packet_buffer);
+        session->rgb_buffer = NULL;
+        session->z_buffer = NULL;
+        session->b64_buffer = NULL;
+        session->packet_buffer = NULL;
+        session->rgb_capacity = 0;
+        session->z_capacity = 0;
+        session->b64_capacity = 0;
+        session->packet_capacity = 0;
+        /* The presenter is joined, so nothing else can touch the ring.
+         * Suspension deliberately keeps it, matching the frame buffers:
+         * a resumed session reuses its slot names. */
+        shm_ring_destroy(session);
+    }
     pthread_mutex_unlock(&session->frame_lock);
-    presenter_flag_store(&session->write_cancel, false);
+    __atomic_store_n(&session->write_cancel, 0, __ATOMIC_RELEASE);
 }
 
 /* ------------------------------- lifecycle ------------------------------ */
@@ -825,7 +1245,67 @@ static bool validate_options(const kittyfb_options *options)
            options->image_id_a > 0 && options->image_id_b > 0 &&
            options->image_id_a != options->image_id_b &&
            options->zlib_level >= -1 && options->zlib_level <= 9 &&
-           options->probe_timeout_ms >= 0 && enter_valid && leave_valid;
+           options->probe_timeout_ms >= 0 &&
+           options->transport >= KITTYFB_TRANSPORT_AUTO &&
+           options->transport <= KITTYFB_TRANSPORT_SHM &&
+           options->shm_slots >= 1 &&
+           options->shm_slots <= KITTYFB_SHM_SLOTS_MAX &&
+           enter_valid && leave_valid;
+}
+
+/*
+ * Decide the transport once, here, rather than per frame: a per-frame
+ * decision is a per-frame syscall and a session whose behavior changes
+ * under the caller.
+ *
+ * tmux disqualifies shared memory even when shm_open() works, because
+ * tmux forwards the escape to a terminal that need not share this
+ * process's /dev/shm - and a name it cannot open is a blank screen, not
+ * a degraded one.  An explicit KITTYFB_TRANSPORT_SHM still honors the
+ * caller's choice; only AUTO declines.
+ */
+static void resolve_transport(kittyfb_session *session)
+{
+    kittyfb_transport requested = session->options.transport;
+    const char *override = getenv("KITTYFB_TRANSPORT");
+
+    /* An environment override makes both paths reachable in a real
+     * terminal without rebuilding the application, which is the only way
+     * to check the one the application did not choose. */
+    if (override != NULL) {
+        if (strcmp(override, "inline") == 0) {
+            requested = KITTYFB_TRANSPORT_INLINE;
+        } else if (strcmp(override, "shm") == 0) {
+            requested = KITTYFB_TRANSPORT_SHM;
+        } else if (strcmp(override, "auto") == 0) {
+            requested = KITTYFB_TRANSPORT_AUTO;
+        }
+    }
+
+    session->shm_active = false;
+    if (requested == KITTYFB_TRANSPORT_INLINE) {
+        return;
+    }
+    if (requested == KITTYFB_TRANSPORT_AUTO) {
+        const char *tmux = getenv("TMUX");
+        if (tmux != NULL && tmux[0] != '\0') {
+            return;
+        }
+    }
+    if (shm_ring_create(session, session->options.shm_slots)) {
+        session->shm_active = true;
+    }
+    /* An explicit SHM request that cannot be honored falls back to
+     * inline rather than failing the start: a working picture beats a
+     * refused session, and kittyfb_active_transport() reports it. */
+}
+
+kittyfb_transport kittyfb_active_transport(const kittyfb_session *session)
+{
+    if (session == NULL || !session->shm_active) {
+        return KITTYFB_TRANSPORT_INLINE;
+    }
+    return KITTYFB_TRANSPORT_SHM;
 }
 
 static bool build_emergency_sequence(kittyfb_session *session)
@@ -934,8 +1414,8 @@ int kittyfb_start(
      * and a latched claim or fence from the previous run must not
      * swallow this run's shutdown. */
     session->shutdown_claimed = 0;
-    presenter_flag_store(&session->presenter_disabled, false);
-    presenter_flag_store(&session->write_cancel, false);
+    __atomic_store_n(&session->presenter_disabled, 0, __ATOMIC_RELEASE);
+    __atomic_store_n(&session->write_cancel, 0, __ATOMIC_RELEASE);
     session->presenter_started = false;
     session->presenter_running = false;
     session->presenter_failed = false;
@@ -944,6 +1424,12 @@ int kittyfb_start(
     session->shown_image_id = session->options.image_id_b;
     (void)memset(&session->stats, 0, sizeof(session->stats));
     winch_flag = 0;
+
+    /* A suspended session keeps its ring; a fresh one builds a new one
+     * under a new serial so two sessions never share slot names. */
+    if (session->shm_slots == NULL) {
+        resolve_transport(session);
+    }
 
     /* Non-blocking output: neither the presenter nor the async-signal
      * restore may ever hang on a stalled terminal connection. */
@@ -1110,12 +1596,8 @@ static bool claim_shutdown(kittyfb_session *session)
     return !__sync_lock_test_and_set(&session->shutdown_claimed, 1);
 }
 
-static void restore_terminal(kittyfb_session *session)
+static void restore_process_state(kittyfb_session *session)
 {
-    if (session->emergency_length > 0) {
-        (void)write_all(session, session->emergency,
-                        session->emergency_length);
-    }
     if (session->termios_saved) {
         (void)tcsetattr(session->input_fd, TCSAFLUSH,
                         &session->saved_termios);
@@ -1132,17 +1614,61 @@ static void restore_terminal(kittyfb_session *session)
     }
 }
 
+static void restore_terminal(kittyfb_session *session)
+{
+    if (session->emergency_length > 0) {
+        (void)write_all(session, session->emergency,
+                        session->emergency_length);
+    }
+    restore_process_state(session);
+}
+
 void kittyfb_stop(kittyfb_session *session)
 {
-    if (session == NULL || (!session->active && !session->presenter_started)) {
+    bool restore;
+    bool retained;
+
+    if (session == NULL) {
         return;
     }
+    restore = session->active || session->presenter_started;
+    retained =
+        session->pending_buffer != NULL ||
+        session->encode_buffer != NULL ||
+        session->rgb_buffer != NULL ||
+        session->z_buffer != NULL ||
+        session->b64_buffer != NULL ||
+        session->packet_buffer != NULL;
+    if (!restore && !retained) return;
     /* Stop the presenter first so no frame write interleaves with the
      * restore sequence.  This also reclaims the thread and buffers after
      * an emergency restore already released the terminal. */
-    presenter_shutdown(session);
+    presenter_shutdown(session, true);
+    if (restore) {
+        if (claim_shutdown(session)) {
+            restore_terminal(session);
+        } else {
+            /* The signal-safe path cannot clear ordinary bool bookkeeping or
+             * restore the process's previous SIGWINCH disposition.  Retry the
+             * idempotent OS-state restoration here without emitting the
+             * terminal escape sequence a second time. */
+            restore_process_state(session);
+        }
+    }
+    session->active = 0;
+}
+
+void kittyfb_suspend(kittyfb_session *session)
+{
+    if (session == NULL ||
+        (!session->active && !session->presenter_started)) {
+        return;
+    }
+    presenter_shutdown(session, false);
     if (claim_shutdown(session)) {
         restore_terminal(session);
+    } else {
+        restore_process_state(session);
     }
     session->active = 0;
 }
@@ -1155,7 +1681,7 @@ void kittyfb_emergency_restore(kittyfb_session *session)
     /* Fence the presenter first (an async-signal-safe flag write): the
      * thread cannot be joined from a signal handler, so this stops it
      * emitting bytes that would interleave with the restore below. */
-    presenter_flag_store(&session->presenter_disabled, true);
+    __atomic_store_n(&session->presenter_disabled, 1, __ATOMIC_RELEASE);
     if (!claim_shutdown(session)) {
         return;
     }
