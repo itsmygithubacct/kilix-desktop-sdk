@@ -21,10 +21,15 @@ saying so, which is the reason for the change.
 
 Each component's license is retained as `LICENSE` in its directory.
 
-Text is drawn with soft-raster's embedded 8x16 face, scaled by whole pixels to
-the canvas. Cap carried its own authored 7x14 face until 2026-08-06; it was
-retired rather than left unused, and is preserved with its clean-room
-provenance record outside this repository.
+Text is drawn with soft-raster's `SR_FONT_COMPACT_7X14` face, scaled by whole
+pixels to the canvas. Those are Cap's own authored glyphs: they moved into the
+shared module on 2026-08-06 as a selectable face, so there is one glyph
+rasterizer in the binary rather than a private one beside the linked one. The
+face is chosen by name rather than taken as the default, because soft-raster's
+default descends from the X11 8x16 fixed BDF by way of Debian's console-setup
+and carries the permissive notices that implies, while these glyphs were
+authored from generic bitmap-letterform practice and the written legibility
+requirement alone.
 
 The audio wrapper uses pcm-mixer's strict WAV loader and optional POSIX sink
 transport. Audio source provenance is separate from code provenance and is

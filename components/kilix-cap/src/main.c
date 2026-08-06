@@ -1191,12 +1191,13 @@ static int cmd_font_test(void)
     int failures = 0;
     int ink = 0;
 
-    /* soft-raster's embedded 8x16 face, scaled to the canvas. The advance
-     * is what the layout is built on, so it is pinned; coverage is checked
-     * by drawing rather than by asking, because a glyph the shared module
-     * renders blank would pass a has-glyph query and still leave a hole. */
-    test_expect(draw_text_height() == 16 * CANVAS_SCALE,
-                "text cell is the scaled 8x16 face", &failures);
+    /* Cap's authored 7x14 face, drawn by soft-raster and selected by name so
+     * a change of default in the shared module cannot silently restyle this
+     * desktop. The advance is what the layout is built on, so it is pinned;
+     * coverage is checked by drawing rather than by asking, because a glyph
+     * the module renders blank would pass a lookup and still leave a hole. */
+    test_expect(draw_text_height() == 14 * CANVAS_SCALE,
+                "text cell is the scaled 7x14 authored face", &failures);
     test_expect(draw_text_width("Desk") == 4 * 8 * CANVAS_SCALE,
                 "text advance is 8px per character, scaled", &failures);
     test_expect(draw_text_width("") == 0, "empty string has no width",

@@ -178,12 +178,16 @@ void draw_plate_pressed(Canvas *c, int x, int y, int w, int h)
 
 /* ---- Text ---- */
 
-/* Text comes from soft-raster's embedded 8x16 face, scaled by whole pixels
- * to the canvas. Cap carried its own authored 7x14 face until 2026-08-06;
- * it is preserved, with its clean-room provenance record, outside this
- * repository rather than left here unused. The advance matches what it had
- * (24px at this scale); the cap height is taller, 48 against 42. */
-enum { TEXT_SCALE = CANVAS_SCALE, TEXT_CELL_H = 16 };
+/* Cap's own authored face, drawn by soft-raster.
+ *
+ * The glyphs are the 7x14 face this project has always used; they now live in
+ * the shared module as a selectable face rather than in a private font.c
+ * beside it, so there is one glyph rasterizer in the binary instead of two.
+ * Choosing it explicitly also keeps Cap's provenance answerable: the default
+ * face descends from the X11 8x16 fixed BDF by way of Debian's console-setup,
+ * while this one was authored from generic bitmap-letterform practice alone. */
+enum { TEXT_SCALE = CANVAS_SCALE };
+#define TEXT_FACE SR_FONT_COMPACT_7X14
 
 static void wrap_canvas(sr_canvas *sc, Canvas *c)
 {
@@ -192,12 +196,12 @@ static void wrap_canvas(sr_canvas *sc, Canvas *c)
 
 int draw_text_width(const char *s)
 {
-    return sr_text_width(s != NULL ? s : "", TEXT_SCALE);
+    return sr_text_width_in(TEXT_FACE, s != NULL ? s : "", TEXT_SCALE);
 }
 
 int draw_text_height(void)
 {
-    return TEXT_CELL_H * TEXT_SCALE;
+    return sr_font_height(TEXT_FACE) * TEXT_SCALE;
 }
 
 void draw_text(Canvas *c, int x, int y, const char *s, uint32_t rgb)
@@ -205,7 +209,8 @@ void draw_text(Canvas *c, int x, int y, const char *s, uint32_t rgb)
     sr_canvas sc;
     if (c == NULL || c->px == NULL || s == NULL) return;
     wrap_canvas(&sc, c);
-    sr_text(&sc, (float)x, (float)y, s, rgb & 0xffffffu, 1.0f, TEXT_SCALE);
+    sr_text_in(TEXT_FACE, &sc, (float)x, (float)y, s, rgb & 0xffffffu,
+               1.0f, TEXT_SCALE);
 }
 
 void draw_text_center(Canvas *c, int cx, int y, const char *s, uint32_t rgb)
@@ -213,8 +218,8 @@ void draw_text_center(Canvas *c, int cx, int y, const char *s, uint32_t rgb)
     sr_canvas sc;
     if (c == NULL || c->px == NULL || s == NULL) return;
     wrap_canvas(&sc, c);
-    sr_text_center(&sc, (float)cx, (float)y, s, rgb & 0xffffffu, 1.0f,
-                   TEXT_SCALE);
+    sr_text_center_in(TEXT_FACE, &sc, (float)cx, (float)y, s,
+                      rgb & 0xffffffu, 1.0f, TEXT_SCALE);
 }
 
 /* ---- Cursor ---- */
