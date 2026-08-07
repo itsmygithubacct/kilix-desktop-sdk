@@ -22,11 +22,46 @@ Quit through Start -> Shut Down..., or press `Ctrl+Alt+Q`.
 
 ## Release 0.1.8
 
-Prepared 2026-08-04. **Not published yet.**
+Prepared 2026-08-07. **Not published yet.**
 
-Upgrades from 0.1.7. Programs gains Install Software and a Coding Agents entry,
-both driving `kilix install`. An opened Start-menu submenu now stays open when
-the pointer leaves the row that opened it.
+Upgrades from 0.1.7.
+
+- Programs gains **Install Software** and a **Coding Agents** entry whose
+  context menu reaches Claude Code, Codex and Kimi Code individually. Both run
+  `kilix install`, resolved through the Kilix launcher the same way the model
+  store and the TUI desktop resolve it, so what the menu offers and what the
+  command prints cannot drift. That matters most for the agents, which install
+  by running a vendor script fetched over the network: `kilix install` prints
+  the command and its documentation URL and asks first, and a menu entry that
+  shelled out on its own would be the version of this with no such step.
+- Programs also gains **Default Desktop**, which writes through
+  `kilix default-desktop` — the launcher's single writer — with a context menu
+  naming each desktop directly. Starting another desktop for one session was
+  already possible; nothing made it the one the next login would use.
+- An opened Start-menu submenu now stays open once the pointer leaves the row
+  that opened it. It closes on a click outside every menu, or when another
+  cascade entry replaces it; hovering an ordinary entry only moves the
+  highlight. Reaching a submenu entry used to mean tracing the parent row
+  exactly and crossing over without drifting onto any of the plain entries in
+  between.
+- Adopts the host's game verb and shared application scanner (SDK 1.8).
+  `games.py` delegates install-and-boot to `kilix games play <id>`, so every
+  desktop boots the same build from the same place; the handoff is probed
+  rather than assumed, so a host that predates the verb keeps working and an
+  offline machine with a local install loses nothing. The freedesktop scanner
+  moves to `kilix_sdk.xdgapps` and `xdgapps.py` keeps only the desktop-side
+  half — icons, launch modes, the VirtualBox special case.
+
+### Fixed by the 0.1.7 review
+
+- **A Start-menu launch could leave a dead tab.** The terminal spawns a tab's
+  child from its own environment, whose `PATH` does not reliably include
+  `~/.local/bin`, so a bare command name it could not resolve died before its
+  first prompt and left a tab whose only trace was a resize warning — the
+  0.1.7 review's dead `rollout-resume` tab. `_tab`, the choke point every
+  Start-menu launcher goes through, now resolves its program where the menu
+  was built (`PATH`, then `~/.local/bin`) and hands the terminal an absolute
+  path. A name found in neither place gets a message box naming both.
 
 ## Release 0.1.7
 
