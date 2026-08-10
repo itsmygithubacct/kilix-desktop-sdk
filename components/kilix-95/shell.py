@@ -984,6 +984,62 @@ class Shell:
             return [kilix, "bonsai"]
         return None
 
+    @staticmethod
+    def kilix_mask_target():
+        """Installed command first, then the Kilix pinned installer.
+
+        The same two branches as every other pinned tool here, and not a
+        source checkout, for the same reason: a mask is a file format, and
+        a Start-menu launch editing it with a different build than
+        `kilix mask` would is the divergence a pin exists to prevent."""
+        if executable := shutil.which("kilix-mask"):
+            return [executable]
+        kilix = os.path.join(KILIX_HOME, "kilix")
+        if os.path.isfile(kilix) and os.access(kilix, os.X_OK):
+            return [kilix, "mask"]
+        return None
+
+    def open_kilix_mask(self):
+        """Paint a region map over a picture.
+
+        It needs a picture before it can do anything - the whole point is
+        painting in relation to what is in the image - so this asks for one
+        rather than opening onto an error. The mask is named after the
+        picture and offered for confirmation, because writing one silently
+        next to somebody's photograph is not this program's business.
+        """
+        target = self.kilix_mask_target()
+        if target is None:
+            wm.msgbox(
+                self.desk, "Region Painter",
+                "Neither an installed kilix-mask nor the Kilix installer "
+                "that builds it could be found.", icon="error")
+            return False
+        import filedialog
+
+        def picked(picture):
+            if not picture:
+                return
+            base = os.path.splitext(picture)[0] + ".mask.png"
+
+            def confirmed(mask):
+                if not mask:
+                    return
+                self._tab(target + ["--image", picture, mask],
+                          "Region Painter", os.path.dirname(mask) or
+                          os.path.expanduser("~"))
+
+            filedialog.save_file(
+                self.desk, "Mask to paint", confirmed,
+                start=os.path.dirname(base),
+                filters=[("Masks", "*.mask.png;*.png")],
+                filename=os.path.basename(base))
+
+        filedialog.open_file(
+            self.desk, "Picture to paint over", picked,
+            filters=[("Pictures", "*.png;*.ppm"), ("All Files", "*")])
+        return True
+
     def open_kilix_bonsai(self):
         """The BitNet model store: browse, download, and verify local models.
 

@@ -541,6 +541,11 @@ class Taskbar:
                 # one of the models this downloads, and they share one copy.
                 MI("BitNet Models", icon="bonsai",
                    action=shell.open_kilix_bonsai),
+                # A painter, but of meaning rather than pixels: which parts
+                # of a camera view to ignore, which parts of a room can be
+                # walked on.
+                MI("Region Painter", icon="paint",
+                   action=shell.open_kilix_mask),
                 # The coding agents install and update through their vendors'
                 # own scripts; `kilix install` prints each command before
                 # running it. Right-click reaches one directly.
