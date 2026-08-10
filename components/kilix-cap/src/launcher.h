@@ -41,6 +41,7 @@ typedef enum LaunchToolId {
     LAUNCH_TOOL_DOC_ENGINE,
     LAUNCH_TOOL_WEATHER,
     LAUNCH_TOOL_STARGAZING,
+    LAUNCH_TOOL_PDF,
     LAUNCH_TOOL_COUNT
 } LaunchToolId;
 

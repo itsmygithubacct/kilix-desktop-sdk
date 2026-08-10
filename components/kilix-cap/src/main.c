@@ -623,10 +623,12 @@ static int cmd_interaction_test(void)
         SCENE_DESK, SCENE_LIBRARY, SCENE_SERVER_ROOM, SCENE_BALCONY,
         SCENE_CLEANING_ROOM, SCENE_GAME_ROOM, SCENE_STOREROOM
     };
-    static const LaunchToolId server_tools[6] = {
+    static const LaunchToolId server_tools[7] = {
         LAUNCH_TOOL_LOGS, LAUNCH_TOOL_ACTIVITY, LAUNCH_TOOL_SETTINGS,
-        LAUNCH_TOOL_STORAGE, LAUNCH_TOOL_NETWORK, LAUNCH_TOOL_SOFTWARE
+        LAUNCH_TOOL_STORAGE, LAUNCH_TOOL_NETWORK, LAUNCH_TOOL_SOFTWARE,
+        LAUNCH_TOOL_PDF
     };
+    static const int server_objects[7] = {1, 2, 3, 4, 5, 6, 8};
     static const LaunchToolId cleaning_tools[4] = {
         LAUNCH_TOOL_CLEAN_TEMP, LAUNCH_TOOL_CLEAN_TRASH,
         LAUNCH_TOOL_CLEAN_CACHE, LAUNCH_TOOL_CLEAN_ALL
@@ -699,9 +701,9 @@ static int cmd_interaction_test(void)
                 "browser handoff releases scene input", &failures);
 
     scene_goto(SCENE_SERVER_ROOM);
-    for (int i = 0; i < 6; i++) {
+    for (int i = 0; i < 7; i++) {
         LaunchToolId tool = LAUNCH_TOOL_COUNT;
-        click_object(scene_object(SCENE_SERVER_ROOM, i + 1));
+        click_object(scene_object(SCENE_SERVER_ROOM, server_objects[i]));
         test_expect(!scene_panel_open() &&
                         scene_take_tool_request(&tool) &&
                         tool == server_tools[i],
@@ -1245,6 +1247,11 @@ static int cmd_launcher_test(void)
     test_expect(scene_take_tool_request(&tool) &&
                     tool == LAUNCH_TOOL_LOGS,
                 "Server monitor queues its live console", &failures);
+    click_object(scene_object(SCENE_SERVER_ROOM, 8));
+    test_expect(scene_take_tool_request(&tool) &&
+                    tool == LAUNCH_TOOL_PDF,
+                "Server PDF terminal queues the shared catalog app",
+                &failures);
     scene_goto(SCENE_CLEANING_ROOM);
     click_object(scene_object(SCENE_CLEANING_ROOM, 4));
     test_expect(scene_take_tool_request(&tool) &&

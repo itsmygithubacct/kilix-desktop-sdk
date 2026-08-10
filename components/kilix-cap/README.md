@@ -141,7 +141,8 @@ The Server Room maps:
 | Brass console | Installed system settings application. |
 | Service rack | Installed disk/storage administration application. |
 | Patch panel | Installed network settings application. |
-| Right cabinet | Installed software administration application. |
+| Right cabinet, upper door | Installed software administration application. |
+| Right cabinet, lower door | PDF Conversion in a fresh Kilix tab, installed and launched through the shared catalog application verb. |
 
 The two monitor TUIs are read-only, refresh every two seconds, and open in
 fresh authenticated Kilix tabs. Press `r` to refresh or `q` to close.

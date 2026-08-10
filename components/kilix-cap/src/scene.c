@@ -24,7 +24,7 @@ enum {
     HALL_OBJS = 7,
     STORE_ITEMS = 3,
     STORE_OBJS = STORE_ITEMS + 1,
-    SERVER_OBJS = 8,
+    SERVER_OBJS = 9,
     GAME_OBJS_MAX = GAME_CATALOG_MAX + 1,
     LIBRARY_BOOKS = 5,
     LIBRARY_OBJS = LIBRARY_BOOKS + 1,
@@ -389,8 +389,11 @@ static void build_server_room(void)
                "Power", OBJ_BREAKER, ICON_BREAKER, ui_rect(276, 168, 90, 150),
                -1, false);
     set_object(&server_objs[6], "Software administration cabinet",
-               "Software", OBJ_APPLIANCE, ICON_NONE, ui_rect(1257, 108, 165, 564),
+               "Software", OBJ_APPLIANCE, ICON_NONE, ui_rect(1257, 108, 165, 270),
                LAUNCH_TOOL_SOFTWARE, false);
+    set_object(&server_objs[8], "PDF conversion terminal",
+               "PDF", OBJ_APPLIANCE, ICON_NONE, ui_rect(1257, 378, 165, 294),
+               LAUNCH_TOOL_PDF, false);
 }
 
 typedef struct GamePlacement {

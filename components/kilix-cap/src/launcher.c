@@ -95,7 +95,8 @@ static const char *const tool_titles[LAUNCH_TOOL_COUNT] = {
     "Applications",
     "Engine",
     "Weather",
-    "Stargazing"
+    "Stargazing",
+    "PDF Conversion"
 };
 
 static bool false_value(const char *value)
@@ -1203,6 +1204,22 @@ static bool build_kilix_tab_plan(const char *title,
 
 static bool in_kilix_session(void);
 
+static bool resolve_kilix_launcher(char *path, size_t size)
+{
+    const char *home = getenv("KILIX_HOME");
+    const char *source = getenv("GPU_TERMINAL_SOURCE_HOME");
+    if (home != NULL && home[0] == '/' &&
+        join_path(path, size, home, "kilix") && executable_file(path))
+        return true;
+    if (source != NULL && source[0] == '/') {
+        char checkout[PATH_MAX];
+        if (join_path(checkout, sizeof checkout, source, "kilix") &&
+            join_path(path, size, checkout, "kilix") && executable_file(path))
+            return true;
+    }
+    return program_resolver("kilix", path, size);
+}
+
 /* Stack tools the Server Room reaches before it falls back to the host's own
  * desktop-environment programs. Inside Kilix these are the right answer: the
  * settings console that edits the file every Kilix component reads, and the
@@ -1212,8 +1229,9 @@ static bool in_kilix_session(void);
  */
 static bool build_stack_tool_plan(LaunchToolId id, LaunchPlan *plan)
 {
-    static const char *const settings_argv[] = {"kilix", "settings"};
-    static const char *const update_argv[] = {"kilix", "update", "--stack"};
+    const char *settings_argv[2];
+    const char *update_argv[3];
+    const char *pdf_argv[4];
     char root[PATH_MAX];
     char helper[PATH_MAX];
     char kitten[PATH_MAX];
@@ -1221,11 +1239,20 @@ static bool build_stack_tool_plan(LaunchToolId id, LaunchPlan *plan)
     char kilix[PATH_MAX];
 
     if (!in_kilix_session() ||
-        !program_resolver("kilix", kilix, sizeof kilix) ||
+        !resolve_kilix_launcher(kilix, sizeof kilix) ||
         !project_paths(root, sizeof root, helper, sizeof helper) ||
         !resolve_kilix_control(kitten, sizeof kitten,
                                password, sizeof password))
         return false;
+    settings_argv[0] = kilix;
+    settings_argv[1] = "settings";
+    update_argv[0] = kilix;
+    update_argv[1] = "update";
+    update_argv[2] = "--stack";
+    pdf_argv[0] = kilix;
+    pdf_argv[1] = "app";
+    pdf_argv[2] = "run";
+    pdf_argv[3] = "kilix-pdf-conversion";
     if (id == LAUNCH_TOOL_SETTINGS)
         return build_kilix_tab_plan("Kilix Settings", settings_argv,
                                     COUNT_OF(settings_argv), root, kitten,
@@ -1233,6 +1260,10 @@ static bool build_stack_tool_plan(LaunchToolId id, LaunchPlan *plan)
     if (id == LAUNCH_TOOL_SOFTWARE)
         return build_kilix_tab_plan("Update", update_argv,
                                     COUNT_OF(update_argv), root, kitten,
+                                    password, plan);
+    if (id == LAUNCH_TOOL_PDF)
+        return build_kilix_tab_plan("PDF Conversion", pdf_argv,
+                                    COUNT_OF(pdf_argv), root, kitten,
                                     password, plan);
     return false;
 }
@@ -1280,9 +1311,11 @@ static bool build_tool_plan(LaunchToolId id, LaunchPlan *plan)
     }
     /* Stack tools win over the host DE's equivalents when there is a Kilix to
      * run them in; otherwise the ladders below are unchanged. */
-    if ((id == LAUNCH_TOOL_SETTINGS || id == LAUNCH_TOOL_SOFTWARE) &&
+    if ((id == LAUNCH_TOOL_SETTINGS || id == LAUNCH_TOOL_SOFTWARE ||
+         id == LAUNCH_TOOL_PDF) &&
         build_stack_tool_plan(id, plan))
         return true;
+    if (id == LAUNCH_TOOL_PDF) return false;
     memset(plan, 0, sizeof *plan);
     if (tool_is_document(id)) {
         int document_index = id - LAUNCH_TOOL_DOC_START;
@@ -2347,6 +2380,18 @@ static bool tool_plan_selftest(void)
         strcmp(plan.argv[12], "kilix") != 0 ||
         strcmp(plan.argv[13], "update") != 0 ||
         strcmp(plan.argv[14], "--stack") != 0 || plan.argv[15] != NULL)
+        return false;
+    if (!build_kilix_tab_plan(
+            "PDF Conversion",
+            (const char *const[]){"/fixture/kilix", "app", "run",
+                                  "kilix-pdf-conversion"}, 4,
+            root, "/fixture/kitten", "/fixture/password", &plan) ||
+        strcmp(plan.argv[10], "PDF Conversion") != 0 ||
+        strcmp(plan.argv[12], "/fixture/kilix") != 0 ||
+        strcmp(plan.argv[13], "app") != 0 ||
+        strcmp(plan.argv[14], "run") != 0 ||
+        strcmp(plan.argv[15], "kilix-pdf-conversion") != 0 ||
+        plan.argv[16] != NULL)
         return false;
     /* An empty argv would launch a tab that runs whatever the shell defaults
      * to; a caller that miscounts must get nothing instead. */
