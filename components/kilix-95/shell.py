@@ -1040,6 +1040,32 @@ class Shell:
             filters=[("Pictures", "*.png;*.ppm"), ("All Files", "*")])
         return True
 
+    @staticmethod
+    def kilix_cameras_target():
+        """The camera list: the installed command, else the host's verb.
+
+        `kilix-cameras` is the camera UI and knows about stream profiles;
+        `kilix rtsp` is the viewer underneath it and installs itself on
+        first use.  Either answers "show me my cameras", so whichever the
+        machine has is the right one to open."""
+        if executable := shutil.which("kilix-cameras"):
+            return [executable]
+        kilix = os.path.join(KILIX_HOME, "kilix")
+        if os.path.isfile(kilix) and os.access(kilix, os.X_OK):
+            return [kilix, "rtsp", "list"]
+        return None
+
+    def open_kilix_cameras(self):
+        """Watch the RTSP cameras this machine is configured for."""
+        target = self.kilix_cameras_target()
+        if target is not None:
+            return self._tab(target, "Cameras", os.path.expanduser("~"))
+        wm.msgbox(
+            self.desk, "Cameras",
+            "Neither an installed camera list nor the Kilix launcher that "
+            "installs the viewer could be found.", icon="error")
+        return False
+
     def open_kilix_bonsai(self):
         """The BitNet model store: browse, download, and verify local models.
 

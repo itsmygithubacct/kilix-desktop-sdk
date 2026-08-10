@@ -546,6 +546,11 @@ class Taskbar:
                 # walked on.
                 MI("Region Painter", icon="paint",
                    action=shell.open_kilix_mask),
+                # Beside the painter on purpose: the masks it draws are for
+                # these cameras, and the pictures to draw them over come
+                # from here.
+                MI("Cameras", icon="display",
+                   action=shell.open_kilix_cameras),
                 # The coding agents install and update through their vendors'
                 # own scripts; `kilix install` prints each command before
                 # running it. Right-click reaches one directly.
