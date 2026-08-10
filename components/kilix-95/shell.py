@@ -16,6 +16,7 @@ import stat
 import subprocess
 
 from PIL import Image
+from kilix_sdk import content as kilix_content
 
 import icons
 import durable_state
@@ -1082,6 +1083,19 @@ class Shell:
             "Neither an installed Kilix Bonsai model store nor its source "
             "checkout could be found.", icon="error")
         return False
+
+    def open_kilix_pdf(self):
+        """Render the shared catalog application in a Kilix 95 XPane box."""
+        kilix = os.path.join(KILIX_HOME, "kilix")
+        try:
+            plan = kilix_content.application_plan(
+                "kilix-pdf-conversion", "window", launcher=kilix)
+        except (kilix_content.CatalogError, ValueError) as error:
+            wm.msgbox(self.desk, "PDF Conversion", str(error), icon="error")
+            return False
+        return self.open_in_xpane(
+            plan.argv, plan.label, icon=plan.icon,
+            app_size=plan.preferred_size, cwd=os.path.expanduser("~"))
 
     @staticmethod
     def kilix_tui_target():

@@ -51,6 +51,9 @@ Upgrades from 0.1.7.
   offline machine with a local install loses nothing. The freedesktop scanner
   moves to `kilix_sdk.xdgapps` and `xdgapps.py` keeps only the desktop-side
   half — icons, launch modes, the VirtualBox special case.
+- **PDF Conversion** is a first-class Programs entry. Its catalog launch plan
+  opens an `xterm` PTY inside XPane, so the terminal-native application behaves
+  as a movable Kilix 95 window while retaining the host's one pinned installer.
 
 ### Fixed by the 0.1.7 review
 

@@ -64,6 +64,22 @@ def failure_shows_msgbox():
     assert not any(type(w).__name__ == "XPane" for w in d.wm.windows)
 
 
+def pdf_conversion_uses_the_shared_window_plan():
+    d = H.make_desk()
+    seen = {}
+    d.shell.open_in_xpane = lambda argv, title, **kwargs: seen.update(
+        argv=list(argv), title=title, kwargs=kwargs) or True
+
+    assert d.shell.open_kilix_pdf()
+    assert seen["argv"] == [
+        os.path.join(H.KILIX_HOME, "kilix"), "app", "window",
+        "kilix-pdf-conversion",
+    ], seen
+    assert seen["title"] == "PDF Conversion"
+    assert seen["kwargs"]["icon"] == "doc_text"
+    assert seen["kwargs"]["app_size"] == (760, 520)
+
+
 def firefox_defaults_to_filled_run_tab():
     d = H.make_desk()
     seen = {}
@@ -225,6 +241,7 @@ def malformed_copied_launcher_is_rejected():
 
 opens_window()
 failure_shows_msgbox()
+pdf_conversion_uses_the_shared_window_plan()
 firefox_defaults_to_filled_run_tab()
 chromium_defaults_to_filled_run_tab()
 chromium_window_mode_uses_a_private_profile()
