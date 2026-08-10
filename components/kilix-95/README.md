@@ -617,6 +617,15 @@ and per-process dashboard in a graphical tab. The pane memory chip opens the
 same monitor; `auto` shows it above 1 GiB, `always` includes MiB/KiB values,
 and `off` hides it.
 
+The **Voice** tab lists every shared speech-model choice and provides an
+**Install + use model** action. It opens Kilix's verified installer in a visible
+terminal tab; the child makes the model and its compatible recognizer the
+default only after installation succeeds. Merely opening Settings or changing
+the dropdown downloads nothing. The small and lgraph English models run through
+Vosk. The shared VibeVoice weights can be installed/defaulted through Bonsai,
+while the current live voice runtime marks them unsupported rather than
+pretending dictation is ready.
+
 Start ▸ Programs ▸ **BitNet Models** opens the Kilix Bonsai model store: the
 1-bit and 1.58-bit models this stack can run, what each costs to download, and
 what is already on disk. It resolves an installed `kilix-bonsai` first and

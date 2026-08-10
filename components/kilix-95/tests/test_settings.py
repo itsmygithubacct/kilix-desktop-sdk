@@ -439,6 +439,36 @@ with conf("font_size 12\n") as target:
     assert shared_settings.voice_history(win.shared_path)
 
 
+# Every catalog model can be installed and made the coherent default from the
+# Voice page. The action opens a visible terminal tab; it never downloads in
+# the desktop process itself.
+with conf("font_size 12\n"):
+    d = H.make_desk()
+    import apps
+    apps.open(d, "settings", None)
+    win = H.find_window(d, "SettingsWin")
+    shared_settings = settings.shared_settings
+    model = win.fields[shared_settings.VOICE_STT_MODEL_KEY][1]
+    engine = win.fields[shared_settings.VOICE_STT_ENGINE_KEY][1]
+    model.index = model.options.index("vibevoice-asr-bitnet")
+    opened = []
+    d.shell.kilix_stt_target = lambda: ["/opt/kilix-stt"]
+    d.shell._tab = lambda argv, title, cwd=None: opened.append(
+        (argv, title, cwd)) or True
+
+    assert win._install_voice_model()
+
+    assert engine.value == "vibevoice", engine.value
+    # The child command changes both defaults only after installation succeeds.
+    assert shared_settings.stt_model(win.shared_path) == "small-en-us"
+    assert shared_settings.stt_engine(win.shared_path) == "vosk"
+    assert opened[0][0] == [
+        "/opt/kilix-stt", "--install", "vibevoice-asr-bitnet",
+        "--default", "vibevoice-asr-bitnet",
+    ], opened
+    assert "after verification" in win.voice_model_status.text
+
+
 # The submit policy is the safety-relevant control on this tab: dictation that
 # presses Enter on its own behalf turns a misrecognition into a command. The
 # two values are written out rather than read from the SDK, so that widening

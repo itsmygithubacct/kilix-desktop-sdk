@@ -390,16 +390,25 @@ class SettingsWin(wm.Window):
         # A microphone that appears in the tab bar by default has to say what
         # it does before it is trusted, and this tab is where a suspicious
         # user looks first.
+        voice_tab = FORM_PAGES.index(VOICE)
+        self.voice_model_button = self.add(W.Button(
+            18, 280, 142, 24, "Install + use model",
+            cb=self._install_voice_model))
+        self.voice_model_status = self.add(W.Label(
+            170, 284, "Uses Kilix's verified lazy installer.",
+            font=T.SMALL, color=T.SHADOW))
+        self.panels[voice_tab].extend([
+            self.voice_model_button, self.voice_model_status,
+        ])
         for offset, text in enumerate((
-            "The microphone opens when you click the microphone button and",
-            "closes when you click it again; nothing is captured before",
-            "that. Speech is synthesised and recognised on this machine,",
-            "nothing is sent anywhere, and dictation never presses Enter.",
+            "The microphone opens only when its page-strip button is clicked;",
+            "clicking again closes it, and nothing is captured beforehand.",
+            "Recognition stays on this machine, and dictation never presses Enter.",
         )):
             note = self.add(W.Label(
-                18, 280 + offset * 18, text,
+                18, 312 + offset * 18, text,
                 font=T.SMALL, color=T.SHADOW))
-            self.panels[FORM_PAGES.index(VOICE)].append(note)
+            self.panels[voice_tab].append(note)
         tools_title = self.add(W.Label(
             18, 48, "Tmux Manager", font=T.BOLD))
         tools_description = self.add(W.Label(
@@ -523,6 +532,30 @@ class SettingsWin(wm.Window):
         else:
             self.tb_alias_status.set("Could not open the `tb` installer.")
         self.invalidate()
+
+    def _install_voice_model(self):
+        model = self.fields[shared_settings.VOICE_STT_MODEL_KEY][1].value
+        try:
+            engine = shared_settings.stt_engine_for_model(model)
+        except ValueError as error:
+            self.voice_model_status.set(str(error))
+            self.invalidate()
+            return False
+        engine_widget = self.fields[shared_settings.VOICE_STT_ENGINE_KEY][1]
+        engine_widget.index = engine_widget.options.index(engine)
+        target = self.desk.shell.kilix_stt_target()
+        if target is None:
+            self.voice_model_status.set("Kilix dictation installer not found.")
+            self.invalidate()
+            return False
+        opened = self.desk.shell._tab(
+            [*target, "--install", model, "--default", model],
+            f"Install speech model · {model}", os.path.expanduser("~"))
+        self.voice_model_status.set(
+            "Installer will use it after verification." if opened
+            else "Could not open the model installer.")
+        self.invalidate()
+        return bool(opened)
 
     def _populate(self):
         self._sync_flavor_widget()
