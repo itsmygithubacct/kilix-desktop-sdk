@@ -63,6 +63,12 @@ TOP_BAR = [
 ]
 PANE_BUTTONS = [
     (
+        shared_settings.PANE_CPU_MODE_KEY,
+        "Pane CPU load",
+        "choice",
+        list(shared_settings.PANE_CPU_MODE_CHOICES),
+    ),
+    (
         shared_settings.PANE_MEMORY_MODE_KEY,
         "Pane memory chip",
         "choice",

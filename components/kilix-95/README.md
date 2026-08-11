@@ -28,7 +28,7 @@ Unreleased coordinated 0.1.9 work.
   shared catalog. Terminal-native tools open in `xterm` PTYs inside XPane, so
   File Manager, System Center, Settings, Software Center, Session Center,
   Voice Studio, Notepad, Character Map, and later catalog additions behave as
-  movable Kilix 95 windows without provider-local pins. SDK 1.12 supplies
+  movable Kilix 95 windows without provider-local pins. SDK 1.13 supplies
   named actions, input types, and lifecycle policy; single-instance apps are
   refocused instead of duplicated.
 - **PDF Viewer** opens PDF files through the catalog's terminal-native viewer.
@@ -39,6 +39,10 @@ Unreleased coordinated 0.1.9 work.
   and shared settings without private source pins or duplicate installers.
   Dictation and read-aloud settings can install the exact speech-model closure
   before reopening their diagnostic views.
+- Settings exposes the completed CPU/RAM pane-chip policy. One-minute load is
+  shown left of the shared chip above `1.0` by default; pane process-tree RAM
+  remains on its right. Each side independently supports `auto`, `always`, and
+  `off`.
 
 ## Release 0.1.8
 
@@ -235,10 +239,10 @@ The boundary is:
 - Kilix CLI helpers: `kilix run`, `kilix open-url`, `kilix serve`.
 - Kitty remote control: `kitten @ launch` for new tabs and windows.
 
-`provider.json` declares provider API 1, the required `kilix_sdk` 1.12 contract,
+`provider.json` declares provider API 1, the required `kilix_sdk` 1.13 contract,
 and the security behaviors the provider implements. Kilix validates that
 data-only manifest and its implementation markers before executing the
-provider. `main.py` also calls `kilix_sdk.require_compatible("1.12")` as a
+provider. `main.py` also calls `kilix_sdk.require_compatible("1.13")` as a
 defense-in-depth runtime check. Incompatible hosts fail early with a clear
 version error.
 
@@ -609,7 +613,7 @@ The Top bar, Pane buttons, Session logs, and Games tabs write the
 non-executable shared source
 of truth at `~/.local/gpu_terminal/settings.conf`. They can independently
 remove and re-add the default-off thermometer, volume, network/Wi-Fi, calendar,
-date/time, battery, the `auto`/`always`/`off` pane-memory chip,
+date/time, battery, the `auto`/`always`/`off` pane-CPU and pane-memory sides,
 synchronized-input keyboard button, font-size,
 four-way split, maximize, close, and every Kilix game.
 
@@ -630,9 +634,10 @@ installer. The volume item opens `pulsemixer` (falling back to
 NetworkManager's `nmtui`. Start ▸ Programs ▸ Kilix Temps launches the same
 resolved graphical dashboard.
 Start ▸ Programs ▸ Kilix Memory launches the RAM, swap, PSI pressure, paging,
-and per-process dashboard in a graphical tab. The pane memory chip opens the
-same monitor; `auto` shows it above 1 GiB, `always` includes MiB/KiB values,
-and `off` hides it.
+and per-process dashboard in a graphical tab. The shared pane resource chip
+opens the same monitor. CPU load is left of the chip (`auto` above `1.0`), and
+pane RAM is right (`auto` above 1 GiB); `always` and `off` override either side
+independently.
 
 The **Voice** tab lists every shared speech-model choice and provides an
 **Install + use model** action. It opens Kilix's verified installer in a visible
