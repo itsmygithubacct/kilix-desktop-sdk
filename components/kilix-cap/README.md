@@ -138,10 +138,10 @@ The Server Room maps:
 |---|---|
 | Left monitor | Live green-on-black TUI with system logs, warning-or-higher alerts, and local system mail. |
 | Right monitor | Live TUI with user processes and active TCP/UDP network connections. |
-| Brass console | Installed system settings application. |
+| Brass console | Kilix Settings Center in a fresh tab; outside Kilix, the installed system settings application. |
 | Service rack | Installed disk/storage administration application. |
 | Patch panel | Installed network settings application. |
-| Right cabinet, upper door | Installed software administration application. |
+| Right cabinet, upper door | Kilix Software Center in a fresh tab; outside Kilix, the installed software administration application. |
 | Right cabinet, lower door | PDF Conversion in a fresh Kilix tab, installed and launched through the shared catalog application verb. |
 
 The two monitor TUIs are read-only, refresh every two seconds, and open in

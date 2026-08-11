@@ -1222,15 +1222,14 @@ static bool resolve_kilix_launcher(char *path, size_t size)
 
 /* Stack tools the Server Room reaches before it falls back to the host's own
  * desktop-environment programs. Inside Kilix these are the right answer: the
- * settings console that edits the file every Kilix component reads, and the
- * updater that moves the whole pinned closure rather than one checkout. On a
- * bare X session with no Kilix around them, neither exists, and the original
- * candidate ladders still apply.
+ * settings and software centers that share the catalog with every other Kilix
+ * surface. On a bare X session with no Kilix around them, neither exists, and
+ * the original candidate ladders still apply.
  */
 static bool build_stack_tool_plan(LaunchToolId id, LaunchPlan *plan)
 {
-    const char *settings_argv[2];
-    const char *update_argv[3];
+    const char *settings_argv[4];
+    const char *software_argv[4];
     const char *pdf_argv[4];
     char root[PATH_MAX];
     char helper[PATH_MAX];
@@ -1245,10 +1244,13 @@ static bool build_stack_tool_plan(LaunchToolId id, LaunchPlan *plan)
                                password, sizeof password))
         return false;
     settings_argv[0] = kilix;
-    settings_argv[1] = "settings";
-    update_argv[0] = kilix;
-    update_argv[1] = "update";
-    update_argv[2] = "--stack";
+    settings_argv[1] = "app";
+    settings_argv[2] = "run";
+    settings_argv[3] = "kilix-settings-center";
+    software_argv[0] = kilix;
+    software_argv[1] = "app";
+    software_argv[2] = "run";
+    software_argv[3] = "kilix-software-center";
     pdf_argv[0] = kilix;
     pdf_argv[1] = "app";
     pdf_argv[2] = "run";
@@ -1258,8 +1260,8 @@ static bool build_stack_tool_plan(LaunchToolId id, LaunchPlan *plan)
                                     COUNT_OF(settings_argv), root, kitten,
                                     password, plan);
     if (id == LAUNCH_TOOL_SOFTWARE)
-        return build_kilix_tab_plan("Update", update_argv,
-                                    COUNT_OF(update_argv), root, kitten,
+        return build_kilix_tab_plan("Software Center", software_argv,
+                                    COUNT_OF(software_argv), root, kitten,
                                     password, plan);
     if (id == LAUNCH_TOOL_PDF)
         return build_kilix_tab_plan("PDF Conversion", pdf_argv,
@@ -2361,7 +2363,8 @@ static bool tool_plan_selftest(void)
      * it. Built with fixture control values for the same reason the terminal
      * plans above are: the assertion is the exact argv, not the machine. */
     if (!build_kilix_tab_plan("Kilix Settings",
-                              (const char *const[]){"kilix", "settings"}, 2,
+                              (const char *const[]){"kilix", "app", "run",
+                                                    "kilix-settings-center"}, 4,
                               root, "/fixture/kitten", "/fixture/password",
                               &plan) ||
         strcmp(plan.program, "Kilix Settings") != 0 ||
@@ -2370,16 +2373,22 @@ static bool tool_plan_selftest(void)
         strcmp(plan.argv[10], "Kilix Settings") != 0 ||
         strcmp(plan.argv[11], "--") != 0 ||
         strcmp(plan.argv[12], "kilix") != 0 ||
-        strcmp(plan.argv[13], "settings") != 0 || plan.argv[14] != NULL)
+        strcmp(plan.argv[13], "app") != 0 ||
+        strcmp(plan.argv[14], "run") != 0 ||
+        strcmp(plan.argv[15], "kilix-settings-center") != 0 ||
+        plan.argv[16] != NULL)
         return false;
-    if (!build_kilix_tab_plan("Update",
-                              (const char *const[]){"kilix", "update",
-                                                    "--stack"}, 3,
+    if (!build_kilix_tab_plan("Software Center",
+                              (const char *const[]){"kilix", "app", "run",
+                                                    "kilix-software-center"}, 4,
                               root, "/fixture/kitten", "/fixture/password",
                               &plan) ||
+        strcmp(plan.argv[10], "Software Center") != 0 ||
         strcmp(plan.argv[12], "kilix") != 0 ||
-        strcmp(plan.argv[13], "update") != 0 ||
-        strcmp(plan.argv[14], "--stack") != 0 || plan.argv[15] != NULL)
+        strcmp(plan.argv[13], "app") != 0 ||
+        strcmp(plan.argv[14], "run") != 0 ||
+        strcmp(plan.argv[15], "kilix-software-center") != 0 ||
+        plan.argv[16] != NULL)
         return false;
     if (!build_kilix_tab_plan(
             "PDF Conversion",

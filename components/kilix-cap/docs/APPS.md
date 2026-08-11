@@ -97,9 +97,9 @@ Firefox process exits.
 
 | Physical object | Candidate programs / fixed target |
 |---|---|
-| System settings console | `xfce4-settings-manager` → `gnome-control-center` → `systemsettings` |
+| System settings console | inside Kilix: authenticated tab running `/resolved/kilix app run kilix-settings-center`; otherwise `xfce4-settings-manager` → `gnome-control-center` → `systemsettings` |
 | Storage rack | `gnome-disks` → `partitionmanager` → `gparted` |
-| Software cabinet, upper door | `synaptic` → `gnome-software` → `plasma-discover` |
+| Software cabinet, upper door | inside Kilix: authenticated tab running `/resolved/kilix app run kilix-software-center`; otherwise `synaptic` → `gnome-software` → `plasma-discover` |
 | Software cabinet, lower door | authenticated Kilix tab running `/resolved/kilix app run kilix-pdf-conversion` |
 | Network patch panel | `nm-connection-editor` → `systemsettings` → `gnome-control-center network` |
 | First Steps book | `xdg-open /absolute/kilix-cap/README.md` |
