@@ -500,11 +500,12 @@ with conf("font_size 12\n"):
 
 
 # Start ▸ Programs carries both voice settings/diagnostic TUIs and names them
-# honestly. Each uses the same installed, development, pinned resolution order
-# as the Kilix widgets, and an entry that resolves to nothing says so: a missing
-# speech engine degrades the feature, it never swallows a click. Voice Help
-# explains that the actual page-strip actions need a terminal pane rather than
-# this pixel surface.
+# honestly. Each prefers the pinned Kilix launcher so a newer desktop cannot
+# hand model actions to an older installed Voice CLI. Installed and development
+# tools remain fallbacks, and an entry that resolves to nothing says so: a
+# missing speech engine degrades the feature, it never swallows a click. Voice
+# Help explains that the actual page-strip actions need a terminal pane rather
+# than this pixel surface.
 with conf("font_size 12\n") as target:
     d = H.make_desk()
     d.taskbar.open_start_menu()
@@ -519,6 +520,8 @@ with conf("font_size 12\n") as target:
     d.shell._tab = lambda argv, title, cwd=None: opened.append(
         (argv, title, cwd)) or True
     real_which = shell_mod.shutil.which
+    real_kilix_home = shell_mod.KILIX_HOME
+    kilix_launcher = os.path.join(real_kilix_home, "kilix")
     shell_mod.shutil.which = lambda name: (
         f"/usr/local/bin/{name}" if name in ("kilix-tts", "kilix-stt")
         else real_which(name))
@@ -529,12 +532,29 @@ with conf("font_size 12\n") as target:
         shell_mod.shutil.which = real_which
     home = os.path.expanduser("~")
     assert opened == [
+        ([kilix_launcher, "tts"], "Read Aloud", home),
+        ([kilix_launcher, "stt"], "Dictation", home),
+    ], opened
+
+    # A standalone installed Voice tool remains useful when 95 is run without
+    # the Kilix source closure.
+    shell_mod.KILIX_HOME = os.path.dirname(target)  # holds no kilix launcher
+    shell_mod.shutil.which = lambda name: (
+        f"/usr/local/bin/{name}" if name in ("kilix-tts", "kilix-stt")
+        else real_which(name))
+    opened.clear()
+    try:
+        entries["Read Aloud Settings"].action()
+        entries["Dictation Settings"].action()
+    finally:
+        shell_mod.shutil.which = real_which
+    assert opened == [
         (["/usr/local/bin/kilix-tts"], "Read Aloud", home),
         (["/usr/local/bin/kilix-stt"], "Dictation", home),
     ], opened
 
-    # With no installed commands, a development checkout is the next exact
-    # branch used by the page-strip widgets.
+    # With no launcher or installed commands, a development checkout is the
+    # final exact branch used by the page-strip widgets.
     source_home = os.path.join(os.path.dirname(target), "voice-source")
     voice_project = os.path.join(source_home, "kilix-apps", "kilix-voice")
     os.makedirs(voice_project)
@@ -563,10 +583,8 @@ with conf("font_size 12\n") as target:
 
     messages = []
     real_msgbox = shell_mod.wm.msgbox
-    real_kilix_home = shell_mod.KILIX_HOME
     shell_mod.wm.msgbox = lambda desk, title, text, **kw: messages.append(
         (title, text, kw))
-    shell_mod.KILIX_HOME = os.path.dirname(target)   # holds no kilix launcher
     shell_mod.shutil.which = lambda name: None
     empty_source = os.path.join(os.path.dirname(target), "empty-source")
     os.mkdir(empty_source)

@@ -897,14 +897,14 @@ class Shell:
 
     @staticmethod
     def kilix_tts_target():
-        """Installed, development, then pinned — matching Kilix's widgets."""
+        """Pinned launcher first, so it can refresh an older Voice runtime."""
+        kilix = os.path.join(KILIX_HOME, "kilix")
+        if os.path.isfile(kilix) and os.access(kilix, os.X_OK):
+            return [kilix, "tts"]
         if executable := shutil.which("kilix-tts"):
             return [executable]
         if target := Shell.kilix_voice_source_target("kilix-tts"):
             return target
-        kilix = os.path.join(KILIX_HOME, "kilix")
-        if os.path.isfile(kilix) and os.access(kilix, os.X_OK):
-            return [kilix, "tts"]
         return None
 
     def open_kilix_tts(self):
@@ -919,14 +919,14 @@ class Shell:
 
     @staticmethod
     def kilix_stt_target():
-        """Installed, development, then pinned — matching Kilix's widgets."""
+        """Pinned launcher first, so every model action uses its Voice pin."""
+        kilix = os.path.join(KILIX_HOME, "kilix")
+        if os.path.isfile(kilix) and os.access(kilix, os.X_OK):
+            return [kilix, "stt"]
         if executable := shutil.which("kilix-stt"):
             return [executable]
         if target := Shell.kilix_voice_source_target("kilix-stt"):
             return target
-        kilix = os.path.join(KILIX_HOME, "kilix")
-        if os.path.isfile(kilix) and os.access(kilix, os.X_OK):
-            return [kilix, "stt"]
         return None
 
     def open_kilix_stt(self):
