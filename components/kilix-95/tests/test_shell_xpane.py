@@ -1,6 +1,9 @@
 """Shell.open_in_xpane: an app opens as a desktop window via XPane, and an
 XPane/Xvfb failure shows an error dialog instead of crashing the desktop."""
 import os
+from pathlib import Path
+import tempfile
+from unittest.mock import patch
 
 import harness as H
 import shell as shell_mod
@@ -64,20 +67,40 @@ def failure_shows_msgbox():
     assert not any(type(w).__name__ == "XPane" for w in d.wm.windows)
 
 
-def pdf_conversion_uses_the_shared_window_plan():
+def pdf_viewer_chooser_uses_the_shared_window_plan():
     d = H.make_desk()
     seen = {}
     d.shell.open_in_xpane = lambda argv, title, **kwargs: seen.update(
         argv=list(argv), title=title, kwargs=kwargs) or True
 
-    assert d.shell.open_kilix_pdf()
+    with tempfile.TemporaryDirectory() as directory:
+        document = str(Path(directory) / "report.pdf")
+        with patch("filedialog.open_file",
+                   side_effect=lambda _desk, _title, cb, **_kwargs:
+                   cb(document) or True):
+            assert d.shell.open_kilix_pdf()
     assert seen["argv"] == [
         os.path.join(H.KILIX_HOME, "kilix"), "app", "window",
-        "kilix-pdf-conversion",
+        "kilix-pdf", "--action", "open", "--", document,
     ], seen
-    assert seen["title"] == "PDF Conversion"
+    assert seen["title"] == "PDF Viewer"
     assert seen["kwargs"]["icon"] == "doc_text"
-    assert seen["kwargs"]["app_size"] == (760, 520)
+    assert seen["kwargs"]["app_size"] == (960, 700)
+
+
+def pdf_file_association_uses_the_viewer():
+    d = H.make_desk()
+    seen = {}
+    d.shell.open_catalog_application = lambda content_id, **kwargs: seen.update(
+        content_id=content_id, kwargs=kwargs) or True
+    with tempfile.TemporaryDirectory() as directory:
+        document = Path(directory) / "manual.PDF"
+        document.write_bytes(b"%PDF-1.4\n")
+        d.shell.open_path(str(document))
+    assert seen == {
+        "content_id": "kilix-pdf",
+        "kwargs": {"action": "open", "arguments": (str(document),)},
+    }
 
 
 def firefox_defaults_to_filled_run_tab():
@@ -241,7 +264,8 @@ def malformed_copied_launcher_is_rejected():
 
 opens_window()
 failure_shows_msgbox()
-pdf_conversion_uses_the_shared_window_plan()
+pdf_viewer_chooser_uses_the_shared_window_plan()
+pdf_file_association_uses_the_viewer()
 firefox_defaults_to_filled_run_tab()
 chromium_defaults_to_filled_run_tab()
 chromium_window_mode_uses_a_private_profile()

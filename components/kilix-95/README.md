@@ -20,6 +20,26 @@ kilix desktop
 
 Quit through Start -> Shut Down..., or press `Ctrl+Alt+Q`.
 
+## Release 0.1.9
+
+Unreleased coordinated 0.1.9 work.
+
+- **Kilix Applications** is generated from every application in the host's
+  shared catalog. Terminal-native tools open in `xterm` PTYs inside XPane, so
+  File Manager, System Center, Settings, Software Center, Session Center,
+  Voice Studio, Notepad, Character Map, and later catalog additions behave as
+  movable Kilix 95 windows without provider-local pins. SDK 1.12 supplies
+  named actions, input types, and lifecycle policy; single-instance apps are
+  refocused instead of duplicated.
+- **PDF Viewer** opens PDF files through the catalog's terminal-native viewer.
+  The Start-menu row opens a filtered file chooser, and `.pdf` files from the
+  desktop or File Manager use the viewer's fixed `open` action. PDF Conversion
+  remains available in the generated application submenu for Markdown work.
+- Region Painter, Cameras, and model installation are reachable from Programs
+  and shared settings without private source pins or duplicate installers.
+  Dictation and read-aloud settings can install the exact speech-model closure
+  before reopening their diagnostic views.
+
 ## Release 0.1.8
 
 Prepared 2026-08-07. **Not published yet.**
@@ -51,14 +71,6 @@ Upgrades from 0.1.7.
   offline machine with a local install loses nothing. The freedesktop scanner
   moves to `kilix_sdk.xdgapps` and `xdgapps.py` keeps only the desktop-side
   half — icons, launch modes, the VirtualBox special case.
-- **Kilix Applications** is generated from every application in the host's
-  shared catalog. Terminal-native tools open in `xterm` PTYs inside XPane, so
-  File Manager, System Center, Settings Center, Software Center, Voice Studio,
-  Notepad, Character Map, and later catalog additions behave as movable Kilix
-  95 windows without provider-local pins. SDK 1.12 supplies named actions,
-  input types, and lifecycle policy; single-instance apps are refocused instead
-  of duplicated.
-
 ### Fixed by the 0.1.7 review
 
 - **A Start-menu launch could leave a dead tab.** The terminal spawns a tab's
