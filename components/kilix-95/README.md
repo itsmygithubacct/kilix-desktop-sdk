@@ -51,9 +51,13 @@ Upgrades from 0.1.7.
   offline machine with a local install loses nothing. The freedesktop scanner
   moves to `kilix_sdk.xdgapps` and `xdgapps.py` keeps only the desktop-side
   half — icons, launch modes, the VirtualBox special case.
-- **PDF Conversion** is a first-class Programs entry. Its catalog launch plan
-  opens an `xterm` PTY inside XPane, so the terminal-native application behaves
-  as a movable Kilix 95 window while retaining the host's one pinned installer.
+- **Kilix Applications** is generated from every application in the host's
+  shared catalog. Terminal-native tools open in `xterm` PTYs inside XPane, so
+  File Manager, System Center, Settings Center, Software Center, Voice Studio,
+  Notepad, Character Map, and later catalog additions behave as movable Kilix
+  95 windows without provider-local pins. SDK 1.12 supplies named actions,
+  input types, and lifecycle policy; single-instance apps are refocused instead
+  of duplicated.
 
 ### Fixed by the 0.1.7 review
 
@@ -219,10 +223,10 @@ The boundary is:
 - Kilix CLI helpers: `kilix run`, `kilix open-url`, `kilix serve`.
 - Kitty remote control: `kitten @ launch` for new tabs and windows.
 
-`provider.json` declares provider API 1, the required `kilix_sdk` 1.7 contract,
+`provider.json` declares provider API 1, the required `kilix_sdk` 1.12 contract,
 and the security behaviors the provider implements. Kilix validates that
 data-only manifest and its implementation markers before executing the
-provider. `main.py` also calls `kilix_sdk.require_compatible("1.7")` as a
+provider. `main.py` also calls `kilix_sdk.require_compatible("1.12")` as a
 defense-in-depth runtime check. Incompatible hosts fail early with a clear
 version error.
 
@@ -289,10 +293,11 @@ The Start menu is built in `taskbar.py`.
 
 Top-level sections:
 
-- **Programs**: built-in accessories, games, browsers, terminals, PTY Sessions,
-  Kilix Temps, Kilix Memory, Tmux Manager, BitNet Models, the MS-DOS
-  Prompt/DOSBox caller, user launchers, and discovered XDG apps. PowerToys and
-  the optional classic folders appear when the full experience is active.
+- **Programs**: built-in accessories, games, the shared Kilix Applications
+  catalog, browsers, terminals, PTY Sessions, Kilix Temps, Kilix Memory, Tmux
+  Manager, BitNet Models, the MS-DOS Prompt/DOSBox caller, user launchers, and
+  discovered XDG apps. PowerToys and the optional classic folders appear when
+  the full experience is active.
 - **Documents**: recently opened files.
 - **Settings**: Control Panel, Kilix settings, display properties, sound
   schemes, and desktop flavor.
