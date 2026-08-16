@@ -149,9 +149,10 @@ class DeskTerm(kilix_term.Term):
         # alt screen, hide cursor, no autowrap, kitty kbd protocol,
         # any-motion + SGR + SGR-pixels mouse, bracketed paste.
         # >15u adds event-type reporting (flag 2) on top of the usual
-        # disambiguate+alternates+all-keys so the loop sees the Alt key's
-        # release — needed to commit the Alt+Tab switcher (_parse_csi tags
-        # every key event with its type; _norm_key drops the releases).
+        # disambiguate+alternates+all-keys so the loop sees the Alt and Super
+        # keys' releases — Alt-up commits the Alt+Tab switcher, Super-up opens
+        # the Start menu (_parse_csi tags every key event with its type;
+        # _norm_key drops the releases).
         self.write("\x1b[?1049h\x1b[2J\x1b[?25l\x1b[?7l\x1b[>15u"
                    "\x1b[?1003h\x1b[?1006h\x1b[?1016h\x1b[?2004h"
                    f"\x1b]2;{T.PRODUCT_NAME}\x07")
@@ -227,6 +228,7 @@ class Desk:
         self._frame_dir_fd = None       # lifetime flock identifies a live owner
         # WM/loop polish state
         self.switcher = None          # Alt+Tab overlay: {"wins", "sel"} or None
+        self._super_tap = False       # bare Super press pending (menu on release)
         self._tooltip = None          # current tooltip text or None
         self._tooltip_pos = (0, 0)
         self._hover_pos = self.mouse_pos
@@ -846,6 +848,10 @@ class Desk:
         if len(key) == 1 and ord(key) in (57443, 57449):   # L/R Alt
             return W.Ev(kind="key", key="Alt", press=(evt != 3),
                         alt=(evt != 3))
+        # the Super (Win) key surfaces both edges too: a bare tap toggles the
+        # Start menu on release, so Super+<key> combos can pass untouched
+        if len(key) == 1 and ord(key) in (57444, 57450):   # L/R Super
+            return W.Ev(kind="key", key="Super", press=(evt != 3))
         if evt == 3:
             return None               # drop key releases (no double-typing)
         mods = max(0, raw.get("mods", 1) - 1)
@@ -902,6 +908,7 @@ class Desk:
         if ev.press or ev.wheel:
             self._hover_since = self._last_input
             self._hide_tooltip()
+            self._super_tap = False   # click/scroll while Super held: not a tap
         self._dispatch_mouse(ev)
         if (not ev.press and not ev.move and not ev.wheel
                 and ev.btn == self._owner_btn):
@@ -974,6 +981,21 @@ class Desk:
         if self.bsod:
             self._dismiss_bsod()
             return
+        # ── Super (Win) key: a bare tap toggles the Start menu ──────────────
+        # Armed on the press, fired on the release; any other key (or click)
+        # in between disarms it, so Super+<key> combos are never stolen.
+        # Handled ahead of the menu host so a tap also closes an open menu.
+        if ev.key == "Super":
+            if ev.press:
+                self._super_tap = self.switcher is None
+            else:
+                armed, self._super_tap = self._super_tap, False
+                if armed:
+                    if self.menus.active and self.taskbar.menu_open < 0:
+                        self.menus.close_all()   # tap replaces a context popup
+                    self.taskbar.open_start_menu()
+            return
+        self._super_tap = False
         if self.menus.active:
             self.menus.on_key(ev)
             return

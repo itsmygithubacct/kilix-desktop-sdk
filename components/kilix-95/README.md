@@ -271,6 +271,11 @@ Input uses the Kitty keyboard protocol plus SGR-pixel mouse reporting
 (`?1003h` and `?1016h`). Mouse coordinates therefore map directly onto
 framebuffer pixels.
 
+A bare tap of the Super (Windows) key toggles the Start menu, as does
+`Ctrl+Escape`. Only a clean press-and-release counts: any other key or click
+while Super is held disarms the tap, so `Super`+key combinations pass through
+untouched.
+
 Rendering is damage-driven. The event loop repaints only when something marks
 the desktop dirty: input, resize, clock tick, caret blink, window/app updates,
 screen saver changes, or periodic keepalive.
