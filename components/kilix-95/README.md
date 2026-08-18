@@ -20,6 +20,19 @@ kilix desktop
 
 Quit through Start -> Shut Down..., or press `Ctrl+Alt+Q`.
 
+## Release 0.2.0
+
+Prepared for the coordinated Plebian-OS 0.2.0 release.
+
+- A clean tap of either Super key toggles the Start menu. Key combinations,
+  repeats, pointer actions, modal windows, and Alt-Tab disarm the gesture so
+  ordinary desktop input is not mistaken for a Start-menu request.
+- Interrupting startup now restores the terminal even before the main loop is
+  active. Terminal-mode and private-frame cleanup are idempotent across both
+  early exits and normal shutdown.
+- The provider contract advances to Kilix SDK 1.14 for the coordinated host
+  pairing while retaining the existing provider API and security declarations.
+
 ## Release 0.1.9
 
 Published 2026-08-14 as part of the coordinated
