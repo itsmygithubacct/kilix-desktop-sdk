@@ -146,6 +146,10 @@ class DeskTerm(kilix_term.Term):
     def enter(self):
         import tty
         tty.setraw(self.fd)
+        # ``run`` has an outer restoration guard for failures during startup,
+        # before the main loop's own finally block is active.  Track entry so
+        # that normal shutdown can safely pass through both guards.
+        self._kilix95_entered = True
         # alt screen, hide cursor, no autowrap, kitty kbd protocol,
         # any-motion + SGR + SGR-pixels mouse, bracketed paste.
         # >15u adds event-type reporting (flag 2) on top of the usual
@@ -175,6 +179,9 @@ class DeskTerm(kilix_term.Term):
         return ev
 
     def restore(self):
+        if not getattr(self, "_kilix95_entered", False):
+            return
+        self._kilix95_entered = False
         try:
             # tmux filters unwrapped APCs, so in a streamed tmux session the
             # placement-delete must ride the same passthrough envelope the
@@ -1113,14 +1120,17 @@ class Desk:
 
     # ── main loop ───────────────────────────────────────────────────────────
     def run(self):
-        # Startup screens create local frame files before the main loop's
-        # teardown block.  Keep cleanup around the complete lifecycle too.
+        # Startup screens run after the terminal enters raw/alternate-screen
+        # mode but before _run's main-loop finally block. SIGTERM, SIGHUP, or
+        # any startup failure must still restore the terminal as well as remove
+        # frame files. DeskTerm.restore is idempotent, so normal shutdown may
+        # safely pass through this outer guard after the inner one.
         try:
             self._run()
         except KeyboardInterrupt:
             pass
         finally:
-            self.cleanup_shm()
+            self._restore_and_cleanup(self.term)
 
     def _restore_and_cleanup(self, term):
         # A dead Kitty/X connection can make restore raise.  Cleanup must not

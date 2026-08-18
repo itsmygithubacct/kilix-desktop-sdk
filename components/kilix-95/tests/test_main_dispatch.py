@@ -182,6 +182,7 @@ def test_restore_tmux_wraps_delete():
         writes = []
         t.write = writes.append
         t.fd, t.saved = 0, None            # tcsetattr will raise; write ran first
+        t._kilix95_entered = True
         try:
             t.restore()
         except Exception:
@@ -319,6 +320,31 @@ def test_frame_cleanup_survives_terminal_restore_failure():
         pass
     else:
         assert False, "frame-directory lifetime lock was not released"
+
+
+def test_early_startup_exit_still_restores_terminal():
+    class RestoringTerm(FakeTerm):
+        def __init__(self):
+            super().__init__()
+            self.restores = 0
+
+        def restore(self):
+            self.restores += 1
+
+    term = RestoringTerm()
+    d = desk_main.Desk(term=term)
+
+    def exit_during_startup():
+        raise SystemExit(0)
+
+    d._run = exit_during_startup
+    try:
+        d.run()
+    except SystemExit as error:
+        assert error.code == 0
+    else:
+        assert False, "startup SystemExit did not propagate"
+    assert term.restores == 1, "early startup exit skipped terminal restore"
 
 
 def test_frame_path_collisions_fail_closed():
