@@ -22,7 +22,10 @@ Quit through Start -> Shut Down..., or press `Ctrl+Alt+Q`.
 
 ## Release 0.1.9
 
-Unreleased coordinated 0.1.9 work.
+Published 2026-08-14 as part of the coordinated
+[Plebian-OS 0.1.9 release](https://github.com/itsmygithubacct/plebian-os/releases/tag/v0.1.9).
+This repository's public `v0.1.9` tag identifies the desktop-provider component
+selected by that release.
 
 - **Kilix Applications** is generated from every application in the host's
   shared catalog. Terminal-native tools open in `xterm` PTYs inside XPane, so
@@ -46,7 +49,8 @@ Unreleased coordinated 0.1.9 work.
 
 ## Release 0.1.8
 
-Prepared 2026-08-07. **Not published yet.**
+Prepared 2026-08-07 and published 2026-08-09 as part of the coordinated
+[Plebian-OS 0.1.8 release](https://github.com/itsmygithubacct/plebian-os/releases/tag/v0.1.8).
 
 Upgrades from 0.1.7.
 
