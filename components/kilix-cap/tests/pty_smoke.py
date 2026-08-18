@@ -25,7 +25,8 @@ ALT_SCREEN_LEAVE = b"\x1b[?1049l"
 SYNC_LEAVE = b"\x1b[?2026l"
 GRAPHICS_PROBE = b"\x1b_Gi=31,a=q"
 KITTY_FRAME = re.compile(
-    rb"\x1b_Ga=T,f=24,i=\d+,q=2,o=z,s=(\d+),v=(\d+),m=[01];"
+    rb"\x1b_Ga=T,f=(?:24|32),i=\d+,q=2,"
+    rb"(?:o=z,)?(?:t=s,)?s=(\d+),v=(\d+)(?:,m=[01])?;"
 )
 DEFAULT_TIMEOUT = 8.0
 DEFAULT_OUTPUT_CAP = 32 * 1024 * 1024
@@ -323,7 +324,10 @@ def run_smoke(
                 if frame_end < 0:
                     missing.append("Kitty frame")
                 detail = ", ".join(missing) if missing else "clean process exit"
-                raise SmokeFailure(f"timed out after {args.timeout:g}s waiting for {detail}")
+                raise SmokeFailure(
+                    f"timed out after {args.timeout:g}s waiting for {detail}; "
+                    f"output tail: {_tail(output)}"
+                )
 
             if master_open:
                 readable, _, _ = select.select([master_fd], [], [], min(0.05, deadline - now))
