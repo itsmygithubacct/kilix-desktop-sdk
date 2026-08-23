@@ -1035,5 +1035,9 @@ picked up by preference.
 
 ## License
 
-Kilix 95 is released under the [GNU General Public License version 3](LICENSE)
-(`GPL-3.0-only`).
+Kilix 95 is released under the [MIT License](LICENSE) (`MIT`).
+
+Releases up to and including `v0.2.0` were published under `GPL-3.0-only`.
+That grant is irrevocable: anyone who received those releases keeps their
+copyleft rights and may continue to use, modify and redistribute that code
+under GPL-3.0. The relicence applies from `v0.2.1` onward.
