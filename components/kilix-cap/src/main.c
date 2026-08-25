@@ -2117,7 +2117,14 @@ int main(int argc, char **argv)
         .provider_id = "kilix-cap",
         .provider_version = KILIX_CAP_VERSION,
         .display_modes_json = "[\"kitty-graphics\"]",
-        .capabilities_json =
+        .capabilities_json = kilix_provider_v1_storage_available() ?
+            "{\"audio\":true,\"headless_screenshot\":{"
+            "\"available\":false,\"detail\":\"Kilix Cap does not expose a "
+            "general headless screenshot endpoint.\",\"reason\":\"not-implemented\"},"
+            "\"keyboard\":true,\"launcher\":true,\"mouse\":true,"
+            "\"reduced_motion\":{\"available\":false,\"detail\":\"Kilix Cap "
+            "does not expose a reduced-motion renderer.\",\"reason\":\"not-implemented\"},"
+            "\"settings\":true}" :
             "{\"audio\":true,\"headless_screenshot\":{"
             "\"available\":false,\"detail\":\"Kilix Cap does not expose a "
             "general headless screenshot endpoint.\",\"reason\":\"not-implemented\"},"
@@ -2140,6 +2147,13 @@ int main(int argc, char **argv)
         return run_interactive(argv[0]);
     if (provider_result != KILIX_PROVIDER_NOT_HANDLED)
         return provider_result;
+    if (kilix_provider_v1_storage_required() &&
+        !kilix_provider_v1_storage_available() &&
+        !(argc == 2 && strcmp(argv[1], "--version") == 0)) {
+        (void)fprintf(stderr,
+                      "kilix-cap: authoritative persistence resolver is unavailable\n");
+        return 4;
+    }
 
     if (argc < 2) return run_interactive(argv[0]);
 

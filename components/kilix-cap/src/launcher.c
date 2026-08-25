@@ -3,6 +3,7 @@
 #include "launcher.h"
 
 #include "laptop.h"
+#include "provider_protocol.h"
 
 #include <ctype.h>
 #include <errno.h>
@@ -294,6 +295,13 @@ static void init_config_directory(void)
     int written;
 
     config_directory[0] = '\0';
+    if (kilix_provider_v1_storage_available()) {
+        if (!kilix_provider_v1_storage_path(
+                "kilix-cap", "runtime", config_directory,
+                sizeof config_directory))
+            config_directory[0] = '\0';
+        return;
+    }
     if (override != NULL && override[0] != '\0') {
         if (override[0] != '/') return;
         written = snprintf(config_directory, sizeof config_directory, "%s",
@@ -405,6 +413,8 @@ static bool prepare_web_ready_log(void)
 static void load_config(void)
 {
     char contents[CONFIG_FILE_MAX];
+    char bridge_mail[MAIL_TARGET_MAX + 1];
+    char bridge_web[WEB_HOME_MAX + 1];
     struct stat st;
     size_t used = 0;
     int dirfd;
@@ -412,6 +422,17 @@ static void load_config(void)
 
     mail_target[0] = '\0';
     (void)snprintf(web_home, sizeof web_home, "%s", default_web_home);
+    if (kilix_provider_v1_storage_available()) {
+        if (kilix_provider_v1_storage_value(
+                "kilix-cap", "mail_target", bridge_mail,
+                sizeof bridge_mail) && valid_mail_target(bridge_mail))
+            (void)memcpy(mail_target, bridge_mail, strlen(bridge_mail) + 1u);
+        if (kilix_provider_v1_storage_value(
+                "kilix-cap", "web_home", bridge_web, sizeof bridge_web) &&
+            valid_http_url(bridge_web, WEB_HOME_MAX))
+            (void)memcpy(web_home, bridge_web, strlen(bridge_web) + 1u);
+        return;
+    }
     dirfd = open_config_directory(false);
     if (dirfd < 0) return;
     fd = openat(dirfd, "config", O_RDONLY | O_CLOEXEC | O_NOFOLLOW);
@@ -477,6 +498,10 @@ static bool persist_mail_target(const char *target)
     int fd = -1;
     int length;
     bool ok = false;
+
+    if (kilix_provider_v1_storage_available())
+        return kilix_provider_v1_storage_set(
+            "kilix-cap", "mail_target", target);
 
     dirfd = open_config_directory(true);
     if (dirfd < 0) return false;
