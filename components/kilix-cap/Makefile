@@ -129,6 +129,7 @@ check-headers:
 # terminal or any generated asset.
 test-code: $(BIN)
 	./$(BIN) --version
+	python3 tests/provider_contract.py --binary ./$(BIN)
 	python3 tests/cli_smoke.py --binary ./$(BIN)
 	./$(BIN) --targets-test
 	./$(BIN) --input-test

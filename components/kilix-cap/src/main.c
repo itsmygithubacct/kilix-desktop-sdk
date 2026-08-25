@@ -15,6 +15,7 @@
 #include "laptop_run.h"
 #include "launcher.h"
 #include "panel.h"
+#include "provider_protocol.h"
 #include "scene.h"
 #include "sound.h"
 #include "term.h"
@@ -2082,8 +2083,64 @@ static bool parse_steps_arg(const char *text, int *value)
     return true;
 }
 
+static bool provider_assets_ready(const char *argv0)
+{
+    char executable[PATH_MAX];
+    char directory[PATH_MAX];
+    char visual[PATH_MAX];
+    char audio[PATH_MAX];
+    char *separator;
+    ssize_t length = readlink("/proc/self/exe", executable,
+                              sizeof executable - 1u);
+    if (length < 0 || (size_t)length >= sizeof executable - 1u) {
+        if (argv0 == NULL || realpath(argv0, executable) == NULL)
+            return access("assets/art/runtime/workdesk-room.png", R_OK) == 0 &&
+                   access("assets/sfx/touch.wav", R_OK) == 0;
+    } else {
+        executable[length] = '\0';
+    }
+    if (snprintf(directory, sizeof directory, "%s", executable) < 0)
+        return false;
+    separator = strrchr(directory, '/');
+    if (separator == NULL) return false;
+    *separator = '\0';
+    if (snprintf(visual, sizeof visual,
+                 "%s/../assets/art/runtime/workdesk-room.png", directory) < 0 ||
+        snprintf(audio, sizeof audio, "%s/../assets/sfx/touch.wav", directory) < 0)
+        return false;
+    return access(visual, R_OK) == 0 && access(audio, R_OK) == 0;
+}
+
 int main(int argc, char **argv)
 {
+    struct kilix_provider_v1 provider = {
+        .provider_id = "kilix-cap",
+        .provider_version = KILIX_CAP_VERSION,
+        .display_modes_json = "[\"kitty-graphics\"]",
+        .capabilities_json =
+            "{\"audio\":true,\"headless_screenshot\":{"
+            "\"available\":false,\"detail\":\"Kilix Cap does not expose a "
+            "general headless screenshot endpoint.\",\"reason\":\"not-implemented\"},"
+            "\"keyboard\":true,\"launcher\":true,\"mouse\":true,"
+            "\"reduced_motion\":{\"available\":false,\"detail\":\"Kilix Cap "
+            "does not expose a reduced-motion renderer.\",\"reason\":\"not-implemented\"},"
+            "\"settings\":{\"available\":false,\"detail\":\"Protocol configuration "
+            "writes are not available in this adapter.\",\"reason\":\"not-implemented\"}}",
+        .required_capabilities_json = "[\"keyboard\"]",
+        .check_id = "provider-assets",
+        .ready_summary = "Kilix Cap is ready.",
+        .unavailable_summary = "Kilix Cap assets are unavailable.",
+        .check_pass_summary = "Required visual and audio assets are readable.",
+        .check_unavailable_summary = "Required visual or audio assets are missing.",
+        .check_ready = provider_assets_ready(argv[0]),
+        .screenshot_available = false
+    };
+    int provider_result = kilix_provider_v1_dispatch(argc, argv, &provider);
+    if (provider_result == KILIX_PROVIDER_LAUNCH)
+        return run_interactive(argv[0]);
+    if (provider_result != KILIX_PROVIDER_NOT_HANDLED)
+        return provider_result;
+
     if (argc < 2) return run_interactive(argv[0]);
 
     if (strcmp(argv[1], "--launcher-child") == 0) {
