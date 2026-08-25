@@ -27,6 +27,17 @@ import time
 _here = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, _here)
 
+# Protocol metadata must be available before provider storage, Pillow or the
+# host SDK is touched. Launch and screenshot are translated onto the existing
+# foreground entry points so their mature cleanup/render paths remain the one
+# implementation.
+if __name__ == "__main__":
+    import provider_protocol as _provider_protocol
+    _provider_argv = _provider_protocol.dispatch(sys.argv[1:])
+    if _provider_argv is not None:
+        sys.argv[1:] = _provider_argv
+    del _provider_argv, _provider_protocol
+
 # Set the bytecode destination before importing any project module.  This also
 # keeps a direct `python3 main.py` launch from creating __pycache__ in the tree.
 def _normalized(path):
@@ -1334,7 +1345,8 @@ def main():
         _scene(desk, a.scene)
         desk.render()
         desk.fb.save(a.screenshot)
-        print(f"wrote {a.screenshot} ({w}x{h}, scene={a.scene})")
+        if os.environ.get("KILIX_PROVIDER_SCREENSHOT") != "1":
+            print(f"wrote {a.screenshot} ({w}x{h}, scene={a.scene})")
         return
     desk = Desk(term=DeskTerm(), draw_cursor=a.cursor)
     desk.run()
