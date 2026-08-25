@@ -3,6 +3,8 @@
 import os
 import stat
 
+import contract_bridge
+
 
 def _normalized(path):
     return os.path.abspath(os.path.expanduser(path))
@@ -35,7 +37,7 @@ def _is_within(path, root):
         return False
 
 
-def _owned(env_name, leaf):
+def _legacy_owned(env_name, leaf):
     root = _private_storage_home()
     value = os.environ.get(env_name) or os.path.join(root, leaf)
     path = _normalized(value)
@@ -44,6 +46,32 @@ def _owned(env_name, leaf):
     # authoritative; callers that need a private leaf (session/AMP) secure
     # that leaf without chmodding an operator-managed parent directory.
     return private_dir(path) if _is_within(path, root) else path
+
+
+def _owned(env_name, leaf):
+    category = {
+        "KILIX95_CONFIG_HOME": "config",
+        "KILIX95_STATE_HOME": "state",
+        "KILIX95_CACHE_HOME": "cache",
+        "KILIX95_DATA_HOME": "data",
+        "KILIX95_SESSION_HOME": "session",
+    }[env_name]
+    try:
+        path = contract_bridge.resolved_path("kilix-95", category)
+    except contract_bridge.BridgeUnavailable:
+        if contract_bridge.required():
+            raise OSError(
+                "Kilix 95 cannot determine the authoritative persistence store"
+            )
+        return _legacy_owned(env_name, leaf)
+    except contract_bridge.BridgeError as error:
+        raise OSError(
+            f"Kilix 95 cannot determine the authoritative persistence store: {error}"
+        ) from error
+    override = os.environ.get(env_name)
+    if override and _normalized(override) == path:
+        return path
+    return private_dir(path)
 
 
 def config_dir(*parts):

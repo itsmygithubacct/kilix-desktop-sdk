@@ -64,22 +64,51 @@ def _is_within(path, root):
         return False
 
 
+import contract_bridge as _contract_bridge
+
 _storage_base = _normalized(os.environ.get("GPU_TERMINAL_HOME") or
                             "~/.local/gpu_terminal")
-_storage_home = _normalized(os.environ.get("KILIX95_STORAGE_HOME") or
-                            os.path.join(_storage_base, "kilix-95"))
-if _storage_home in (os.path.abspath(os.sep), _normalized("~"), _storage_base):
-    raise RuntimeError(
-        "KILIX95_STORAGE_HOME must be a dedicated component directory")
-_storage_home = _private_bootstrap_dir(_storage_home)
-_cache_home = _normalized(os.environ.get("KILIX95_CACHE_HOME") or
-                          os.path.join(_storage_home, "cache"))
-if _is_within(_cache_home, _storage_home):
-    _cache_home = _private_bootstrap_dir(_cache_home)
+if _contract_bridge.available():
+    try:
+        _cache_home = _contract_bridge.resolved_path("kilix-95", "cache")
+    except (_contract_bridge.BridgeError,
+            _contract_bridge.BridgeUnavailable) as _error:
+        raise RuntimeError(
+            "Kilix 95 cannot determine the authoritative persistence store: "
+            f"{_error}") from _error
+    _legacy_storage_home = _normalized(
+        os.environ.get("KILIX95_STORAGE_HOME")
+        or os.path.join(_storage_base, "kilix-95")
+    )
+    _cache_override = os.environ.get("KILIX95_CACHE_HOME")
+    if (
+        _cache_override
+        and _normalized(_cache_override) == _cache_home
+        and not _is_within(_cache_home, _legacy_storage_home)
+    ):
+        # Match the legacy bootstrap contract for operator-managed cache roots.
+        os.makedirs(_cache_home, mode=0o700, exist_ok=True)
+    else:
+        _cache_home = _private_bootstrap_dir(_cache_home)
 else:
-    # Preserve an operator-managed external cache root.  Only Kilix 95's
-    # dedicated bytecode leaf below it is tightened.
-    os.makedirs(_cache_home, mode=0o700, exist_ok=True)
+    if _contract_bridge.required():
+        raise RuntimeError(
+            "Kilix 95 cannot determine the authoritative persistence store")
+    _storage_home = _normalized(os.environ.get("KILIX95_STORAGE_HOME") or
+                                os.path.join(_storage_base, "kilix-95"))
+    if _storage_home in (os.path.abspath(os.sep), _normalized("~"),
+                         _storage_base):
+        raise RuntimeError(
+            "KILIX95_STORAGE_HOME must be a dedicated component directory")
+    _storage_home = _private_bootstrap_dir(_storage_home)
+    _cache_home = _normalized(os.environ.get("KILIX95_CACHE_HOME") or
+                              os.path.join(_storage_home, "cache"))
+    if _is_within(_cache_home, _storage_home):
+        _cache_home = _private_bootstrap_dir(_cache_home)
+    else:
+        # Preserve an operator-managed external cache root.  Only Kilix 95's
+        # dedicated bytecode leaf below it is tightened.
+        os.makedirs(_cache_home, mode=0o700, exist_ok=True)
 _pycache = _private_bootstrap_dir(os.path.join(_cache_home, "pycache"))
 sys.pycache_prefix = _pycache
 

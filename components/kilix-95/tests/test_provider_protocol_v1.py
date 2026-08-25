@@ -111,6 +111,35 @@ class ProviderProtocolV1Tests(unittest.TestCase):
         self.assertEqual(result.returncode, 3)
         self.assertEqual(result.stdout, "")
 
+    def test_missing_or_invalid_authority_resolver_fails_closed(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            state = Path(temporary) / "state"
+            marker = state / "kilix/desktops/migration-v1.json"
+            marker.parent.mkdir(parents=True)
+            marker.write_text("{}\n", encoding="utf-8")
+            result = self.run_provider(
+                "provider",
+                "describe",
+                "--json",
+                env={
+                    "KILIX_DESKTOP_CONTRACT_COMMAND": "",
+                    "KILIX_DESKTOP_SDK_PREFIX": "",
+                    "XDG_STATE_HOME": str(state),
+                },
+            )
+        self.assertEqual(result.returncode, 4)
+        self.assertEqual(result.stdout, "")
+        self.assertIn("authoritative persistence store", result.stderr)
+
+        result = self.run_provider(
+            "provider",
+            "describe",
+            "--json",
+            env={"KILIX_DESKTOP_CONTRACT_COMMAND": "relative-command"},
+        )
+        self.assertEqual(result.returncode, 4)
+        self.assertIn("authoritative persistence store", result.stderr)
+
 
 if __name__ == "__main__":
     unittest.main()
