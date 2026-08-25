@@ -14,6 +14,7 @@ import json
 import os
 from pathlib import Path
 import signal
+import shutil
 import stat
 import subprocess
 import tempfile
@@ -175,6 +176,16 @@ def _sandbox_environment(root: Path) -> dict[str, str]:
             "PYTHONDONTWRITEBYTECODE": "1",
         }
     )
+    configured_contract = environment.get("KILIX_DESKTOP_CONTRACT_COMMAND")
+    contract_command = (
+        configured_contract
+        if configured_contract and os.path.isabs(configured_contract)
+        else shutil.which("kilix-desktop-contract", path=environment.get("PATH"))
+    )
+    if contract_command:
+        environment["KILIX_DESKTOP_CONTRACT_COMMAND"] = os.path.abspath(
+            contract_command
+        )
     return environment
 
 
@@ -407,7 +418,42 @@ def _run_conformance(
     checked.append("config-get")
 
     capabilities = description["capabilities"]
-    if not _capability_available(capabilities["settings"]):
+    if _capability_available(capabilities["settings"]):
+        mutation = run_endpoint(
+            command,
+            ["provider", "config", "set", "conformance-probe", "1"],
+            timeout=DEADLINES_SECONDS["config"],
+            environment=environment,
+        )
+        if mutation.returncode != 0:
+            raise ConformanceError(
+                f"advertised config-set endpoint exited {mutation.returncode}"
+            )
+        if mutation.stdout or mutation.stderr:
+            raise ConformanceError(
+                "successful config-set wrote stdout or stderr"
+            )
+        changed_config = _json_document(
+            _read_only_endpoint(
+                command,
+                ["provider", "config", "get", "conformance-probe", "--json"],
+                timeout=DEADLINES_SECONDS["config"],
+                environment=environment,
+                sandbox=sandbox,
+                endpoint="provider config get after set",
+            ),
+            "provider-config",
+        )
+        if changed_config["provider_id"] != provider_id:
+            raise ConformanceError(
+                "config after set provider_id disagrees with describe"
+            )
+        if changed_config["revision"] <= config["revision"]:
+            raise ConformanceError("config-set did not advance the revision")
+        if changed_config["values"].get("conformance-probe") != 1:
+            raise ConformanceError("config-set value was not observable")
+        checked.append("config-set")
+    else:
         _expect_unavailable(
             _read_only_endpoint(
                 command,

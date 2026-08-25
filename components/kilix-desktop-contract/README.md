@@ -73,6 +73,38 @@ The shared XDG store is authoritative only after a completed migration record.
 Before completion and after rollback, the legacy store remains authoritative.
 Providers fail closed if authority cannot be determined.
 
+## Shared persistence command
+
+The staged F120 prefix exports either the absolute
+`KILIX_DESKTOP_CONTRACT_COMMAND` or an absolute `KILIX_DESKTOP_SDK_PREFIX`
+whose command is `bin/kilix-desktop-contract`. Providers never search an
+ambient checkout for this helper. The command owns path selection, validation,
+the global lock, private modes, atomic writes and the migration record:
+
+```text
+kilix-desktop-contract storage authority
+kilix-desktop-contract storage path PROVIDER {config,state,data,cache,session,runtime}
+kilix-desktop-contract storage schema PROVIDER
+kilix-desktop-contract storage get PROVIDER [KEY]
+kilix-desktop-contract storage value PROVIDER KEY
+kilix-desktop-contract storage set PROVIDER KEY VALUE
+kilix-desktop-contract storage policy-path
+kilix-desktop-contract storage policy {get,value,set} ...
+kilix-desktop-contract storage shared-settings {get,update} ...
+kilix-desktop-contract storage migrate PROVIDER --from VERSION [--dry-run]
+kilix-desktop-contract storage rollback --from VERSION
+```
+
+The XDG policy is `$XDG_CONFIG_HOME/kilix/desktop.toml`; provider configuration
+is `$XDG_CONFIG_HOME/kilix/desktops/<id>.toml`; state is rooted at
+`$XDG_STATE_HOME/kilix/desktops/<id>/`, with corresponding XDG data and cache
+roots. `~/.local/gpu_terminal` and its explicit legacy overrides remain the
+sole authority until Land, TUI, Cap and Kilix 95 complete in that order. The
+Kilix 95 step re-synchronizes all earlier inert copies before atomically
+committing the authority flip. Rollback records legacy authority without
+deleting the retained XDG copy. IceWM consumes the same resolver and contract
+but is not a member of that four-provider migration order.
+
 ## Validation
 
 Use the release-selected uv 0.12.5 binary:
