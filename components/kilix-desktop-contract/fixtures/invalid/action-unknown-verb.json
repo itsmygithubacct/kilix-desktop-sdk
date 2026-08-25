@@ -1,0 +1,5 @@
+{
+  "payload": "kilix-calculator",
+  "schema_version": 1,
+  "verb": "command.run"
+}

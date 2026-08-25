@@ -1,0 +1,19 @@
+{
+  "capabilities": {
+    "audio": true,
+    "headless_screenshot": true,
+    "keyboard": true,
+    "launcher": true,
+    "mouse": true,
+    "reduced_motion": false,
+    "settings": true
+  },
+  "config_schema": "kilix.desktop.config.provider.v1",
+  "contract_version": 1,
+  "display_modes": [
+    "sixel"
+  ],
+  "provider_id": "kilix-cap",
+  "provider_version": "3.1.0",
+  "schema_version": 1
+}

@@ -1,0 +1,5 @@
+{
+  "payload": "documents:release notes/0.2.1.txt",
+  "schema_version": 1,
+  "verb": "document.open"
+}

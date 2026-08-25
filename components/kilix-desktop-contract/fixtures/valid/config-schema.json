@@ -1,0 +1,19 @@
+{
+  "$id": "https://schemas.kilix.org/desktop/config/kilix-cap/v1",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": true,
+  "properties": {
+    "reduced_motion": {
+      "default": false,
+      "type": "boolean"
+    },
+    "web_home": {
+      "format": "uri",
+      "pattern": "^https://",
+      "type": "string"
+    }
+  },
+  "type": "object",
+  "x-kilix-contract-version": 1,
+  "x-kilix-provider-id": "kilix-cap"
+}

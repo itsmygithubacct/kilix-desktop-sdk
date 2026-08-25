@@ -1,0 +1,17 @@
+{
+  "actions": [
+    {
+      "payload": "kilix-calculator",
+      "schema_version": 1,
+      "verb": "app.open"
+    }
+  ],
+  "catalog_id": "kilix-calculator",
+  "categories": [
+    "Utility"
+  ],
+  "comment": "A bounded calculator.",
+  "kind": "application",
+  "name": "Calculator",
+  "schema_version": 1
+}

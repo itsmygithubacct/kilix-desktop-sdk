@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools==80.9.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "kilix-desktop-contract"
+version = "1.0.0rc1"
+description = "Language-neutral Kilix desktop-provider contract helpers"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { file = "LICENSE" }
+authors = [
+  { name = "itsmygithubacct" },
+]
+dependencies = [
+  "jsonschema[format]==4.25.1",
+]
+
+[project.scripts]
+kilix-desktop-contract = "kilix_desktop_contract.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["python"]
+
+[tool.uv]
+package = true

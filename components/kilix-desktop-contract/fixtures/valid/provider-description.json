@@ -1,0 +1,27 @@
+{
+  "capabilities": {
+    "audio": true,
+    "headless_screenshot": true,
+    "keyboard": true,
+    "launcher": true,
+    "mouse": true,
+    "reduced_motion": {
+      "available": false,
+      "detail": "The provider does not yet expose a reduced-motion renderer.",
+      "reason": "not-implemented"
+    },
+    "settings": true
+  },
+  "config_schema": "kilix.desktop.config.provider.v1",
+  "contract_version": 1,
+  "display_modes": [
+    "kitty-graphics"
+  ],
+  "provider_id": "kilix-cap",
+  "provider_version": "3.1.0",
+  "required_capabilities": [
+    "keyboard",
+    "launcher"
+  ],
+  "schema_version": 1
+}

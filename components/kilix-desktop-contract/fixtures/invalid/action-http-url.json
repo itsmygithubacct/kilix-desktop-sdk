@@ -1,0 +1,5 @@
+{
+  "payload": "http://example.invalid/",
+  "schema_version": 1,
+  "verb": "url.open"
+}

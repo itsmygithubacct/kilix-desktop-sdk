@@ -1,0 +1,5 @@
+{
+  "payload": "https://example.invalid/catalog:item?view=full",
+  "schema_version": 1,
+  "verb": "url.open"
+}

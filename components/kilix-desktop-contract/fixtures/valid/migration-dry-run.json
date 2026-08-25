@@ -1,0 +1,23 @@
+{
+  "authoritative_store": "legacy",
+  "contract_version": 1,
+  "dry_run": true,
+  "from_version": "0.2.0",
+  "migration_id": "kilix-cap-0.2.0-to-contract-v1",
+  "operations": [
+    {
+      "kind": "config-record",
+      "source": "legacy:settings.conf",
+      "status": "planned",
+      "target": "xdg:kilix/desktops/kilix-cap.toml"
+    }
+  ],
+  "provider_id": "kilix-cap",
+  "recovery_paths": [
+    "legacy:settings.conf"
+  ],
+  "schema": "kilix.desktop.migration/v1",
+  "schema_version": 1,
+  "state": "planned",
+  "to_contract_version": 1
+}

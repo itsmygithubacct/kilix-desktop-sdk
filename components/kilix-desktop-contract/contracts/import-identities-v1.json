@@ -1,0 +1,120 @@
+{
+  "composed_console_scripts": [
+    {
+      "name": "kilix-session-center",
+      "source": "kilix-tui/main.py"
+    },
+    {
+      "name": "kilix-settings-center",
+      "source": "kilix-tui/main.py"
+    },
+    {
+      "name": "kilix-software-center",
+      "source": "kilix-tui/main.py"
+    },
+    {
+      "name": "kilix-system-center",
+      "source": "kilix-tui/main.py"
+    },
+    {
+      "name": "kilix-tui",
+      "source": "kilix-tui/main.py"
+    },
+    {
+      "name": "kilix-virtualbox-manager",
+      "source": "kilix-virtualbox-manager/main.py"
+    },
+    {
+      "name": "kilix-voice-studio",
+      "source": "kilix-tui/main.py"
+    }
+  ],
+  "python_packages": [
+    "kilix_desk",
+    "kilix_tui"
+  ],
+  "schema": "kilix.desktop.import-identities/v1",
+  "schema_version": 1,
+  "tool_console_scripts": [
+    {
+      "name": "kilix-calculator",
+      "source": "tools/calculator/main.py"
+    },
+    {
+      "name": "kilix-cameras",
+      "source": "tools/cameras/main.py"
+    },
+    {
+      "name": "kilix-character-map",
+      "source": "tools/character_map/main.py"
+    },
+    {
+      "name": "kilix-cpu",
+      "source": "tools/cpu/main.py"
+    },
+    {
+      "name": "kilix-disk",
+      "source": "tools/disk/main.py"
+    },
+    {
+      "name": "kilix-file",
+      "source": "tools/file/main.py"
+    },
+    {
+      "name": "kilix-find-files",
+      "source": "tools/find_files/main.py"
+    },
+    {
+      "name": "kilix-launcher",
+      "source": "tools/launcher/main.py"
+    },
+    {
+      "name": "kilix-memory",
+      "source": "tools/memory/main.py"
+    },
+    {
+      "name": "kilix-music",
+      "source": "tools/music/main.py"
+    },
+    {
+      "name": "kilix-notepad",
+      "source": "tools/notepad/main.py"
+    },
+    {
+      "name": "kilix-package",
+      "source": "tools/package/main.py"
+    },
+    {
+      "name": "kilix-rollout-resume",
+      "source": "tools/rollout_resume/main.py"
+    },
+    {
+      "name": "kilix-session-log",
+      "source": "tools/session_log/main.py"
+    },
+    {
+      "name": "kilix-switch",
+      "source": "tools/switcher/main.py"
+    },
+    {
+      "name": "kilix-system",
+      "source": "tools/system/main.py"
+    },
+    {
+      "name": "kilix-temps",
+      "source": "tools/temps/main.py"
+    },
+    {
+      "name": "kilix-volume",
+      "source": "tools/volume/main.py"
+    },
+    {
+      "name": "kilix-weather",
+      "source": "tools/weather/main.py"
+    },
+    {
+      "name": "plebian-os",
+      "source": "tools/plebian_control/main.py"
+    }
+  ]
+}

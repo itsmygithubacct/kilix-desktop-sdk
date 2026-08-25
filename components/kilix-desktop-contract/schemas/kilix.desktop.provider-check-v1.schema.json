@@ -1,0 +1,78 @@
+{
+  "$id": "https://schemas.kilix.org/desktop/provider-check/v1",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": true,
+  "properties": {
+    "checks": {
+      "items": {
+        "additionalProperties": true,
+        "properties": {
+          "id": {
+            "pattern": "^[a-z0-9]+(?:[._-][a-z0-9]+)*$",
+            "type": "string"
+          },
+          "remediation": {
+            "maxLength": 1024,
+            "type": "string"
+          },
+          "required": {
+            "type": "boolean"
+          },
+          "status": {
+            "enum": [
+              "fail",
+              "pass",
+              "unavailable",
+              "warn"
+            ]
+          },
+          "summary": {
+            "maxLength": 512,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "required",
+          "status",
+          "summary"
+        ],
+        "type": "object"
+      },
+      "type": "array"
+    },
+    "contract_version": {
+      "const": 1
+    },
+    "provider_id": {
+      "pattern": "^[a-z0-9]+(?:[._-][a-z0-9]+)*$",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": 1
+    },
+    "status": {
+      "enum": [
+        "degraded",
+        "ready",
+        "unavailable"
+      ]
+    },
+    "summary": {
+      "maxLength": 512,
+      "minLength": 1,
+      "type": "string"
+    }
+  },
+  "required": [
+    "schema_version",
+    "provider_id",
+    "contract_version",
+    "status",
+    "summary",
+    "checks"
+  ],
+  "title": "Kilix desktop provider health check v1",
+  "type": "object"
+}

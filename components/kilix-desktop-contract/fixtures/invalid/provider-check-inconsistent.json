@@ -1,0 +1,15 @@
+{
+  "checks": [
+    {
+      "id": "assets",
+      "required": true,
+      "status": "fail",
+      "summary": "Required assets are missing."
+    }
+  ],
+  "contract_version": 1,
+  "provider_id": "kilix-cap",
+  "schema_version": 1,
+  "status": "ready",
+  "summary": "Kilix Cap is ready."
+}

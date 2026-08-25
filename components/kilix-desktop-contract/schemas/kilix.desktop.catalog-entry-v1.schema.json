@@ -1,0 +1,55 @@
+{
+  "$id": "https://schemas.kilix.org/desktop/catalog-entry/v1",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": true,
+  "properties": {
+    "actions": {
+      "items": {
+        "$ref": "https://schemas.kilix.org/desktop/action/v1"
+      },
+      "type": "array"
+    },
+    "catalog_id": {
+      "pattern": "^[a-z0-9]+(?:[._/-][a-z0-9]+)*$",
+      "type": "string"
+    },
+    "categories": {
+      "items": {
+        "maxLength": 64,
+        "type": "string"
+      },
+      "type": "array",
+      "uniqueItems": true
+    },
+    "comment": {
+      "maxLength": 256,
+      "type": "string"
+    },
+    "kind": {
+      "enum": [
+        "application",
+        "document",
+        "game"
+      ]
+    },
+    "name": {
+      "maxLength": 128,
+      "minLength": 1,
+      "type": "string"
+    },
+    "schema_version": {
+      "const": 1
+    }
+  },
+  "required": [
+    "schema_version",
+    "catalog_id",
+    "kind",
+    "name",
+    "comment",
+    "categories",
+    "actions"
+  ],
+  "title": "Sanitized Kilix catalog entry v1",
+  "type": "object"
+}
