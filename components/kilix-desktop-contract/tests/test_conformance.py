@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from pathlib import Path
 import subprocess
 import sys
@@ -9,6 +10,7 @@ from unittest import mock
 from kilix_desktop_contract.conformance import (
     ConformanceError,
     run_conformance,
+    run_endpoint,
 )
 
 
@@ -22,9 +24,36 @@ class ConformanceTests(unittest.TestCase):
             [sys.executable, str(FAKE)], adapter_stage=True
         )
         self.assertEqual(report.provider_id, "fake-provider")
-        self.assertEqual(len(report.checks), 8)
+        self.assertEqual(len(report.checks), 9)
         self.assertIn("migration-gate", report.checks)
+        self.assertIn("read-only-endpoints", report.checks)
         self.assertTrue(report.adapter_stage)
+
+    def test_read_only_side_effect_is_rejected(self) -> None:
+        with mock.patch.dict(
+            os.environ, {"KILIX_FAKE_MUTATE_DESCRIBE": "1"}
+        ):
+            with self.assertRaisesRegex(
+                ConformanceError,
+                "read-only provider describe mutated the sandbox",
+            ):
+                run_conformance([sys.executable, str(FAKE)], adapter_stage=True)
+
+    def test_orphan_process_is_rejected_and_terminated(self) -> None:
+        with mock.patch.dict(os.environ, {"KILIX_FAKE_ORPHAN_CHECK": "1"}):
+            with self.assertRaisesRegex(
+                ConformanceError,
+                "left a live process-group member",
+            ):
+                run_conformance([sys.executable, str(FAKE)], adapter_stage=True)
+
+    def test_endpoint_timeout_is_bounded(self) -> None:
+        with self.assertRaisesRegex(ConformanceError, "timed out"):
+            run_endpoint(
+                [sys.executable, "-c", "import time; time.sleep(30)"],
+                [],
+                timeout=0.05,
+            )
 
     def test_duplicate_json_is_rejected(self) -> None:
         original = subprocess.Popen

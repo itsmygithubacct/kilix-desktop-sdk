@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
+import subprocess
 import sys
 
 
@@ -16,6 +18,10 @@ def main(argv: list[str]) -> int:
         print("fake-provider 1.2.3")
         return 0
     if argv == ["provider", "describe", "--json"]:
+        if os.environ.get("KILIX_FAKE_MUTATE_DESCRIBE") == "1":
+            (Path.home() / "describe-side-effect").write_text(
+                "unexpected\n", encoding="utf-8"
+            )
         emit(
             {
                 "capabilities": {
@@ -38,6 +44,13 @@ def main(argv: list[str]) -> int:
         )
         return 0
     if argv == ["provider", "check", "--json"]:
+        if os.environ.get("KILIX_FAKE_ORPHAN_CHECK") == "1":
+            subprocess.Popen(
+                [sys.executable, "-c", "import time; time.sleep(30)"],
+                stdin=subprocess.DEVNULL,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
         emit(
             {
                 "checks": [

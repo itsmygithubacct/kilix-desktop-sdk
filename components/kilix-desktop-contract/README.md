@@ -101,9 +101,11 @@ kilix-desktop-contract conformance -- PROVIDER [ARG ...]
 Both modes enforce bounded output and deadlines, exact JSON/newline rules,
 schema and semantic validation, consistent provider identities, truthful
 screenshot behavior, unavailable diagnostics, and zero live descendants after
-each non-interactive endpoint. Launch/SIGTERM and terminal-restoration coverage
-remains in the host integration suite because it requires a real presentation
-session.
+each non-interactive endpoint. They redirect provider storage into an isolated
+sandbox and reject filesystem changes from describe, check, config reads,
+unavailable config writes, and migration dry-runs within that sandbox.
+Launch/SIGTERM and terminal-restoration coverage remains in the host
+integration suite because it requires a real presentation session.
 
 After v1 is frozen, a change that invalidates an accepted v1 document or alters
 a closed vocabulary requires a new schema identity. Additive optional fields
