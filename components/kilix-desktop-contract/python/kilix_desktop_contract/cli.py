@@ -9,6 +9,7 @@ import sys
 
 from .actions import ActionError, parse_action
 from .catalog import sanitize_catalog_text
+from .conformance import ConformanceError, run_conformance
 from .jsonio import DocumentError, load_json
 from .validation import errors_for, validators
 
@@ -23,6 +24,9 @@ def _parser() -> argparse.ArgumentParser:
     action_parser.add_argument("action")
     sanitize_parser = commands.add_parser("sanitize")
     sanitize_parser.add_argument("text")
+    conformance_parser = commands.add_parser("conformance")
+    conformance_parser.add_argument("--adapter-stage", action="store_true")
+    conformance_parser.add_argument("provider", nargs=argparse.REMAINDER)
     return parser
 
 
@@ -43,7 +47,27 @@ def main(argv: list[str] | None = None) -> int:
         if arguments.command == "sanitize":
             print(sanitize_catalog_text(arguments.text))
             return 0
-    except (ActionError, DocumentError, OSError, UnicodeError, ValueError) as error:
+        if arguments.command == "conformance":
+            provider = list(arguments.provider)
+            if provider and provider[0] == "--":
+                provider.pop(0)
+            report = run_conformance(
+                provider, adapter_stage=arguments.adapter_stage
+            )
+            stage = "adapter-stage" if report.adapter_stage else "final"
+            print(
+                f"PASS {report.provider_id}: {len(report.checks)} "
+                f"non-interactive checks ({stage})"
+            )
+            return 0
+    except (
+        ActionError,
+        ConformanceError,
+        DocumentError,
+        OSError,
+        UnicodeError,
+        ValueError,
+    ) as error:
         print(str(error), file=sys.stderr)
         return 3
     return 70

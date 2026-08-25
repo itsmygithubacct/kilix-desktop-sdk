@@ -87,6 +87,24 @@ size rejection, valid and invalid fixtures, action parsing, hostile catalog
 sanitization, the C11 header, import identities, and every byte listed in
 `SHA256SUMS`. Run it twice against an unchanged tree for the freeze gate.
 
+The same process-isolated non-interactive conformance runner is used for every
+provider. During the ordered adapter-only window, before shared persistence is
+available, invoke it with `--adapter-stage`; this requires migration to fail
+explicitly with exit 4. The final gate omits that flag and instead requires a
+valid dry-run migration record:
+
+```sh
+kilix-desktop-contract conformance --adapter-stage -- PROVIDER [ARG ...]
+kilix-desktop-contract conformance -- PROVIDER [ARG ...]
+```
+
+Both modes enforce bounded output and deadlines, exact JSON/newline rules,
+schema and semantic validation, consistent provider identities, truthful
+screenshot behavior, unavailable diagnostics, and zero live descendants after
+each non-interactive endpoint. Launch/SIGTERM and terminal-restoration coverage
+remains in the host integration suite because it requires a real presentation
+session.
+
 After v1 is frozen, a change that invalidates an accepted v1 document or alters
 a closed vocabulary requires a new schema identity. Additive optional fields
 may be clarified without changing accepted bytes only through a separately
