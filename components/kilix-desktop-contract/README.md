@@ -126,9 +126,26 @@ explicitly with exit 4. The final gate omits that flag and instead requires a
 valid dry-run migration record:
 
 ```sh
-kilix-desktop-contract conformance --adapter-stage -- PROVIDER [ARG ...]
-kilix-desktop-contract conformance -- PROVIDER [ARG ...]
+kilix-desktop-contract conformance \
+  --kilix-home /absolute/bound/kilix \
+  --contract-command /absolute/bound/kilix-desktop-contract-bridge \
+  --state-library /absolute/bound/libkilix-state.so \
+  --land-assets /absolute/bound/kilix-land-desktop \
+  --adapter-stage -- PROVIDER [ARG ...]
+kilix-desktop-contract conformance \
+  --kilix-home /absolute/bound/kilix \
+  --contract-command /absolute/bound/kilix-desktop-contract-bridge \
+  --state-library /absolute/bound/libkilix-state.so \
+  --land-assets /absolute/bound/kilix-land-desktop \
+  -- PROVIDER [ARG ...]
 ```
+
+The four authority paths are mandatory inputs rather than ambient environment
+lookups. Provider children receive the closed 39-name F110 profile: caller
+variables (including Python, loader, plugin, source-path and provider override
+state) are not inherited. The release gate binds the four absolute inputs before
+this runner starts; these command-line flags do not establish that outer
+trusted-launcher authority by themselves.
 
 Both modes enforce bounded output and deadlines, exact JSON/newline rules,
 schema and semantic validation, consistent provider identities, truthful

@@ -33,6 +33,12 @@ def _parser() -> argparse.ArgumentParser:
     sanitize_parser.add_argument("text")
     conformance_parser = commands.add_parser("conformance")
     conformance_parser.add_argument("--adapter-stage", action="store_true")
+    conformance_parser.add_argument("--kilix-home", type=Path, required=True)
+    conformance_parser.add_argument(
+        "--contract-command", type=Path, required=True
+    )
+    conformance_parser.add_argument("--state-library", type=Path, required=True)
+    conformance_parser.add_argument("--land-assets", type=Path, required=True)
     conformance_parser.add_argument("provider", nargs=argparse.REMAINDER)
 
     storage_parser = commands.add_parser("storage")
@@ -106,7 +112,12 @@ def main(argv: list[str] | None = None) -> int:
             if provider and provider[0] == "--":
                 provider.pop(0)
             report = run_conformance(
-                provider, adapter_stage=arguments.adapter_stage
+                provider,
+                adapter_stage=arguments.adapter_stage,
+                kilix_home=arguments.kilix_home,
+                contract_command=arguments.contract_command,
+                state_library=arguments.state_library,
+                land_assets=arguments.land_assets,
             )
             stage = "adapter-stage" if report.adapter_stage else "final"
             print(

@@ -4,11 +4,14 @@ import os
 from pathlib import Path
 import subprocess
 import sys
+import tempfile
 import unittest
 from unittest import mock
 
 from kilix_desktop_contract.conformance import (
     ConformanceError,
+    PROVIDER_ENVIRONMENT_NAMES,
+    _sandbox_environment,
     run_conformance,
     run_endpoint,
 )
@@ -19,9 +22,18 @@ FAKE = ROOT / "tests" / "fake_provider.py"
 
 
 class ConformanceTests(unittest.TestCase):
+    PROFILE = {
+        "kilix_home": ROOT,
+        "contract_command": Path(sys.executable),
+        "state_library": ROOT / "build" / "libkilix-state.so",
+        "land_assets": ROOT,
+    }
+
     def test_adapter_stage_exercises_the_complete_open_surface(self) -> None:
         report = run_conformance(
-            [sys.executable, str(FAKE)], adapter_stage=True
+            [sys.executable, str(FAKE)],
+            adapter_stage=True,
+            **self.PROFILE,
         )
         self.assertEqual(report.provider_id, "fake-provider")
         self.assertEqual(len(report.checks), 9)
@@ -30,22 +42,68 @@ class ConformanceTests(unittest.TestCase):
         self.assertTrue(report.adapter_stage)
 
     def test_read_only_side_effect_is_rejected(self) -> None:
-        with mock.patch.dict(
-            os.environ, {"KILIX_FAKE_MUTATE_DESCRIBE": "1"}
+        command = [
+            "/usr/bin/env",
+            "KILIX_FAKE_MUTATE_DESCRIBE=1",
+            sys.executable,
+            str(FAKE),
+        ]
+        with self.assertRaisesRegex(
+            ConformanceError,
+            "read-only provider describe mutated the sandbox",
         ):
-            with self.assertRaisesRegex(
-                ConformanceError,
-                "read-only provider describe mutated the sandbox",
-            ):
-                run_conformance([sys.executable, str(FAKE)], adapter_stage=True)
+            run_conformance(command, adapter_stage=True, **self.PROFILE)
 
     def test_orphan_process_is_rejected_and_terminated(self) -> None:
-        with mock.patch.dict(os.environ, {"KILIX_FAKE_ORPHAN_CHECK": "1"}):
+        command = [
+            "/usr/bin/env",
+            "KILIX_FAKE_ORPHAN_CHECK=1",
+            sys.executable,
+            str(FAKE),
+        ]
+        with self.assertRaisesRegex(
+            ConformanceError,
+            "left a live process-group member",
+        ):
+            run_conformance(command, adapter_stage=True, **self.PROFILE)
+
+    def test_provider_environment_is_the_closed_profile(self) -> None:
+        with tempfile.TemporaryDirectory() as directory, mock.patch.dict(
+            os.environ,
+            {"PYTHONPATH": "/hostile", "UNDECLARED_PROVIDER_INPUT": "1"},
+        ):
+            environment = _sandbox_environment(
+                Path(directory), **self.PROFILE
+            )
+        self.assertEqual(set(environment), PROVIDER_ENVIRONMENT_NAMES)
+        self.assertEqual(len(environment), 39)
+        self.assertEqual(environment["LC_ALL"], "C.UTF-8")
+        self.assertEqual(environment["TZ"], "UTC")
+        self.assertEqual(environment["PATH"], "/usr/bin:/bin")
+        self.assertEqual(environment["KILIX_HOME"], str(ROOT))
+        self.assertEqual(
+            environment["KILIX_DESKTOP_CONTRACT_COMMAND"], sys.executable
+        )
+        self.assertEqual(
+            environment["KILIX_STATE_LIBRARY"],
+            str(ROOT / "build" / "libkilix-state.so"),
+        )
+        self.assertEqual(environment["KILIX_LAND_DESKTOP_ASSETS"], str(ROOT))
+        self.assertNotIn("PYTHONPATH", environment)
+        self.assertNotIn("UNDECLARED_PROVIDER_INPUT", environment)
+
+    def test_provider_environment_requires_absolute_authority_paths(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
             with self.assertRaisesRegex(
-                ConformanceError,
-                "left a live process-group member",
+                ConformanceError, "Kilix host root must be an absolute path"
             ):
-                run_conformance([sys.executable, str(FAKE)], adapter_stage=True)
+                _sandbox_environment(
+                    Path(directory),
+                    kilix_home="relative/kilix",
+                    contract_command=sys.executable,
+                    state_library=ROOT / "build" / "libkilix-state.so",
+                    land_assets=ROOT,
+                )
 
     def test_endpoint_timeout_is_bounded(self) -> None:
         with self.assertRaisesRegex(ConformanceError, "timed out"):
@@ -76,7 +134,9 @@ class ConformanceTests(unittest.TestCase):
             DuplicateProvider,
         ):
             with self.assertRaises(ConformanceError):
-                run_conformance(["ignored"], adapter_stage=True)
+                run_conformance(
+                    ["ignored"], adapter_stage=True, **self.PROFILE
+                )
 
 
 if __name__ == "__main__":

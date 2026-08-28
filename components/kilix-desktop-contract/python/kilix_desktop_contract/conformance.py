@@ -14,7 +14,6 @@ import json
 import os
 from pathlib import Path
 import signal
-import shutil
 import stat
 import subprocess
 import tempfile
@@ -26,6 +25,50 @@ from .validation import errors_for, validators
 
 
 MAX_OUTPUT_BYTES = 4 * 1024 * 1024
+
+PROVIDER_ENVIRONMENT_NAMES = frozenset(
+    {
+        "LC_ALL",
+        "TZ",
+        "PATH",
+        "HOME",
+        "TMP",
+        "TEMP",
+        "TMPDIR",
+        "XDG_CACHE_HOME",
+        "XDG_CONFIG_HOME",
+        "XDG_DATA_HOME",
+        "XDG_RUNTIME_DIR",
+        "XDG_STATE_HOME",
+        "GPU_TERMINAL_HOME",
+        "GPU_TERMINAL_SETTINGS_FILE",
+        "KILIX_HOME",
+        "KILIX_STORAGE_HOME",
+        "KILIX_CONFIG_HOME",
+        "KILIX_STATE_DIRECTORY",
+        "KILIX_CACHE_HOME",
+        "KILIX_DATA_HOME",
+        "KILIX_SESSION_HOME",
+        "KILIX_BUILD_DIRECTORY",
+        "KILIX_STATE_LIBRARY",
+        "KILIX95_STORAGE_HOME",
+        "KILIX95_CONFIG_HOME",
+        "KILIX95_STATE_HOME",
+        "KILIX95_CACHE_HOME",
+        "KILIX95_DATA_HOME",
+        "KILIX95_SESSION_HOME",
+        "KILIX_CAP_CONFIG_HOME",
+        "KILIX_LAND_DESKTOP_CONFIG_HOME",
+        "KILIX_LAND_DESKTOP_ASSETS",
+        "KILIX_ICEWM_STORAGE_HOME",
+        "KILIX_ICEWM_PREFIX",
+        "KILIX_TUI_UTILS_PREFIX",
+        "KILIX_DESKTOP_DIR",
+        "KILIX_RECYCLE_DIR",
+        "KILIX_DESKTOP_CONTRACT_COMMAND",
+        "PYTHONDONTWRITEBYTECODE",
+    }
+)
 
 
 class ConformanceError(RuntimeError):
@@ -127,7 +170,21 @@ def run_endpoint(
     return EndpointResult(returncode, stdout, stderr)
 
 
-def _sandbox_environment(root: Path) -> dict[str, str]:
+def _absolute_profile_path(value: os.PathLike[str] | str, label: str) -> str:
+    path = os.fspath(value)
+    if not path or "\0" in path or not os.path.isabs(path):
+        raise ConformanceError(f"{label} must be an absolute path")
+    return os.path.normpath(path)
+
+
+def _sandbox_environment(
+    root: Path,
+    *,
+    kilix_home: os.PathLike[str] | str,
+    contract_command: os.PathLike[str] | str,
+    state_library: os.PathLike[str] | str,
+    land_assets: os.PathLike[str] | str,
+) -> dict[str, str]:
     home = root / "home"
     runtime = root / "runtime"
     temporary = root / "tmp"
@@ -137,55 +194,57 @@ def _sandbox_environment(root: Path) -> dict[str, str]:
     data = root / "gpu-terminal"
     kilix = data / "kilix"
     kilix95 = data / "kilix-95"
-    environment = dict(os.environ)
-    environment.update(
-        {
-            "HOME": str(home),
-            "TMP": str(temporary),
-            "TEMP": str(temporary),
-            "TMPDIR": str(temporary),
-            "XDG_CACHE_HOME": str(root / "xdg" / "cache"),
-            "XDG_CONFIG_HOME": str(root / "xdg" / "config"),
-            "XDG_DATA_HOME": str(root / "xdg" / "data"),
-            "XDG_RUNTIME_DIR": str(runtime),
-            "XDG_STATE_HOME": str(root / "xdg" / "state"),
-            "GPU_TERMINAL_HOME": str(data),
-            "GPU_TERMINAL_SETTINGS_FILE": str(data / "settings.conf"),
-            "KILIX_STORAGE_HOME": str(kilix),
-            "KILIX_CONFIG_HOME": str(kilix / "config"),
-            "KILIX_STATE_DIRECTORY": str(kilix / "state"),
-            "KILIX_CACHE_HOME": str(kilix / "cache"),
-            "KILIX_DATA_HOME": str(kilix / "data"),
-            "KILIX_SESSION_HOME": str(kilix / "session"),
-            "KILIX_BUILD_DIRECTORY": str(kilix / "build"),
-            "KILIX95_STORAGE_HOME": str(kilix95),
-            "KILIX95_CONFIG_HOME": str(kilix95 / "config"),
-            "KILIX95_STATE_HOME": str(kilix95 / "state"),
-            "KILIX95_CACHE_HOME": str(kilix95 / "cache"),
-            "KILIX95_DATA_HOME": str(kilix95 / "data"),
-            "KILIX95_SESSION_HOME": str(kilix95 / "session"),
-            "KILIX_CAP_CONFIG_HOME": str(data / "kilix-cap" / "config"),
-            "KILIX_LAND_DESKTOP_CONFIG_HOME": str(
-                data / "kilix-land-desktop" / "config"
-            ),
-            "KILIX_ICEWM_STORAGE_HOME": str(data / "kilix-icewm"),
-            "KILIX_ICEWM_PREFIX": str(data / "kilix-icewm" / "prefix"),
-            "KILIX_TUI_UTILS_PREFIX": str(root / "prefix"),
-            "KILIX_DESKTOP_DIR": str(root / "desktop"),
-            "KILIX_RECYCLE_DIR": str(root / "recycle"),
-            "PYTHONDONTWRITEBYTECODE": "1",
-        }
-    )
-    configured_contract = environment.get("KILIX_DESKTOP_CONTRACT_COMMAND")
-    contract_command = (
-        configured_contract
-        if configured_contract and os.path.isabs(configured_contract)
-        else shutil.which("kilix-desktop-contract", path=environment.get("PATH"))
-    )
-    if contract_command:
-        environment["KILIX_DESKTOP_CONTRACT_COMMAND"] = os.path.abspath(
-            contract_command
-        )
+    environment = {
+        "LC_ALL": "C.UTF-8",
+        "TZ": "UTC",
+        "PATH": "/usr/bin:/bin",
+        "HOME": str(home),
+        "TMP": str(temporary),
+        "TEMP": str(temporary),
+        "TMPDIR": str(temporary),
+        "XDG_CACHE_HOME": str(root / "xdg" / "cache"),
+        "XDG_CONFIG_HOME": str(root / "xdg" / "config"),
+        "XDG_DATA_HOME": str(root / "xdg" / "data"),
+        "XDG_RUNTIME_DIR": str(runtime),
+        "XDG_STATE_HOME": str(root / "xdg" / "state"),
+        "GPU_TERMINAL_HOME": str(data),
+        "GPU_TERMINAL_SETTINGS_FILE": str(data / "settings.conf"),
+        "KILIX_HOME": _absolute_profile_path(kilix_home, "Kilix host root"),
+        "KILIX_STORAGE_HOME": str(kilix),
+        "KILIX_CONFIG_HOME": str(kilix / "config"),
+        "KILIX_STATE_DIRECTORY": str(kilix / "state"),
+        "KILIX_CACHE_HOME": str(kilix / "cache"),
+        "KILIX_DATA_HOME": str(kilix / "data"),
+        "KILIX_SESSION_HOME": str(kilix / "session"),
+        "KILIX_BUILD_DIRECTORY": str(kilix / "build"),
+        "KILIX_STATE_LIBRARY": _absolute_profile_path(
+            state_library, "Kilix state library"
+        ),
+        "KILIX95_STORAGE_HOME": str(kilix95),
+        "KILIX95_CONFIG_HOME": str(kilix95 / "config"),
+        "KILIX95_STATE_HOME": str(kilix95 / "state"),
+        "KILIX95_CACHE_HOME": str(kilix95 / "cache"),
+        "KILIX95_DATA_HOME": str(kilix95 / "data"),
+        "KILIX95_SESSION_HOME": str(kilix95 / "session"),
+        "KILIX_CAP_CONFIG_HOME": str(data / "kilix-cap" / "config"),
+        "KILIX_LAND_DESKTOP_CONFIG_HOME": str(
+            data / "kilix-land-desktop" / "config"
+        ),
+        "KILIX_LAND_DESKTOP_ASSETS": _absolute_profile_path(
+            land_assets, "Kilix Land asset root"
+        ),
+        "KILIX_ICEWM_STORAGE_HOME": str(data / "kilix-icewm"),
+        "KILIX_ICEWM_PREFIX": str(data / "kilix-icewm" / "prefix"),
+        "KILIX_TUI_UTILS_PREFIX": str(root / "prefix"),
+        "KILIX_DESKTOP_DIR": str(root / "desktop"),
+        "KILIX_RECYCLE_DIR": str(root / "recycle"),
+        "KILIX_DESKTOP_CONTRACT_COMMAND": _absolute_profile_path(
+            contract_command, "desktop contract command"
+        ),
+        "PYTHONDONTWRITEBYTECODE": "1",
+    }
+    if set(environment) != PROVIDER_ENVIRONMENT_NAMES:
+        raise RuntimeError("provider environment does not match its frozen name set")
     return environment
 
 
@@ -314,13 +373,23 @@ def run_conformance(
     command: Sequence[str],
     *,
     adapter_stage: bool = False,
+    kilix_home: os.PathLike[str] | str,
+    contract_command: os.PathLike[str] | str,
+    state_library: os.PathLike[str] | str,
+    land_assets: os.PathLike[str] | str,
 ) -> ConformanceReport:
     """Run the common non-interactive suite against one provider command."""
     with tempfile.TemporaryDirectory(
         prefix="kilix-desktop-conformance-"
     ) as directory:
         sandbox = Path(directory)
-        environment = _sandbox_environment(sandbox)
+        environment = _sandbox_environment(
+            sandbox,
+            kilix_home=kilix_home,
+            contract_command=contract_command,
+            state_library=state_library,
+            land_assets=land_assets,
+        )
         return _run_conformance(
             command,
             adapter_stage=adapter_stage,
