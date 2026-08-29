@@ -221,6 +221,11 @@ and untracked worktree including submodules. It runs two fresh final-mode
 passes and refuses source-root, source-identity, worktree, entry-byte,
 provider-ID or ordered nine-check-tuple drift:
 
+When an endpoint fails inside the matrix, the diagnostic includes the exact
+pass position and provider ID before the underlying error. This preserves a
+bounded failure such as `pass 2/2 provider kilix-95` without changing the
+provider deadline or treating the failure as a provider refusal.
+
 ```sh
 make common-conformance-gate \
   UV=/absolute/path/to/release-pinned-uv-0.12.5 \

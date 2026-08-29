@@ -181,6 +181,27 @@ class ConformanceTests(unittest.TestCase):
         with self.assertRaisesRegex(ConformanceError, "check tuple changed"):
             run_conformance_matrix((provider,), passes=1, **self.PROFILE)
 
+    def test_common_matrix_qualifies_provider_and_pass_failures(self) -> None:
+        provider = MatrixProvider(
+            "kilix-95",
+            (sys.executable, str(FAKE)),
+            ("version",),
+        )
+        with mock.patch(
+            "kilix_desktop_contract.conformance.run_conformance",
+            side_effect=(
+                ConformanceReport("kilix-95", ("version",), False),
+                ConformanceError("provider endpoint timed out after 2s"),
+            ),
+        ):
+            with self.assertRaises(ConformanceError) as caught:
+                run_conformance_matrix((provider,), passes=2, **self.PROFILE)
+        self.assertEqual(
+            str(caught.exception),
+            "conformance matrix pass 2/2 provider kilix-95: "
+            "provider endpoint timed out after 2s",
+        )
+
     def test_common_matrix_rejects_entry_digest_drift_before_execution(self) -> None:
         provider = MatrixProvider(
             "fake-provider",

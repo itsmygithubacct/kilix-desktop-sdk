@@ -457,16 +457,22 @@ def run_conformance_matrix(
         verify_matrix_provider(provider, "before matrix")
 
     reports: list[ConformanceReport] = []
-    for _pass in range(passes):
+    for pass_index in range(1, passes + 1):
         for provider in population:
             verify_matrix_provider(provider, "before invocation")
-            report = run_conformance(
-                provider.command,
-                kilix_home=kilix_home,
-                contract_command=contract_command,
-                state_library=state_library,
-                land_assets=land_assets,
-            )
+            try:
+                report = run_conformance(
+                    provider.command,
+                    kilix_home=kilix_home,
+                    contract_command=contract_command,
+                    state_library=state_library,
+                    land_assets=land_assets,
+                )
+            except ConformanceError as error:
+                raise ConformanceError(
+                    f"conformance matrix pass {pass_index}/{passes} provider "
+                    f"{provider.provider_id}: {error}"
+                ) from error
             if report.provider_id != provider.provider_id:
                 raise ConformanceError(
                     "conformance matrix provider identity mismatch: "
