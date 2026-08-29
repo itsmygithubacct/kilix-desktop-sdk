@@ -247,6 +247,30 @@ F119_PREPARATION_ARTIFACTS = {
     "result_channel_schema_sha256": "f65b092332fadb05dbbba29a7d45bbeaf808b4eda7e891eefa797dd325edf11e",
     "schema_adapter_delta_sha256": "aa90d728623d47b53c7a92bb4091ec85cf39512799553b5e6e059dc5ab550efe",
 }
+F119_R5_EXECUTABLE_PREPARATION = {
+    "adapter_plans": {"denominator": 4, "numerator": 4},
+    "adoption_state": "preparation-only-formal-entry-blocked",
+    "anonymous_result_channels": {"denominator": 12, "numerator": 12},
+    "authority_bindings": {"denominator": 9, "numerator": 9},
+    "common_cli_options": {"denominator": 6, "numerator": 6},
+    "corrected_selftest": {"denominator": 40, "numerator": 40},
+    "execution_phases": {"denominator": 17, "numerator": 17},
+    "formal_adapters_implemented": {"denominator": 4, "numerator": 0},
+    "formal_p1_entered": {"denominator": 1, "numerator": 0},
+    "formal_schema_freezes": {"denominator": 2, "numerator": 0},
+    "formal_vectors_executed": {"denominator": 84, "numerator": 0},
+    "leak_survivors": {"denominator": 1, "numerator": 0},
+    "negative_execution_controls": {"denominator": 5, "numerator": 5},
+    "packet_manifest_sha256": "baeccf5b7cf2b138eb6c30b55d22e75793297e7989f058b987f750c46d93d7cf",
+    "positive_adapter_executions": {"denominator": 8, "numerator": 8},
+    "preparation_record_sha256": "3bec924011be0da5b5876aad7bb4a39c3b409c0a91f0109c425dff05aba426db",
+    "reference_runner_sha256": "4b51815f253bae6823fc449779dae61f4149ee1369b7cb6bbcdee6c1b194eb4e",
+    "regular_file_negative_subject_starts": {"denominator": 1, "numerator": 0},
+    "report_sha256": "cedd565f1dfc1e1a84853636999b0749add5eca02229ad690b1601956b4be1f0",
+    "runner_contract_sha256": "ce73bf52113881283fc4f88465052e528c7aa61cfbdb4b6619e1f04eb50a55d8",
+    "runtime_capture_files": {"denominator": 0, "numerator": 0},
+    "timeout_survivors": {"denominator": 1, "numerator": 0},
+}
 E1_PARENT = {
     "commit": "b34fa9b85cad80cbfb33588378fac50f7fda21d3",
     "inner_manifest_members": 49,
@@ -538,6 +562,7 @@ def _validate_f119_result_channel(value: Any) -> None:
             "handoff_phase_ids", "launcher_result_fd",
             "od20_additive_group_ids", "od20_authority",
             "preparation_artifacts", "r3_field_mappings",
+            "r5_executable_preparation",
             "required_top_level_fields", "schema", "success_transition_ids",
             "terminal_disposition_ids", "transport_kinds",
         },
@@ -590,6 +615,8 @@ def _validate_f119_result_channel(value: Any) -> None:
         raise ReadinessError("F119 channel: OD-20 authority binding changed")
     if channel["preparation_artifacts"] != F119_PREPARATION_ARTIFACTS:
         raise ReadinessError("F119 channel: preparation artifact identity changed")
+    if channel["r5_executable_preparation"] != F119_R5_EXECUTABLE_PREPARATION:
+        raise ReadinessError("F119 channel: R5 executable preparation changed")
 
 
 def _validate_e3(value: Any) -> None:
@@ -735,6 +762,11 @@ def validate_requirements(value: Any) -> None:
 
 
 def _mutations() -> list[Callable[[dict[str, Any]], None]]:
+    def r5(key: str, replacement: Any) -> Callable[[dict[str, Any]], None]:
+        return lambda value: value["f119_result_channel_requirements"][
+            "r5_executable_preparation"
+        ].__setitem__(key, replacement)
+
     return [
         lambda value: value["upstream_gate"]["common_case_ids"].pop(),
         lambda value: value["upstream_gate"].__setitem__("state", "accepted"),
@@ -769,6 +801,28 @@ def _mutations() -> list[Callable[[dict[str, Any]], None]]:
         lambda value: value["f119_result_channel_requirements"]["terminal_disposition_ids"].pop(),
         lambda value: value["f119_result_channel_requirements"]["transport_kinds"].pop(),
         lambda value: value["f119_result_channel_requirements"]["adapter_kinds"].pop(),
+        r5("adapter_plans", {"denominator": 4, "numerator": 3}),
+        r5("adoption_state", "accepted"),
+        r5("anonymous_result_channels", {"denominator": 12, "numerator": 11}),
+        r5("authority_bindings", {"denominator": 9, "numerator": 8}),
+        r5("common_cli_options", {"denominator": 6, "numerator": 5}),
+        r5("corrected_selftest", {"denominator": 40, "numerator": 39}),
+        r5("execution_phases", {"denominator": 17, "numerator": 16}),
+        r5("formal_adapters_implemented", {"denominator": 4, "numerator": 1}),
+        r5("formal_p1_entered", {"denominator": 1, "numerator": 1}),
+        r5("formal_schema_freezes", {"denominator": 2, "numerator": 1}),
+        r5("formal_vectors_executed", {"denominator": 84, "numerator": 1}),
+        r5("leak_survivors", {"denominator": 1, "numerator": 1}),
+        r5("negative_execution_controls", {"denominator": 5, "numerator": 4}),
+        r5("packet_manifest_sha256", "0" * 64),
+        r5("positive_adapter_executions", {"denominator": 8, "numerator": 7}),
+        r5("preparation_record_sha256", "0" * 64),
+        r5("reference_runner_sha256", "0" * 64),
+        r5("regular_file_negative_subject_starts", {"denominator": 1, "numerator": 1}),
+        r5("report_sha256", "0" * 64),
+        r5("runner_contract_sha256", "0" * 64),
+        r5("runtime_capture_files", {"denominator": 1, "numerator": 0}),
+        r5("timeout_survivors", {"denominator": 1, "numerator": 1}),
         lambda value: value["local_evidence"]["e2_host_integration"].__setitem__("commit", "0" * 40),
         lambda value: value["local_evidence"]["e2_host_integration"]["focused_tests"].__setitem__("passed", 110),
         lambda value: value["local_evidence"]["e2_host_integration"]["focused_tests"].__setitem__("population", 113),
@@ -846,6 +900,8 @@ def summary(value: dict[str, Any], mutation_result: tuple[int, int] | None = Non
         f"{len(channel['transport_kinds'])}/2 anonymous transports retained",
         f"{len(channel['consumer_invariants'])}/{len(F119_CONSUMER_INVARIANTS)} channel invariants retained",
         f"{channel['launcher_result_fd']['returned']['numerator']}/{channel['launcher_result_fd']['returned']['denominator']} F100 result-descriptor values consumed",
+        "22/22 F119 R5 executable-preparation leaves retained",
+        f"{channel['r5_executable_preparation']['anonymous_result_channels']['numerator']}/{channel['r5_executable_preparation']['anonymous_result_channels']['denominator']} R5 anonymous-channel executions retained",
         f"{len(e4['command_templates'])}/{len(E4_COMMAND_TEMPLATES)} E4 command templates retained",
         f"{len(e4['migration_sequence'])}/9 E4 migration/rollback commands retained",
         "9/9 E2 local-evidence leaves retained",

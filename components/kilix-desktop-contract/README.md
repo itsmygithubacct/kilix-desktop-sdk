@@ -179,6 +179,13 @@ parsing, requires the exact 18/18-field prepared envelope, and rejects all
 adapters, select the 0/1 unreturned launcher descriptor, or promote either of
 the 0/2 candidate schemas.
 
+The consumer requirements also byte-bind F119 R5's executable preparation in
+22/22 leaves: 9/9 authority bindings, 6/6 CLI options, 4/4 adapter plans,
+17/17 phases, 40/40 corrected self-tests, 8/8 positive adapter executions,
+5/5 negative controls and 12/12 anonymous-channel executions. The packet is
+still preparation: formal freezes, adapters, vectors and P1 entry remain 0/2,
+0/4, 0/84 and 0/1 respectively.
+
 Run both readiness surfaces with:
 
 ```sh

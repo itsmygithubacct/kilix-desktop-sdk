@@ -391,6 +391,78 @@
       "unique_to_run:transport.unique_to_run",
       "descendant_writable:writer_endpoint.descendant_inheritable-inverse"
     ],
+    "r5_executable_preparation": {
+      "adapter_plans": {
+        "denominator": 4,
+        "numerator": 4
+      },
+      "adoption_state": "preparation-only-formal-entry-blocked",
+      "anonymous_result_channels": {
+        "denominator": 12,
+        "numerator": 12
+      },
+      "authority_bindings": {
+        "denominator": 9,
+        "numerator": 9
+      },
+      "common_cli_options": {
+        "denominator": 6,
+        "numerator": 6
+      },
+      "corrected_selftest": {
+        "denominator": 40,
+        "numerator": 40
+      },
+      "execution_phases": {
+        "denominator": 17,
+        "numerator": 17
+      },
+      "formal_adapters_implemented": {
+        "denominator": 4,
+        "numerator": 0
+      },
+      "formal_p1_entered": {
+        "denominator": 1,
+        "numerator": 0
+      },
+      "formal_schema_freezes": {
+        "denominator": 2,
+        "numerator": 0
+      },
+      "formal_vectors_executed": {
+        "denominator": 84,
+        "numerator": 0
+      },
+      "leak_survivors": {
+        "denominator": 1,
+        "numerator": 0
+      },
+      "negative_execution_controls": {
+        "denominator": 5,
+        "numerator": 5
+      },
+      "packet_manifest_sha256": "baeccf5b7cf2b138eb6c30b55d22e75793297e7989f058b987f750c46d93d7cf",
+      "positive_adapter_executions": {
+        "denominator": 8,
+        "numerator": 8
+      },
+      "preparation_record_sha256": "3bec924011be0da5b5876aad7bb4a39c3b409c0a91f0109c425dff05aba426db",
+      "reference_runner_sha256": "4b51815f253bae6823fc449779dae61f4149ee1369b7cb6bbcdee6c1b194eb4e",
+      "regular_file_negative_subject_starts": {
+        "denominator": 1,
+        "numerator": 0
+      },
+      "report_sha256": "cedd565f1dfc1e1a84853636999b0749add5eca02229ad690b1601956b4be1f0",
+      "runner_contract_sha256": "ce73bf52113881283fc4f88465052e528c7aa61cfbdb4b6619e1f04eb50a55d8",
+      "runtime_capture_files": {
+        "denominator": 0,
+        "numerator": 0
+      },
+      "timeout_survivors": {
+        "denominator": 1,
+        "numerator": 0
+      }
+    },
     "required_top_level_fields": [
       "schema",
       "run_id",

@@ -33,7 +33,7 @@ class TrustedLauncherReadinessTests(unittest.TestCase):
         self.assertIn("0/10 upstream return identities consumed", result)
 
     def test_all_premature_adoption_mutations_are_rejected(self) -> None:
-        self.assertEqual(self_test(self.requirements), (60, 60))
+        self.assertEqual(self_test(self.requirements), (82, 82))
 
     def test_f119_result_channel_preparation_is_bound_but_not_consumed(self) -> None:
         channel = self.requirements["f119_result_channel_requirements"]
@@ -51,6 +51,20 @@ class TrustedLauncherReadinessTests(unittest.TestCase):
             {"denominator": 1, "numerator": 0},
         )
         self.assertEqual(channel["formal_state"]["p1_entered"]["numerator"], 0)
+        executable = channel["r5_executable_preparation"]
+        self.assertEqual(len(executable), 22)
+        self.assertEqual(
+            executable["corrected_selftest"],
+            {"denominator": 40, "numerator": 40},
+        )
+        self.assertEqual(
+            executable["anonymous_result_channels"],
+            {"denominator": 12, "numerator": 12},
+        )
+        self.assertEqual(
+            executable["formal_p1_entered"],
+            {"denominator": 1, "numerator": 0},
+        )
 
     def test_f110_profile_inputs_cover_the_required_interface(self) -> None:
         profiles = self.requirements["launcher_profile_requirements"]
