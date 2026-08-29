@@ -271,6 +271,63 @@ F119_R5_EXECUTABLE_PREPARATION = {
     "runtime_capture_files": {"denominator": 0, "numerator": 0},
     "timeout_survivors": {"denominator": 1, "numerator": 0},
 }
+F119_R6_RESULT_FIELDS = (
+    "schema", "run_id", "case_id", "adapter", "lane", "repository",
+    "runner_revision", "environment_manifest_sha256", "invocation_sha256",
+    "startup", "terminal_check_set_sha256", "validator_started",
+    "result_channel", "outcome", "terminal", "counts", "cases", "cleanup",
+    "artifacts", "lifecycle", "harness", "projections", "process_exit",
+)
+F119_R6_CHANNEL_FIELDS = (
+    "authority_id", "kind", "path", "object_identity", "subject_uid",
+    "creator_uid", "writer_identity", "reader_identity", "bounded_bytes",
+    "records_seen", "unique_to_run", "descendant_writable",
+    "pathname_reachable_by_subject_uid", "persistent_bytes", "grade_source",
+    "persistent_copy_authority", "kernel_attested_before_subject",
+)
+F119_R6_CONFORMANCE_PREPARATION = {
+    "accepted_f100_bound_values_supplied": {"denominator": 32, "numerator": 0},
+    "adapter_rows": {"denominator": 4, "numerator": 4},
+    "adapter_terminal_population": {"denominator": 32, "numerator": 32},
+    "adoption_state": "preparation-only-formal-entry-blocked",
+    "anonymous_result_channels": {"denominator": 32, "numerator": 32},
+    "authority_bindings": {"denominator": 9, "numerator": 9},
+    "authority_independent_field_bindings": {"denominator": 98, "numerator": 98},
+    "component_schema_acceptances": {"denominator": 37, "numerator": 37},
+    "current_authority_base_verifier_replays": {"denominator": 5, "numerator": 0},
+    "f100_bound_fields_declared": {"denominator": 32, "numerator": 32},
+    "formal_adapters_implemented": {"denominator": 4, "numerator": 0},
+    "formal_p1_entered": {"denominator": 1, "numerator": 0},
+    "formal_schema_freezes": {"denominator": 2, "numerator": 0},
+    "formal_vectors_executed": {"denominator": 84, "numerator": 0},
+    "historical_snapshot_integrity_rechecks": {"denominator": 5, "numerator": 5},
+    "packet_artifacts": {
+        "README.md": "1c6b918eadec70f82a10a1b829ad59df125af2bad8d256ed17ad9bc654f25df0",
+        "environment-schema.freeze-candidate.json": "e0c6f0ff49df7e1640ed440931402580543a4dec46fec515d01d029031af1e0c",
+        "fixture-matrix.prep.json": "2d289e9c93fabde451cbc20a46151b78e5e18cb424030ef63f9ee92b269ed0f2",
+        "negative-mutations.prep.json": "fc0a57cc92f70c8ca339f6a1ffc1f28afa1bdcfd874106c3a354bc26808767ca",
+        "preparation.json": "40a81aa5a7085d16a3032109399845d8ef819b9138a54d01739cf7bc4f79b8bf",
+        "relational-contract.prep.json": "545fafc80d2f54e60e723a40ccc995988f7259f0c40cf5aa4e636aab75155574",
+        "result-schema.freeze-candidate.json": "96ee55e4dfc190e11767ff0078c5a2634dc61eb75f9c538bec71409be340d701",
+        "verify.js": "9db9413c9e077d8d13813618504cc0a07903abf343da167aab2aa2587315e3f1",
+    },
+    "packet_checksums": {"denominator": 8, "numerator": 8},
+    "packet_manifest_sha256": "1e6b75db1c472e7a24fe67ca033e9c00603dbe641eba02b2e7fab6c447784dcc",
+    "packet_members": {"denominator": 9, "numerator": 9},
+    "pathname_reachable_result_channels": {"denominator": 32, "numerator": 0},
+    "persistent_result_channels": {"denominator": 32, "numerator": 0},
+    "positive_relational_evaluations": {"denominator": 1024, "numerator": 1024},
+    "relation_negative_schema_acceptances": {"denominator": 32, "numerator": 32},
+    "relation_negative_target_rejections": {"denominator": 32, "numerator": 32},
+    "relational_rules": {"denominator": 32, "numerator": 32},
+    "result_channel_required_fields": list(F119_R6_CHANNEL_FIELDS),
+    "result_records": {"denominator": 32, "numerator": 32},
+    "result_required_top_level_fields": list(F119_R6_RESULT_FIELDS),
+    "runtime_capture_files_created": {"denominator": 0, "numerator": 0},
+    "schema_candidates_compiled": {"denominator": 2, "numerator": 2},
+    "schema_negative_rejections": {"denominator": 24, "numerator": 24},
+    "terminal_rows": {"denominator": 8, "numerator": 8},
+}
 E1_PARENT = {
     "commit": "b34fa9b85cad80cbfb33588378fac50f7fda21d3",
     "inner_manifest_members": 49,
@@ -562,7 +619,7 @@ def _validate_f119_result_channel(value: Any) -> None:
             "handoff_phase_ids", "launcher_result_fd",
             "od20_additive_group_ids", "od20_authority",
             "preparation_artifacts", "r3_field_mappings",
-            "r5_executable_preparation",
+            "r5_executable_preparation", "r6_conformance_preparation",
             "required_top_level_fields", "schema", "success_transition_ids",
             "terminal_disposition_ids", "transport_kinds",
         },
@@ -617,6 +674,8 @@ def _validate_f119_result_channel(value: Any) -> None:
         raise ReadinessError("F119 channel: preparation artifact identity changed")
     if channel["r5_executable_preparation"] != F119_R5_EXECUTABLE_PREPARATION:
         raise ReadinessError("F119 channel: R5 executable preparation changed")
+    if channel["r6_conformance_preparation"] != F119_R6_CONFORMANCE_PREPARATION:
+        raise ReadinessError("F119 channel: R6 conformance preparation changed")
 
 
 def _validate_e3(value: Any) -> None:
@@ -767,6 +826,11 @@ def _mutations() -> list[Callable[[dict[str, Any]], None]]:
             "r5_executable_preparation"
         ].__setitem__(key, replacement)
 
+    def r6(key: str, replacement: Any) -> Callable[[dict[str, Any]], None]:
+        return lambda value: value["f119_result_channel_requirements"][
+            "r6_conformance_preparation"
+        ].__setitem__(key, replacement)
+
     return [
         lambda value: value["upstream_gate"]["common_case_ids"].pop(),
         lambda value: value["upstream_gate"].__setitem__("state", "accepted"),
@@ -823,6 +887,38 @@ def _mutations() -> list[Callable[[dict[str, Any]], None]]:
         r5("runner_contract_sha256", "0" * 64),
         r5("runtime_capture_files", {"denominator": 1, "numerator": 0}),
         r5("timeout_survivors", {"denominator": 1, "numerator": 1}),
+        r6("accepted_f100_bound_values_supplied", {"denominator": 32, "numerator": 1}),
+        r6("adapter_rows", {"denominator": 4, "numerator": 3}),
+        r6("adapter_terminal_population", {"denominator": 32, "numerator": 31}),
+        r6("adoption_state", "accepted"),
+        r6("anonymous_result_channels", {"denominator": 32, "numerator": 31}),
+        r6("authority_bindings", {"denominator": 9, "numerator": 8}),
+        r6("authority_independent_field_bindings", {"denominator": 98, "numerator": 97}),
+        r6("component_schema_acceptances", {"denominator": 37, "numerator": 36}),
+        r6("current_authority_base_verifier_replays", {"denominator": 5, "numerator": 1}),
+        r6("f100_bound_fields_declared", {"denominator": 32, "numerator": 31}),
+        r6("formal_adapters_implemented", {"denominator": 4, "numerator": 1}),
+        r6("formal_p1_entered", {"denominator": 1, "numerator": 1}),
+        r6("formal_schema_freezes", {"denominator": 2, "numerator": 1}),
+        r6("formal_vectors_executed", {"denominator": 84, "numerator": 1}),
+        r6("historical_snapshot_integrity_rechecks", {"denominator": 5, "numerator": 4}),
+        lambda value: value["f119_result_channel_requirements"]["r6_conformance_preparation"]["packet_artifacts"].__setitem__("README.md", "0" * 64),
+        r6("packet_checksums", {"denominator": 8, "numerator": 7}),
+        r6("packet_manifest_sha256", "0" * 64),
+        r6("packet_members", {"denominator": 9, "numerator": 8}),
+        r6("pathname_reachable_result_channels", {"denominator": 32, "numerator": 1}),
+        r6("persistent_result_channels", {"denominator": 32, "numerator": 1}),
+        r6("positive_relational_evaluations", {"denominator": 1024, "numerator": 1023}),
+        r6("relation_negative_schema_acceptances", {"denominator": 32, "numerator": 31}),
+        r6("relation_negative_target_rejections", {"denominator": 32, "numerator": 31}),
+        r6("relational_rules", {"denominator": 32, "numerator": 31}),
+        lambda value: value["f119_result_channel_requirements"]["r6_conformance_preparation"]["result_channel_required_fields"].pop(),
+        r6("result_records", {"denominator": 32, "numerator": 31}),
+        lambda value: value["f119_result_channel_requirements"]["r6_conformance_preparation"]["result_required_top_level_fields"].pop(),
+        r6("runtime_capture_files_created", {"denominator": 1, "numerator": 0}),
+        r6("schema_candidates_compiled", {"denominator": 2, "numerator": 1}),
+        r6("schema_negative_rejections", {"denominator": 24, "numerator": 23}),
+        r6("terminal_rows", {"denominator": 8, "numerator": 7}),
         lambda value: value["local_evidence"]["e2_host_integration"].__setitem__("commit", "0" * 40),
         lambda value: value["local_evidence"]["e2_host_integration"]["focused_tests"].__setitem__("passed", 110),
         lambda value: value["local_evidence"]["e2_host_integration"]["focused_tests"].__setitem__("population", 113),
@@ -873,6 +969,7 @@ def self_test(value: dict[str, Any]) -> tuple[int, int]:
 def summary(value: dict[str, Any], mutation_result: tuple[int, int] | None = None) -> str:
     e3, e4 = value["consumer_requirements"]
     channel = value["f119_result_channel_requirements"]
+    r6 = channel["r6_conformance_preparation"]
     profiles = value["launcher_profile_requirements"]
     gate = value["upstream_gate"]
     parts = [
@@ -902,6 +999,15 @@ def summary(value: dict[str, Any], mutation_result: tuple[int, int] | None = Non
         f"{channel['launcher_result_fd']['returned']['numerator']}/{channel['launcher_result_fd']['returned']['denominator']} F100 result-descriptor values consumed",
         "22/22 F119 R5 executable-preparation leaves retained",
         f"{channel['r5_executable_preparation']['anonymous_result_channels']['numerator']}/{channel['r5_executable_preparation']['anonymous_result_channels']['denominator']} R5 anonymous-channel executions retained",
+        f"{len(r6)}/{len(F119_R6_CONFORMANCE_PREPARATION)} F119 R6 conformance-preparation fields retained",
+        f"{len(r6['packet_artifacts'])}/8 F119 R6 packet artifacts byte-bound",
+        f"{len(r6['result_required_top_level_fields'])}/{len(F119_R6_RESULT_FIELDS)} F119 R6 result fields retained",
+        f"{len(r6['result_channel_required_fields'])}/{len(F119_R6_CHANNEL_FIELDS)} F119 R6 nested channel fields retained",
+        f"{r6['authority_independent_field_bindings']['numerator']}/{r6['authority_independent_field_bindings']['denominator']} F119 R6 authority-independent bindings retained",
+        f"{r6['accepted_f100_bound_values_supplied']['numerator']}/{r6['accepted_f100_bound_values_supplied']['denominator']} accepted F100-bound values consumed",
+        f"{r6['result_records']['numerator']}/{r6['result_records']['denominator']} F119 R6 prepared results retained",
+        f"{r6['relational_rules']['numerator']}/{r6['relational_rules']['denominator']} F119 R6 relational rules retained",
+        f"{r6['formal_schema_freezes']['numerator']}/{r6['formal_schema_freezes']['denominator']} F119 R6 formal schema freezes claimed",
         f"{len(e4['command_templates'])}/{len(E4_COMMAND_TEMPLATES)} E4 command templates retained",
         f"{len(e4['migration_sequence'])}/9 E4 migration/rollback commands retained",
         "9/9 E2 local-evidence leaves retained",

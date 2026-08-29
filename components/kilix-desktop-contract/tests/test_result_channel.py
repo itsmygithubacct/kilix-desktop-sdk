@@ -6,8 +6,10 @@ import unittest
 
 from kilix_desktop_contract.jsonio import canonical_bytes
 from kilix_desktop_contract.result_channel import (
+    R6_RESULT_CHANNEL_FIELDS,
     ResultChannelError,
     parse_result_channel,
+    validate_r6_result_channel,
     validate_result_channel,
 )
 
@@ -110,6 +112,35 @@ def _replace(document: dict, pointer: str, value: object) -> None:
     target[parts[-1]] = value
 
 
+def _valid_r6_channel(
+    adapter: str = "unittest",
+    terminal: str = "pass-clean",
+    kind: str = "anonymous_pipe",
+) -> dict:
+    pipe = kind == "anonymous_pipe"
+    return {
+        "authority_id": "OD-20",
+        "kind": kind,
+        "path": None,
+        "object_identity": (
+            ("pipe:" if pipe else "socket:") + f"r6-{adapter}-{terminal}"
+        ),
+        "subject_uid": 1000,
+        "creator_uid": 1000,
+        "writer_identity": "trusted-launcher",
+        "reader_identity": "adapter-parent",
+        "bounded_bytes": BOUND,
+        "records_seen": 1,
+        "unique_to_run": True,
+        "descendant_writable": False,
+        "pathname_reachable_by_subject_uid": False,
+        "persistent_bytes": False,
+        "grade_source": "bounded-endpoint-bytes",
+        "persistent_copy_authority": False,
+        "kernel_attested_before_subject": True,
+    }
+
+
 class ResultChannelConsumerTests(unittest.TestCase):
     def test_four_adapters_and_two_transports_are_accepted(self) -> None:
         transports = set()
@@ -199,6 +230,73 @@ class ResultChannelConsumerTests(unittest.TestCase):
                 validate_result_channel(candidate, trusted_max_bytes=BOUND)
             rejected += 1
         self.assertEqual(rejected, 4)
+
+    def test_r6_thirty_two_nested_channels_are_accepted(self) -> None:
+        adapters = ("unittest", "plain-assert", "shell", "make")
+        terminals = (
+            "pass-clean", "test-failure", "launcher-refusal",
+            "unavailable-required", "unavailable-optional", "cancelled",
+            "resource-leak", "invalid-harness",
+        )
+        accepted = 0
+        transports = set()
+        for adapter_index, adapter in enumerate(adapters):
+            for terminal_index, terminal in enumerate(terminals):
+                kind = (
+                    "unnamed_socketpair"
+                    if (adapter_index + terminal_index) % 2
+                    else "anonymous_pipe"
+                )
+                transports.add(kind)
+                candidate = _valid_r6_channel(adapter, terminal, kind)
+                self.assertEqual(
+                    validate_r6_result_channel(
+                        candidate, trusted_max_bytes=BOUND
+                    ),
+                    candidate,
+                )
+                accepted += 1
+        self.assertEqual(accepted, 32)
+        self.assertEqual(len(transports), 2)
+
+    def test_r6_each_field_has_a_negative_control(self) -> None:
+        mutations = {
+            "authority_id": "OD-19",
+            "kind": "regular_file",
+            "path": "/tmp/result.json",
+            "object_identity": "socket:wrong-kind",
+            "subject_uid": True,
+            "creator_uid": -1,
+            "writer_identity": "subject",
+            "reader_identity": "subject",
+            "bounded_bytes": BOUND - 1,
+            "records_seen": 1.0,
+            "unique_to_run": False,
+            "descendant_writable": True,
+            "pathname_reachable_by_subject_uid": True,
+            "persistent_bytes": True,
+            "grade_source": "persistent-copy",
+            "persistent_copy_authority": True,
+            "kernel_attested_before_subject": False,
+        }
+        self.assertEqual(set(mutations), set(R6_RESULT_CHANNEL_FIELDS))
+        rejected = 0
+        for field, value in mutations.items():
+            candidate = _valid_r6_channel()
+            candidate[field] = value
+            with self.assertRaises(ResultChannelError, msg=field):
+                validate_r6_result_channel(candidate, trusted_max_bytes=BOUND)
+            rejected += 1
+        self.assertEqual(rejected, 17)
+
+    def test_r6_nested_channel_is_closed(self) -> None:
+        missing = _valid_r6_channel()
+        missing.pop("grade_source")
+        extra = _valid_r6_channel()
+        extra["capture_path"] = "/tmp/result.json"
+        for candidate in (missing, extra):
+            with self.assertRaises(ResultChannelError):
+                validate_r6_result_channel(candidate, trusted_max_bytes=BOUND)
 
 
 if __name__ == "__main__":

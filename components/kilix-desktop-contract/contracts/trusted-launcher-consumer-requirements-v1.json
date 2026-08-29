@@ -463,6 +463,172 @@
         "numerator": 0
       }
     },
+    "r6_conformance_preparation": {
+      "accepted_f100_bound_values_supplied": {
+        "denominator": 32,
+        "numerator": 0
+      },
+      "adapter_rows": {
+        "denominator": 4,
+        "numerator": 4
+      },
+      "adapter_terminal_population": {
+        "denominator": 32,
+        "numerator": 32
+      },
+      "adoption_state": "preparation-only-formal-entry-blocked",
+      "anonymous_result_channels": {
+        "denominator": 32,
+        "numerator": 32
+      },
+      "authority_bindings": {
+        "denominator": 9,
+        "numerator": 9
+      },
+      "authority_independent_field_bindings": {
+        "denominator": 98,
+        "numerator": 98
+      },
+      "component_schema_acceptances": {
+        "denominator": 37,
+        "numerator": 37
+      },
+      "current_authority_base_verifier_replays": {
+        "denominator": 5,
+        "numerator": 0
+      },
+      "f100_bound_fields_declared": {
+        "denominator": 32,
+        "numerator": 32
+      },
+      "formal_adapters_implemented": {
+        "denominator": 4,
+        "numerator": 0
+      },
+      "formal_p1_entered": {
+        "denominator": 1,
+        "numerator": 0
+      },
+      "formal_schema_freezes": {
+        "denominator": 2,
+        "numerator": 0
+      },
+      "formal_vectors_executed": {
+        "denominator": 84,
+        "numerator": 0
+      },
+      "historical_snapshot_integrity_rechecks": {
+        "denominator": 5,
+        "numerator": 5
+      },
+      "packet_artifacts": {
+        "README.md": "1c6b918eadec70f82a10a1b829ad59df125af2bad8d256ed17ad9bc654f25df0",
+        "environment-schema.freeze-candidate.json": "e0c6f0ff49df7e1640ed440931402580543a4dec46fec515d01d029031af1e0c",
+        "fixture-matrix.prep.json": "2d289e9c93fabde451cbc20a46151b78e5e18cb424030ef63f9ee92b269ed0f2",
+        "negative-mutations.prep.json": "fc0a57cc92f70c8ca339f6a1ffc1f28afa1bdcfd874106c3a354bc26808767ca",
+        "preparation.json": "40a81aa5a7085d16a3032109399845d8ef819b9138a54d01739cf7bc4f79b8bf",
+        "relational-contract.prep.json": "545fafc80d2f54e60e723a40ccc995988f7259f0c40cf5aa4e636aab75155574",
+        "result-schema.freeze-candidate.json": "96ee55e4dfc190e11767ff0078c5a2634dc61eb75f9c538bec71409be340d701",
+        "verify.js": "9db9413c9e077d8d13813618504cc0a07903abf343da167aab2aa2587315e3f1"
+      },
+      "packet_checksums": {
+        "denominator": 8,
+        "numerator": 8
+      },
+      "packet_manifest_sha256": "1e6b75db1c472e7a24fe67ca033e9c00603dbe641eba02b2e7fab6c447784dcc",
+      "packet_members": {
+        "denominator": 9,
+        "numerator": 9
+      },
+      "pathname_reachable_result_channels": {
+        "denominator": 32,
+        "numerator": 0
+      },
+      "persistent_result_channels": {
+        "denominator": 32,
+        "numerator": 0
+      },
+      "positive_relational_evaluations": {
+        "denominator": 1024,
+        "numerator": 1024
+      },
+      "relation_negative_schema_acceptances": {
+        "denominator": 32,
+        "numerator": 32
+      },
+      "relation_negative_target_rejections": {
+        "denominator": 32,
+        "numerator": 32
+      },
+      "relational_rules": {
+        "denominator": 32,
+        "numerator": 32
+      },
+      "result_channel_required_fields": [
+        "authority_id",
+        "kind",
+        "path",
+        "object_identity",
+        "subject_uid",
+        "creator_uid",
+        "writer_identity",
+        "reader_identity",
+        "bounded_bytes",
+        "records_seen",
+        "unique_to_run",
+        "descendant_writable",
+        "pathname_reachable_by_subject_uid",
+        "persistent_bytes",
+        "grade_source",
+        "persistent_copy_authority",
+        "kernel_attested_before_subject"
+      ],
+      "result_records": {
+        "denominator": 32,
+        "numerator": 32
+      },
+      "result_required_top_level_fields": [
+        "schema",
+        "run_id",
+        "case_id",
+        "adapter",
+        "lane",
+        "repository",
+        "runner_revision",
+        "environment_manifest_sha256",
+        "invocation_sha256",
+        "startup",
+        "terminal_check_set_sha256",
+        "validator_started",
+        "result_channel",
+        "outcome",
+        "terminal",
+        "counts",
+        "cases",
+        "cleanup",
+        "artifacts",
+        "lifecycle",
+        "harness",
+        "projections",
+        "process_exit"
+      ],
+      "runtime_capture_files_created": {
+        "denominator": 0,
+        "numerator": 0
+      },
+      "schema_candidates_compiled": {
+        "denominator": 2,
+        "numerator": 2
+      },
+      "schema_negative_rejections": {
+        "denominator": 24,
+        "numerator": 24
+      },
+      "terminal_rows": {
+        "denominator": 8,
+        "numerator": 8
+      }
+    },
     "required_top_level_fields": [
       "schema",
       "run_id",

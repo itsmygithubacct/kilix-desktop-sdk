@@ -1,8 +1,10 @@
 """Validate F110's consumer view of the prepared F119 result channel.
 
 This module does not construct the channel, choose the launcher descriptor, or
-promote the preparation to an accepted schema.  It only fails closed when
-direct endpoint bytes do not satisfy the F110-bound R4 consumer requirement.
+promote the preparation to an accepted schema.  It fails closed when direct
+endpoint bytes do not satisfy the F110-bound R4 consumer requirement and when
+an R6 result candidate's nested channel does not satisfy the authority-
+independent OD-20 boundary.
 """
 
 from __future__ import annotations
@@ -22,6 +24,13 @@ OD20_DECISION_SHA256 = (
     "b7c70acba32ca74518868e894330c6c8158f4436765d0a556a258fe4c4f1de3e"
 )
 MAX_CHANNEL_BYTES = 1024 * 1024 * 1024
+R6_RESULT_CHANNEL_FIELDS = (
+    "authority_id", "kind", "path", "object_identity", "subject_uid",
+    "creator_uid", "writer_identity", "reader_identity", "bounded_bytes",
+    "records_seen", "unique_to_run", "descendant_writable",
+    "pathname_reachable_by_subject_uid", "persistent_bytes", "grade_source",
+    "persistent_copy_authority", "kernel_attested_before_subject",
+)
 _IDENTIFIER = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:/-]{0,255}$")
 _OBJECT_IDENTITY = re.compile(r"^(pipe|socket):[a-z0-9][a-z0-9._-]{2,127}$")
 
@@ -236,4 +245,61 @@ def validate_result_channel(
         "ratification_status": "RATIFIED_AS_FILED",
         "compliant": True,
     }, "OD-20 binding")
+    return channel
+
+
+def validate_r6_result_channel(
+    value: Any, *, trusted_max_bytes: int
+) -> dict[str, Any]:
+    """Validate the 17-field channel nested in an F119 R6 result candidate.
+
+    The byte bound is supplied by the trusted outer environment/launcher.  The
+    candidate's own value cannot enlarge it.  This function deliberately does
+    not validate or promote the complete, still-unfrozen F119 result schema.
+    """
+
+    trusted_bound = _trusted_bound(trusted_max_bytes)
+    channel = _closed(value, set(R6_RESULT_CHANNEL_FIELDS), "R6 result channel")
+    if channel["authority_id"] != "OD-20":
+        raise ResultChannelError("R6 result channel has wrong authority")
+    kind = channel["kind"]
+    if kind not in ("anonymous_pipe", "unnamed_socketpair"):
+        raise ResultChannelError("R6 result channel is not anonymous")
+    if channel["path"] is not None:
+        raise ResultChannelError("R6 result channel has a pathname")
+    identity = channel["object_identity"]
+    if not isinstance(identity, str) or not _OBJECT_IDENTITY.fullmatch(identity):
+        raise ResultChannelError("R6 result channel object identity is invalid")
+    expected_prefix = "pipe:" if kind == "anonymous_pipe" else "socket:"
+    if not identity.startswith(expected_prefix):
+        raise ResultChannelError("R6 result channel kind and identity disagree")
+    for name in ("subject_uid", "creator_uid"):
+        uid = channel[name]
+        if isinstance(uid, bool) or not isinstance(uid, int) or not 0 <= uid <= 4294967295:
+            raise ResultChannelError(f"R6 result channel {name} is not a uid")
+    if channel["writer_identity"] != "trusted-launcher":
+        raise ResultChannelError("R6 result channel writer is not trusted launcher")
+    if channel["reader_identity"] != "adapter-parent":
+        raise ResultChannelError("R6 result channel reader is not adapter parent")
+    bounded_bytes = channel["bounded_bytes"]
+    if (
+        isinstance(bounded_bytes, bool)
+        or not isinstance(bounded_bytes, int)
+        or bounded_bytes != trusted_bound
+    ):
+        raise ResultChannelError("R6 result channel byte bound changed")
+    if type(channel["records_seen"]) is not int or channel["records_seen"] != 1:
+        raise ResultChannelError("R6 result channel record population is not 1/1")
+    expected = {
+        "unique_to_run": True,
+        "descendant_writable": False,
+        "pathname_reachable_by_subject_uid": False,
+        "persistent_bytes": False,
+        "grade_source": "bounded-endpoint-bytes",
+        "persistent_copy_authority": False,
+        "kernel_attested_before_subject": True,
+    }
+    for name, required in expected.items():
+        if type(channel[name]) is not type(required) or channel[name] != required:
+            raise ResultChannelError(f"R6 result channel {name} is nonconforming")
     return channel

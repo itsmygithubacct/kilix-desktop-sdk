@@ -186,6 +186,18 @@ The consumer requirements also byte-bind F119 R5's executable preparation in
 still preparation: formal freezes, adapters, vectors and P1 entry remain 0/2,
 0/4, 0/84 and 0/1 respectively.
 
+F119 R6 is bound separately in 32/32 preparation fields and 8/8 exact packet-
+artifact hashes. The binding retains the candidate's 23/23 required outer
+result fields, 17/17 nested result-channel fields, 98/98 authority-independent
+field bindings, 32/32 prepared results and 32/32 relational rules while
+consuming accepted F100 values in 0/32 fields. The accompanying
+`validate_r6_result_channel` check exercises all 32/32 prepared channel
+positions across 4/4 adapter rows and 8/8 terminal rows, and has a negative
+control for all 17/17 nested fields. This narrows the F110 consumer boundary;
+it does not validate the complete R6 result, replay any of the 0/84 formal
+vectors, implement any of the 0/4 adapters, or promote either of the 0/2
+candidate schemas.
+
 Run both readiness surfaces with:
 
 ```sh
