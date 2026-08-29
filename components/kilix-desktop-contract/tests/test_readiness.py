@@ -4,6 +4,7 @@ import copy
 import hashlib
 from pathlib import Path
 import tempfile
+import subprocess
 import unittest
 
 from kilix_desktop_contract.readiness import (
@@ -41,26 +42,29 @@ class TrustedLauncherReadinessTests(unittest.TestCase):
             validate_requirements(candidate)
 
     def test_command_set_requires_the_exact_provider_order(self) -> None:
-        entry_path = Path(__file__).resolve().parent / "fake_provider.py"
-        entry_sha256 = hashlib.sha256(entry_path.read_bytes()).hexdigest()
-        requirements = copy.deepcopy(self.requirements)
-        for provider in requirements["consumer_requirements"][0]["providers"]:
-            provider["entry_sha256"] = entry_sha256
-        commands = {
-            "commands": [
-                {
-                    "command": ["/bin/true", str(entry_path)],
-                    "entry_path": str(entry_path),
-                    "entry_sha256": entry_sha256,
-                    "provider_id": provider["provider_id"],
-                    "source_commit": provider["commit"],
-                    "source_tree": provider["tree"],
-                }
-                for provider in requirements["consumer_requirements"][0]["providers"]
-            ],
-            "schema": "kilix.desktop.conformance-command-set/v1",
-        }
         with tempfile.TemporaryDirectory() as directory:
+            source_root, entry_path, commit, tree = self._git_source(Path(directory))
+            entry_sha256 = hashlib.sha256(entry_path.read_bytes()).hexdigest()
+            requirements = copy.deepcopy(self.requirements)
+            for provider in requirements["consumer_requirements"][0]["providers"]:
+                provider["commit"] = commit
+                provider["tree"] = tree
+                provider["entry_sha256"] = entry_sha256
+            commands = {
+                "commands": [
+                    {
+                        "command": ["/bin/true", str(entry_path)],
+                        "entry_path": str(entry_path),
+                        "entry_sha256": entry_sha256,
+                        "provider_id": provider["provider_id"],
+                        "source_commit": commit,
+                        "source_root": str(source_root),
+                        "source_tree": tree,
+                    }
+                    for provider in requirements["consumer_requirements"][0]["providers"]
+                ],
+                "schema": "kilix.desktop.conformance-command-set/v1",
+            }
             command_path = Path(directory) / "commands.json"
             command_path.write_bytes(canonical_bytes(commands))
             result = load_command_set(command_path, requirements)
@@ -68,28 +72,85 @@ class TrustedLauncherReadinessTests(unittest.TestCase):
         self.assertEqual(result[0].provider_id, "kilix-95")
 
     def test_command_set_rejects_entry_byte_drift(self) -> None:
-        entry_path = Path(__file__).resolve().parent / "fake_provider.py"
-        provider = self.requirements["consumer_requirements"][0]["providers"][0]
-        commands = {
-            "commands": [
-                {
-                    "command": ["/bin/true", str(entry_path)],
-                    "entry_path": str(entry_path),
-                    "entry_sha256": "0" * 64,
-                    "provider_id": item["provider_id"],
-                    "source_commit": item["commit"],
-                    "source_tree": item["tree"],
-                }
-                for item in self.requirements["consumer_requirements"][0]["providers"]
-            ],
-            "schema": "kilix.desktop.conformance-command-set/v1",
-        }
-        commands["commands"][0]["entry_sha256"] = provider["entry_sha256"]
         with tempfile.TemporaryDirectory() as directory:
+            source_root, entry_path, commit, tree = self._git_source(Path(directory))
+            requirements = copy.deepcopy(self.requirements)
+            for item in requirements["consumer_requirements"][0]["providers"]:
+                item["commit"] = commit
+                item["tree"] = tree
+            provider = requirements["consumer_requirements"][0]["providers"][0]
+            commands = {
+                "commands": [
+                    {
+                        "command": ["/bin/true", str(entry_path)],
+                        "entry_path": str(entry_path),
+                        "entry_sha256": item["entry_sha256"],
+                        "provider_id": item["provider_id"],
+                        "source_commit": commit,
+                        "source_root": str(source_root),
+                        "source_tree": tree,
+                    }
+                    for item in requirements["consumer_requirements"][0]["providers"]
+                ],
+                "schema": "kilix.desktop.conformance-command-set/v1",
+            }
+            commands["commands"][0]["entry_sha256"] = provider["entry_sha256"]
             command_path = Path(directory) / "commands.json"
             command_path.write_bytes(canonical_bytes(commands))
             with self.assertRaisesRegex(ReadinessError, "entry bytes changed"):
-                load_command_set(command_path, self.requirements)
+                load_command_set(command_path, requirements)
+
+    def test_command_set_rejects_a_dirty_bound_source_worktree(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            source_root, entry_path, commit, tree = self._git_source(Path(directory))
+            requirements = copy.deepcopy(self.requirements)
+            entry_sha256 = hashlib.sha256(entry_path.read_bytes()).hexdigest()
+            for provider in requirements["consumer_requirements"][0]["providers"]:
+                provider["commit"] = commit
+                provider["tree"] = tree
+                provider["entry_sha256"] = entry_sha256
+            commands = {
+                "commands": [
+                    {
+                        "command": ["/bin/true", str(entry_path)],
+                        "entry_path": str(entry_path),
+                        "entry_sha256": entry_sha256,
+                        "provider_id": provider["provider_id"],
+                        "source_commit": commit,
+                        "source_root": str(source_root),
+                        "source_tree": tree,
+                    }
+                    for provider in requirements["consumer_requirements"][0]["providers"]
+                ],
+                "schema": "kilix.desktop.conformance-command-set/v1",
+            }
+            (source_root / "support.txt").write_text("drift\n")
+            command_path = Path(directory) / "commands.json"
+            command_path.write_bytes(canonical_bytes(commands))
+            with self.assertRaisesRegex(ReadinessError, "source worktree changed"):
+                load_command_set(command_path, requirements)
+
+    def _git_source(self, parent: Path) -> tuple[Path, Path, str, str]:
+        source_root = parent / "source"
+        source_root.mkdir()
+        entry_path = source_root / "provider.py"
+        entry_path.write_text("#!/usr/bin/env python3\n")
+        (source_root / "support.txt").write_text("clean\n")
+        subprocess.run(("/usr/bin/git", "init", "-q", str(source_root)), check=True)
+        subprocess.run(("/usr/bin/git", "-C", str(source_root), "add", "."), check=True)
+        subprocess.run(
+            (
+                "/usr/bin/git", "-C", str(source_root),
+                "-c", "user.name=F110 Test", "-c", "user.email=f110@example.invalid",
+                "commit", "-q", "-m", "fixture",
+            ),
+            check=True,
+        )
+        commit, tree = subprocess.check_output(
+            ("/usr/bin/git", "-C", str(source_root), "rev-parse", "HEAD", "HEAD^{tree}"),
+            text=True,
+        ).splitlines()
+        return source_root, entry_path, commit, tree
 
 
 if __name__ == "__main__":

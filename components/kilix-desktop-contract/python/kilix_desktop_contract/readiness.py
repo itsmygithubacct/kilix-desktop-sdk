@@ -10,7 +10,7 @@ import sys
 from typing import Any, Callable
 
 from .jsonio import DocumentError, canonical_bytes, load_json
-from .conformance import MatrixProvider
+from .conformance import ConformanceError, MatrixProvider, verify_matrix_provider
 from .persistence import MIGRATION_ORDER, SEPARATE_CONSUMERS
 
 
@@ -241,7 +241,7 @@ def load_command_set(
             item,
             {
                 "command", "entry_path", "entry_sha256", "provider_id",
-                "source_commit", "source_tree",
+                "source_commit", "source_root", "source_tree",
             },
             f"command_set provider {ordinal}",
         )
@@ -302,15 +302,33 @@ def load_command_set(
             raise ReadinessError(
                 f"command_set provider {ordinal}: entry bytes changed"
             )
-        result.append(
-            MatrixProvider(
-                provider_id,
-                tuple(command),
-                tuple(provider["expected_checks"]),
-                entry_path,
-                entry_digest,
+        source_root_value = command_item["source_root"]
+        if (
+            not isinstance(source_root_value, str)
+            or not source_root_value
+            or "\0" in source_root_value
+            or not Path(source_root_value).is_absolute()
+        ):
+            raise ReadinessError(
+                f"command_set provider {ordinal}: source root is not absolute"
             )
+        matrix_provider = MatrixProvider(
+            provider_id,
+            tuple(command),
+            tuple(provider["expected_checks"]),
+            entry_path,
+            entry_digest,
+            Path(source_root_value),
+            command_item["source_commit"],
+            command_item["source_tree"],
         )
+        try:
+            verify_matrix_provider(matrix_provider, "while loading command set")
+        except ConformanceError as error:
+            raise ReadinessError(
+                f"command_set provider {ordinal}: {error}"
+            ) from error
+        result.append(matrix_provider)
     return tuple(result)
 
 

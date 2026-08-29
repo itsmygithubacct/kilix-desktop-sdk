@@ -11,6 +11,7 @@ from unittest import mock
 
 from kilix_desktop_contract.conformance import (
     ConformanceError,
+    ConformanceReport,
     MatrixProvider,
     PROVIDER_ENVIRONMENT_NAMES,
     _sandbox_environment,
@@ -193,6 +194,60 @@ class ConformanceTests(unittest.TestCase):
         )
         with self.assertRaisesRegex(ConformanceError, "entry digest changed"):
             run_conformance_matrix((provider,), passes=1, **self.PROFILE)
+
+    def test_common_matrix_rejects_source_drift_after_execution(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            source_root = Path(directory) / "source"
+            source_root.mkdir()
+            entry_path = source_root / "provider"
+            entry_path.write_text("provider\n")
+            support_path = source_root / "support.txt"
+            support_path.write_text("clean\n")
+            subprocess.run(
+                ("/usr/bin/git", "init", "-q", str(source_root)), check=True
+            )
+            subprocess.run(
+                ("/usr/bin/git", "-C", str(source_root), "add", "."), check=True
+            )
+            subprocess.run(
+                (
+                    "/usr/bin/git", "-C", str(source_root),
+                    "-c", "user.name=F110 Test",
+                    "-c", "user.email=f110@example.invalid",
+                    "commit", "-q", "-m", "fixture",
+                ),
+                check=True,
+            )
+            commit, tree = subprocess.check_output(
+                (
+                    "/usr/bin/git", "-C", str(source_root), "rev-parse",
+                    "HEAD", "HEAD^{tree}",
+                ),
+                text=True,
+            ).splitlines()
+            provider = MatrixProvider(
+                "fake-provider",
+                (str(entry_path),),
+                ("version",),
+                entry_path,
+                hashlib.sha256(entry_path.read_bytes()).hexdigest(),
+                source_root,
+                commit,
+                tree,
+            )
+
+            def change_source(*args, **kwargs):
+                support_path.write_text("drift\n")
+                return ConformanceReport("fake-provider", ("version",), False)
+
+            with mock.patch(
+                "kilix_desktop_contract.conformance.run_conformance",
+                side_effect=change_source,
+            ):
+                with self.assertRaisesRegex(
+                    ConformanceError, "source worktree changed"
+                ):
+                    run_conformance_matrix((provider,), passes=1, **self.PROFILE)
 
 
 if __name__ == "__main__":

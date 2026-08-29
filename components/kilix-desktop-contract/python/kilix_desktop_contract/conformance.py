@@ -96,6 +96,9 @@ class MatrixProvider:
     expected_checks: tuple[str, ...]
     entry_path: Path | None = None
     entry_sha256: str | None = None
+    source_root: Path | None = None
+    source_commit: str | None = None
+    source_tree: str | None = None
 
 
 @dataclass(frozen=True)
@@ -451,12 +454,12 @@ def run_conformance_matrix(
             raise ConformanceError(
                 f"conformance matrix checks for {provider.provider_id} are empty"
             )
-        _verify_matrix_entry(provider, "before matrix")
+        verify_matrix_provider(provider, "before matrix")
 
     reports: list[ConformanceReport] = []
     for _pass in range(passes):
         for provider in population:
-            _verify_matrix_entry(provider, "before invocation")
+            verify_matrix_provider(provider, "before invocation")
             report = run_conformance(
                 provider.command,
                 kilix_home=kilix_home,
@@ -475,9 +478,15 @@ def run_conformance_matrix(
                 )
             if report.adapter_stage:
                 raise ConformanceError("conformance matrix did not run in final mode")
-            _verify_matrix_entry(provider, "after invocation")
+            verify_matrix_provider(provider, "after invocation")
             reports.append(report)
     return MatrixReport(passes, population, tuple(reports))
+
+
+def verify_matrix_provider(provider: MatrixProvider, phase: str) -> None:
+    """Verify the bound entry and its exact clean source worktree."""
+    _verify_matrix_entry(provider, phase)
+    _verify_matrix_source(provider, phase)
 
 
 def _verify_matrix_entry(provider: MatrixProvider, phase: str) -> None:
@@ -501,6 +510,103 @@ def _verify_matrix_entry(provider: MatrixProvider, phase: str) -> None:
     if digest != provider.entry_sha256:
         raise ConformanceError(
             f"conformance matrix entry digest changed for {provider.provider_id} {phase}"
+        )
+
+
+def _verify_matrix_source(provider: MatrixProvider, phase: str) -> None:
+    source_values = (
+        provider.source_root,
+        provider.source_commit,
+        provider.source_tree,
+    )
+    if all(value is None for value in source_values):
+        return
+    if any(value is None for value in source_values):
+        raise ConformanceError(
+            f"conformance matrix source binding is incomplete for {provider.provider_id}"
+        )
+    assert provider.source_root is not None
+    assert provider.source_commit is not None
+    assert provider.source_tree is not None
+    try:
+        status = provider.source_root.lstat()
+        resolved_root = provider.source_root.resolve(strict=True)
+    except OSError as error:
+        raise ConformanceError(
+            f"conformance matrix source root for {provider.provider_id} is unreadable {phase}: {error}"
+        ) from error
+    if (
+        not stat.S_ISDIR(status.st_mode)
+        or provider.source_root.is_symlink()
+        or resolved_root != provider.source_root
+    ):
+        raise ConformanceError(
+            f"conformance matrix source root for {provider.provider_id} is not a canonical directory {phase}"
+        )
+    if provider.entry_path is None:
+        raise ConformanceError(
+            f"conformance matrix source binding has no entry for {provider.provider_id}"
+        )
+    try:
+        provider.entry_path.relative_to(provider.source_root)
+    except ValueError as error:
+        raise ConformanceError(
+            f"conformance matrix entry for {provider.provider_id} is outside its source root {phase}"
+        ) from error
+
+    git_environment = {
+        "GIT_CONFIG_NOSYSTEM": "1",
+        "HOME": "/nonexistent",
+        "LC_ALL": "C",
+        "PATH": "/usr/bin:/bin",
+    }
+    try:
+        identity = subprocess.run(
+            (
+                "/usr/bin/git", "-C", str(provider.source_root), "rev-parse",
+                "--show-toplevel", "HEAD", "HEAD^{tree}",
+            ),
+            check=False,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            timeout=5,
+            env=git_environment,
+        )
+        worktree = subprocess.run(
+            (
+                "/usr/bin/git", "-C", str(provider.source_root), "status",
+                "--porcelain=v1", "--untracked-files=all", "--ignore-submodules=none",
+            ),
+            check=False,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            timeout=5,
+            env=git_environment,
+        )
+    except (OSError, subprocess.TimeoutExpired) as error:
+        raise ConformanceError(
+            f"conformance matrix source for {provider.provider_id} cannot be inspected {phase}: {error}"
+        ) from error
+    if identity.returncode != 0 or worktree.returncode != 0:
+        diagnostic = (identity.stderr or worktree.stderr).decode(
+            "utf-8", errors="replace"
+        ).strip()
+        raise ConformanceError(
+            f"conformance matrix source for {provider.provider_id} is not inspectable {phase}: {diagnostic}"
+        )
+    lines = identity.stdout.decode("utf-8", errors="strict").splitlines()
+    expected = (
+        str(provider.source_root),
+        provider.source_commit,
+        provider.source_tree,
+    )
+    if tuple(lines) != expected:
+        raise ConformanceError(
+            f"conformance matrix source identity changed for {provider.provider_id} {phase}"
+        )
+    if worktree.stdout:
+        raise ConformanceError(
+            f"conformance matrix source worktree changed for {provider.provider_id} {phase}"
         )
 
 
