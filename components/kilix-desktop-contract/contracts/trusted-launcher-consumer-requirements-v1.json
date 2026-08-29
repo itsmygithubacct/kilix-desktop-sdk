@@ -489,6 +489,30 @@
         "numerator": 0
       }
     },
+    "r6_checksum_reproduction_correction": {
+      "adoption_state": "open-owner-correction-request",
+      "affected_manifest_sha256": "1e6b75db1c472e7a24fe67ca033e9c00603dbe641eba02b2e7fab6c447784dcc",
+      "affected_readme_sha256": "1c6b918eadec70f82a10a1b829ad59df125af2bad8d256ed17ad9bc654f25df0",
+      "current_arbitrary_cwd_command_passes": {
+        "denominator": 1,
+        "numerator": 0
+      },
+      "current_packet_directory_command_passes": {
+        "denominator": 1,
+        "numerator": 1
+      },
+      "finding_id": "B-F110-R6-L01",
+      "owner": "F119/Track B",
+      "request_sha256": "8b8a0e72a04f95a6a6ccbe907ee6b63a5a7802c4942989b823556d1abb4a5c43",
+      "successor_binding_returned": {
+        "denominator": 1,
+        "numerator": 0
+      },
+      "successor_checksum_members": {
+        "denominator": 8,
+        "numerator": 0
+      }
+    },
     "r6_conformance_preparation": {
       "accepted_f100_bound_values_supplied": {
         "denominator": 32,

@@ -33,7 +33,7 @@ class TrustedLauncherReadinessTests(unittest.TestCase):
         self.assertIn("0/10 upstream return identities consumed", result)
 
     def test_all_premature_adoption_mutations_are_rejected(self) -> None:
-        self.assertEqual(self_test(self.requirements), (124, 124))
+        self.assertEqual(self_test(self.requirements), (134, 134))
 
     def test_f119_result_channel_preparation_is_bound_but_not_consumed(self) -> None:
         channel = self.requirements["f119_result_channel_requirements"]
@@ -105,6 +105,30 @@ class TrustedLauncherReadinessTests(unittest.TestCase):
         self.assertEqual(
             bridge["bridge_accepted"],
             {"denominator": 1, "numerator": 0},
+        )
+
+    def test_r6_checksum_correction_stays_open_until_owner_successor(self) -> None:
+        correction = self.requirements["f119_result_channel_requirements"][
+            "r6_checksum_reproduction_correction"
+        ]
+        self.assertEqual(len(correction), 10)
+        self.assertEqual(correction["finding_id"], "B-F110-R6-L01")
+        self.assertEqual(correction["owner"], "F119/Track B")
+        self.assertEqual(
+            correction["current_arbitrary_cwd_command_passes"],
+            {"denominator": 1, "numerator": 0},
+        )
+        self.assertEqual(
+            correction["current_packet_directory_command_passes"],
+            {"denominator": 1, "numerator": 1},
+        )
+        self.assertEqual(
+            correction["successor_binding_returned"],
+            {"denominator": 1, "numerator": 0},
+        )
+        self.assertEqual(
+            correction["successor_checksum_members"],
+            {"denominator": 8, "numerator": 0},
         )
 
     def test_f110_profile_inputs_cover_the_required_interface(self) -> None:

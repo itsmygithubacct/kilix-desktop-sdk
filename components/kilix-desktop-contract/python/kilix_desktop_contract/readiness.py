@@ -302,6 +302,21 @@ F119_R6_CHANNEL_FIELDS = (
     "pathname_reachable_by_subject_uid", "persistent_bytes", "grade_source",
     "persistent_copy_authority", "kernel_attested_before_subject",
 )
+F119_R6_CHECKSUM_CORRECTION = {
+    "affected_manifest_sha256": "1e6b75db1c472e7a24fe67ca033e9c00603dbe641eba02b2e7fab6c447784dcc",
+    "affected_readme_sha256": "1c6b918eadec70f82a10a1b829ad59df125af2bad8d256ed17ad9bc654f25df0",
+    "adoption_state": "open-owner-correction-request",
+    "current_arbitrary_cwd_command_passes": {"denominator": 1, "numerator": 0},
+    "current_packet_directory_command_passes": {
+        "denominator": 1,
+        "numerator": 1,
+    },
+    "finding_id": "B-F110-R6-L01",
+    "owner": "F119/Track B",
+    "request_sha256": "8b8a0e72a04f95a6a6ccbe907ee6b63a5a7802c4942989b823556d1abb4a5c43",
+    "successor_binding_returned": {"denominator": 1, "numerator": 0},
+    "successor_checksum_members": {"denominator": 8, "numerator": 0},
+}
 F119_R6_CONFORMANCE_PREPARATION = {
     "accepted_f100_bound_values_supplied": {"denominator": 32, "numerator": 0},
     "adapter_rows": {"denominator": 4, "numerator": 4},
@@ -636,7 +651,8 @@ def _validate_f119_result_channel(value: Any) -> None:
             "handoff_contract_id", "handoff_phase_ids", "launcher_result_fd",
             "od20_additive_group_ids", "od20_authority",
             "preparation_artifacts", "r3_field_mappings",
-            "r5_executable_preparation", "r6_conformance_preparation",
+            "r5_executable_preparation", "r6_checksum_reproduction_correction",
+            "r6_conformance_preparation",
             "required_top_level_fields", "schema", "success_transition_ids",
             "terminal_disposition_ids", "transport_kinds",
         },
@@ -693,6 +709,8 @@ def _validate_f119_result_channel(value: Any) -> None:
         raise ReadinessError("F119 channel: F111 bridge requirements changed")
     if channel["r5_executable_preparation"] != F119_R5_EXECUTABLE_PREPARATION:
         raise ReadinessError("F119 channel: R5 executable preparation changed")
+    if channel["r6_checksum_reproduction_correction"] != F119_R6_CHECKSUM_CORRECTION:
+        raise ReadinessError("F119 channel: R6 checksum correction state changed")
     if channel["r6_conformance_preparation"] != F119_R6_CONFORMANCE_PREPARATION:
         raise ReadinessError("F119 channel: R6 conformance preparation changed")
 
@@ -855,6 +873,13 @@ def _mutations() -> list[Callable[[dict[str, Any]], None]]:
             "r6_conformance_preparation"
         ].__setitem__(key, replacement)
 
+    def r6_checksum(
+        key: str, replacement: Any
+    ) -> Callable[[dict[str, Any]], None]:
+        return lambda value: value["f119_result_channel_requirements"][
+            "r6_checksum_reproduction_correction"
+        ].__setitem__(key, replacement)
+
     return [
         lambda value: value["upstream_gate"]["common_case_ids"].pop(),
         lambda value: value["upstream_gate"].__setitem__("state", "accepted"),
@@ -921,6 +946,28 @@ def _mutations() -> list[Callable[[dict[str, Any]], None]]:
         r5("runner_contract_sha256", "0" * 64),
         r5("runtime_capture_files", {"denominator": 1, "numerator": 0}),
         r5("timeout_survivors", {"denominator": 1, "numerator": 1}),
+        r6_checksum("affected_manifest_sha256", "0" * 64),
+        r6_checksum("affected_readme_sha256", "0" * 64),
+        r6_checksum("adoption_state", "accepted"),
+        r6_checksum(
+            "current_arbitrary_cwd_command_passes",
+            {"denominator": 1, "numerator": 1},
+        ),
+        r6_checksum(
+            "current_packet_directory_command_passes",
+            {"denominator": 1, "numerator": 0},
+        ),
+        r6_checksum("finding_id", "B-F110-R6-L02"),
+        r6_checksum("owner", "F110/Track E"),
+        r6_checksum("request_sha256", "0" * 64),
+        r6_checksum(
+            "successor_binding_returned",
+            {"denominator": 1, "numerator": 1},
+        ),
+        r6_checksum(
+            "successor_checksum_members",
+            {"denominator": 8, "numerator": 8},
+        ),
         r6("accepted_f100_bound_values_supplied", {"denominator": 32, "numerator": 1}),
         r6("adapter_rows", {"denominator": 4, "numerator": 3}),
         r6("adapter_terminal_population", {"denominator": 32, "numerator": 31}),
@@ -1004,6 +1051,7 @@ def summary(value: dict[str, Any], mutation_result: tuple[int, int] | None = Non
     e3, e4 = value["consumer_requirements"]
     channel = value["f119_result_channel_requirements"]
     bridge = channel["f111_bridge_requirements"]
+    checksum = channel["r6_checksum_reproduction_correction"]
     r6 = channel["r6_conformance_preparation"]
     profiles = value["launcher_profile_requirements"]
     gate = value["upstream_gate"]
@@ -1038,6 +1086,10 @@ def summary(value: dict[str, Any], mutation_result: tuple[int, int] | None = Non
         f"{bridge['bridge_accepted']['numerator']}/{bridge['bridge_accepted']['denominator']} F119 bridge acceptances consumed",
         "22/22 F119 R5 executable-preparation leaves retained",
         f"{channel['r5_executable_preparation']['anonymous_result_channels']['numerator']}/{channel['r5_executable_preparation']['anonymous_result_channels']['denominator']} R5 anonymous-channel executions retained",
+        f"{len(checksum)}/{len(F119_R6_CHECKSUM_CORRECTION)} F119 R6 checksum-correction leaves retained",
+        f"{checksum['current_arbitrary_cwd_command_passes']['numerator']}/{checksum['current_arbitrary_cwd_command_passes']['denominator']} current arbitrary-CWD checksum commands passed",
+        f"{checksum['successor_binding_returned']['numerator']}/{checksum['successor_binding_returned']['denominator']} corrected F119 packet successors consumed",
+        f"{checksum['successor_checksum_members']['numerator']}/{checksum['successor_checksum_members']['denominator']} successor checksum members consumed",
         f"{len(r6)}/{len(F119_R6_CONFORMANCE_PREPARATION)} F119 R6 conformance-preparation fields retained",
         f"{len(r6['packet_artifacts'])}/8 F119 R6 packet artifacts byte-bound",
         f"{len(r6['result_required_top_level_fields'])}/{len(F119_R6_RESULT_FIELDS)} F119 R6 result fields retained",
