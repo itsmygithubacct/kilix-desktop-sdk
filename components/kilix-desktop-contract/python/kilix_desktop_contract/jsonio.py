@@ -40,3 +40,21 @@ def canonical_bytes(value: Any) -> bytes:
     return (
         json.dumps(value, ensure_ascii=True, indent=2, sort_keys=True) + "\n"
     ).encode("utf-8")
+
+
+def exact_json_equal(observed: Any, expected: Any) -> bool:
+    """Compare JSON values without Python's bool/int/float aliases."""
+
+    if type(observed) is not type(expected):
+        return False
+    if isinstance(expected, dict):
+        return observed.keys() == expected.keys() and all(
+            exact_json_equal(observed[key], item)
+            for key, item in expected.items()
+        )
+    if isinstance(expected, list):
+        return len(observed) == len(expected) and all(
+            exact_json_equal(observed_item, expected_item)
+            for observed_item, expected_item in zip(observed, expected, strict=True)
+        )
+    return observed == expected

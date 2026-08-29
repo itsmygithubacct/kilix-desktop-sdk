@@ -213,6 +213,11 @@ passes 0/1 attempts, while the packet-directory form passes 1/1 attempts and
 remain consumed in 0/1 and 0/8 cases; this SDK does not rewrite the historical
 packet.
 
+Exact result-channel objects and R6 readiness fractions use recursive JSON
+type comparison. Boolean/integer aliases such as `true`/`1` and numeric
+representation aliases such as `1`/`1.0` are rejected even when Python would
+normally compare their values as equal.
+
 Run both readiness surfaces with:
 
 ```sh

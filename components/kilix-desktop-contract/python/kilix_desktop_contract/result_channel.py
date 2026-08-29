@@ -13,7 +13,7 @@ import json
 import re
 from typing import Any
 
-from .jsonio import canonical_bytes
+from .jsonio import canonical_bytes, exact_json_equal
 
 
 SCHEMA = "kilix.test.od20-result-channel/v1"
@@ -54,7 +54,7 @@ def _closed(value: Any, keys: set[str], label: str) -> dict[str, Any]:
 
 def _exact(value: Any, expected: dict[str, Any], label: str) -> None:
     observed = _closed(value, set(expected), label)
-    if observed != expected:
+    if not exact_json_equal(observed, expected):
         raise ResultChannelError(f"{label} has a nonconforming value")
 
 
@@ -165,7 +165,7 @@ def validate_result_channel(
         "pathname_reachable_by_subject_uid": False,
         "persistent_bytes": False,
     }
-    if transport != expected_transport:
+    if not exact_json_equal(transport, expected_transport):
         raise ResultChannelError("transport violates anonymity invariants")
 
     _exact(channel["writer_endpoint"], {

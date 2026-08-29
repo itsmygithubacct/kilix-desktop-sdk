@@ -9,7 +9,7 @@ from pathlib import Path
 import sys
 from typing import Any, Callable
 
-from .jsonio import DocumentError, canonical_bytes, load_json
+from .jsonio import DocumentError, canonical_bytes, exact_json_equal, load_json
 from .conformance import ConformanceError, MatrixProvider, verify_matrix_provider
 from .persistence import MIGRATION_ORDER, SEPARATE_CONSUMERS
 
@@ -360,6 +360,11 @@ F119_R6_CONFORMANCE_PREPARATION = {
     "schema_negative_rejections": {"denominator": 24, "numerator": 24},
     "terminal_rows": {"denominator": 8, "numerator": 8},
 }
+F119_R6_FRACTION_FIELDS = tuple(
+    key
+    for key, value in F119_R6_CONFORMANCE_PREPARATION.items()
+    if isinstance(value, dict) and set(value) == {"denominator", "numerator"}
+)
 E1_PARENT = {
     "commit": "b34fa9b85cad80cbfb33588378fac50f7fda21d3",
     "inner_manifest_members": 49,
@@ -711,7 +716,9 @@ def _validate_f119_result_channel(value: Any) -> None:
         raise ReadinessError("F119 channel: R5 executable preparation changed")
     if channel["r6_checksum_reproduction_correction"] != F119_R6_CHECKSUM_CORRECTION:
         raise ReadinessError("F119 channel: R6 checksum correction state changed")
-    if channel["r6_conformance_preparation"] != F119_R6_CONFORMANCE_PREPARATION:
+    if not exact_json_equal(
+        channel["r6_conformance_preparation"], F119_R6_CONFORMANCE_PREPARATION
+    ):
         raise ReadinessError("F119 channel: R6 conformance preparation changed")
 
 
@@ -880,7 +887,7 @@ def _mutations() -> list[Callable[[dict[str, Any]], None]]:
             "r6_checksum_reproduction_correction"
         ].__setitem__(key, replacement)
 
-    return [
+    mutations = [
         lambda value: value["upstream_gate"]["common_case_ids"].pop(),
         lambda value: value["upstream_gate"].__setitem__("state", "accepted"),
         lambda value: value["upstream_gate"]["assignments"][1].__setitem__("construction_commit", "0" * 40),
@@ -1028,6 +1035,17 @@ def _mutations() -> list[Callable[[dict[str, Any]], None]]:
         lambda value: value["local_evidence"]["e4_installed_state_rehearsal"]["source_snapshot"].__setitem__("bytes", 0),
         lambda value: value["local_evidence"]["e4_installed_state_rehearsal"]["source_snapshot"].__setitem__("files", 0),
     ]
+    for key in F119_R6_FRACTION_FIELDS:
+        numerator = F119_R6_CONFORMANCE_PREPARATION[key]["numerator"]
+        replacement = False if numerator == 0 else float(numerator)
+        mutations.append(
+            lambda value, key=key, replacement=replacement: value[
+                "f119_result_channel_requirements"
+            ]["r6_conformance_preparation"][key].__setitem__(
+                "numerator", replacement
+            )
+        )
+    return mutations
 
 
 def self_test(value: dict[str, Any]) -> tuple[int, int]:

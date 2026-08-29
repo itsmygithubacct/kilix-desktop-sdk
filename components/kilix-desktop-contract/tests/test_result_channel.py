@@ -15,6 +15,40 @@ from kilix_desktop_contract.result_channel import (
 
 
 BOUND = 1048576
+DIRECT_SCALAR_TYPE_ALIASES = (
+    ("/transport/unique_to_run", 1),
+    ("/transport/pathname_reachable_by_subject_uid", 0),
+    ("/transport/persistent_bytes", 0),
+    ("/writer_endpoint/cloexec", 1),
+    ("/writer_endpoint/passed_to_subject", 0),
+    ("/writer_endpoint/descendant_inheritable", 0),
+    ("/writer_endpoint/adapter_copy_closed_before_subject", 1),
+    ("/reader_endpoint/cloexec", 1),
+    ("/reader_endpoint/passed_to_subject", 0),
+    ("/subject_access/path_disclosed", 0),
+    ("/subject_access/argv_path_count", False),
+    ("/subject_access/environment_path_count", False),
+    ("/subject_access/inherited_channel_fd_count", False),
+    ("/subject_access/procfd_reachable", 0),
+    ("/bounds/records_expected", True),
+    ("/bounds/line_terminators_expected", True),
+    ("/terminal_record/canonical_utf8", 1),
+    ("/terminal_record/exact_json_values", True),
+    ("/terminal_record/trailing_newline", 1),
+    ("/terminal_record/records_seen", True),
+    ("/finality/descendants_dead", 1),
+    ("/finality/writer_set_closed", 1),
+    ("/finality/eof_seen", 1),
+    ("/finality/launcher_waited", 1),
+    ("/grade_source/bounded_in_memory", 1),
+    ("/grade_source/persistent_copy_used", 0),
+    ("/grade_source/parse_before_persist", 1),
+    ("/persistent_capture/authoritative", 0),
+    ("/persistent_capture/subject_uid_pathname_reachable", 0),
+    ("/kernel_attestation/path_absence_observed", 1),
+    ("/kernel_attestation/before_subject_start", 1),
+    ("/od20/compliant", 1),
+)
 
 
 def _valid(adapter: str = "unittest", kind: str = "anonymous_pipe") -> dict:
@@ -144,14 +178,19 @@ def _valid_r6_channel(
 class ResultChannelConsumerTests(unittest.TestCase):
     def test_four_adapters_and_two_transports_are_accepted(self) -> None:
         transports = set()
-        for ordinal, adapter in enumerate(("unittest", "plain-assert", "shell", "make")):
-            kind = "anonymous_pipe" if ordinal % 2 == 0 else "unnamed_socketpair"
-            transports.add(kind)
-            document = _valid(adapter, kind)
-            self.assertEqual(
-                parse_result_channel(canonical_bytes(document), trusted_max_bytes=BOUND),
-                document,
-            )
+        accepted = 0
+        for adapter in ("unittest", "plain-assert", "shell", "make"):
+            for kind in ("anonymous_pipe", "unnamed_socketpair"):
+                transports.add(kind)
+                document = _valid(adapter, kind)
+                self.assertEqual(
+                    parse_result_channel(
+                        canonical_bytes(document), trusted_max_bytes=BOUND
+                    ),
+                    document,
+                )
+                accepted += 1
+        self.assertEqual(accepted, 8)
         self.assertEqual(len(transports), 2)
 
     def test_thirty_two_prepared_negative_mutations_are_rejected(self) -> None:
@@ -198,6 +237,17 @@ class ResultChannelConsumerTests(unittest.TestCase):
             rejected += 1
         self.assertEqual(rejected, len(mutations))
         self.assertEqual(len(mutations), 32)
+
+    def test_thirty_two_direct_scalar_type_aliases_are_rejected(self) -> None:
+        rejected = 0
+        for pointer, replacement in DIRECT_SCALAR_TYPE_ALIASES:
+            candidate = copy.deepcopy(_valid())
+            _replace(candidate, pointer, replacement)
+            with self.assertRaises(ResultChannelError, msg=pointer):
+                validate_result_channel(candidate, trusted_max_bytes=BOUND)
+            rejected += 1
+        self.assertEqual(rejected, 32)
+        self.assertEqual(len(DIRECT_SCALAR_TYPE_ALIASES), 32)
 
     def test_direct_byte_envelope_fails_closed(self) -> None:
         document = _valid()

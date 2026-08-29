@@ -9,6 +9,7 @@ import unittest
 
 from kilix_desktop_contract.readiness import (
     DEFAULT_REQUIREMENTS,
+    F119_R6_FRACTION_FIELDS,
     ReadinessError,
     load_command_set,
     load_requirements,
@@ -33,7 +34,24 @@ class TrustedLauncherReadinessTests(unittest.TestCase):
         self.assertIn("0/10 upstream return identities consumed", result)
 
     def test_all_premature_adoption_mutations_are_rejected(self) -> None:
-        self.assertEqual(self_test(self.requirements), (134, 134))
+        self.assertEqual(self_test(self.requirements), (161, 161))
+
+    def test_all_r6_fraction_scalar_type_aliases_are_rejected(self) -> None:
+        rejected = 0
+        for field in F119_R6_FRACTION_FIELDS:
+            candidate = copy.deepcopy(self.requirements)
+            fraction = candidate["f119_result_channel_requirements"][
+                "r6_conformance_preparation"
+            ][field]
+            numerator = fraction["numerator"]
+            fraction["numerator"] = (
+                False if numerator == 0 else float(numerator)
+            )
+            with self.assertRaises(ReadinessError, msg=field):
+                validate_requirements(candidate)
+            rejected += 1
+        self.assertEqual(rejected, 27)
+        self.assertEqual(len(F119_R6_FRACTION_FIELDS), 27)
 
     def test_f119_result_channel_preparation_is_bound_but_not_consumed(self) -> None:
         channel = self.requirements["f119_result_channel_requirements"]
