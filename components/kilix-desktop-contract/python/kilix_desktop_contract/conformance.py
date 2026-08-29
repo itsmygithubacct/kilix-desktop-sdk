@@ -89,6 +89,28 @@ class ConformanceReport:
     adapter_stage: bool
 
 
+@dataclass(frozen=True)
+class MatrixProvider:
+    provider_id: str
+    command: tuple[str, ...]
+    expected_checks: tuple[str, ...]
+
+
+@dataclass(frozen=True)
+class MatrixReport:
+    passes: int
+    providers: tuple[MatrixProvider, ...]
+    reports: tuple[ConformanceReport, ...]
+
+    @property
+    def invocation_count(self) -> int:
+        return len(self.reports)
+
+    @property
+    def check_count(self) -> int:
+        return sum(len(report.checks) for report in self.reports)
+
+
 def _terminate_group(process: subprocess.Popen[bytes]) -> None:
     try:
         os.killpg(process.pid, signal.SIGTERM)
@@ -396,6 +418,61 @@ def run_conformance(
             environment=environment,
             sandbox=sandbox,
         )
+
+
+def run_conformance_matrix(
+    providers: Sequence[MatrixProvider],
+    *,
+    passes: int,
+    kilix_home: os.PathLike[str] | str,
+    contract_command: os.PathLike[str] | str,
+    state_library: os.PathLike[str] | str,
+    land_assets: os.PathLike[str] | str,
+) -> MatrixReport:
+    """Run an exact ordered provider population for independent fresh passes."""
+    population = tuple(providers)
+    if not population:
+        raise ConformanceError("conformance matrix provider population is empty")
+    if passes < 1:
+        raise ConformanceError("conformance matrix pass population must be positive")
+    identities = [provider.provider_id for provider in population]
+    if any(not identity for identity in identities):
+        raise ConformanceError("conformance matrix contains an empty provider identity")
+    if len(identities) != len(set(identities)):
+        raise ConformanceError("conformance matrix repeats a provider identity")
+    for provider in population:
+        if not provider.command or any(not item for item in provider.command):
+            raise ConformanceError(
+                f"conformance matrix command for {provider.provider_id} is empty"
+            )
+        if not provider.expected_checks:
+            raise ConformanceError(
+                f"conformance matrix checks for {provider.provider_id} are empty"
+            )
+
+    reports: list[ConformanceReport] = []
+    for _pass in range(passes):
+        for provider in population:
+            report = run_conformance(
+                provider.command,
+                kilix_home=kilix_home,
+                contract_command=contract_command,
+                state_library=state_library,
+                land_assets=land_assets,
+            )
+            if report.provider_id != provider.provider_id:
+                raise ConformanceError(
+                    "conformance matrix provider identity mismatch: "
+                    f"expected {provider.provider_id}, observed {report.provider_id}"
+                )
+            if report.checks != provider.expected_checks:
+                raise ConformanceError(
+                    f"conformance matrix check tuple changed for {provider.provider_id}"
+                )
+            if report.adapter_stage:
+                raise ConformanceError("conformance matrix did not run in final mode")
+            reports.append(report)
+    return MatrixReport(passes, population, tuple(reports))
 
 
 def _run_conformance(

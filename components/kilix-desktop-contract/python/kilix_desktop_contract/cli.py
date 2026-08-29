@@ -9,7 +9,7 @@ import sys
 
 from .actions import ActionError, parse_action
 from .catalog import sanitize_catalog_text
-from .conformance import ConformanceError, run_conformance
+from .conformance import ConformanceError, run_conformance, run_conformance_matrix
 from .jsonio import DocumentError, load_json
 from .persistence import (
     PersistenceError,
@@ -17,6 +17,13 @@ from .persistence import (
     emit_json,
     emit_value,
     provider_config_schema,
+)
+from .readiness import (
+    DEFAULT_REQUIREMENTS,
+    ReadinessError,
+    load_command_set,
+    load_requirements,
+    validate_requirements,
 )
 from .validation import errors_for, validators
 
@@ -40,6 +47,15 @@ def _parser() -> argparse.ArgumentParser:
     conformance_parser.add_argument("--state-library", type=Path, required=True)
     conformance_parser.add_argument("--land-assets", type=Path, required=True)
     conformance_parser.add_argument("provider", nargs=argparse.REMAINDER)
+    matrix_parser = commands.add_parser("conformance-matrix")
+    matrix_parser.add_argument("--commands", type=Path, required=True)
+    matrix_parser.add_argument(
+        "--requirements", type=Path, default=DEFAULT_REQUIREMENTS
+    )
+    matrix_parser.add_argument("--kilix-home", type=Path, required=True)
+    matrix_parser.add_argument("--contract-command", type=Path, required=True)
+    matrix_parser.add_argument("--state-library", type=Path, required=True)
+    matrix_parser.add_argument("--land-assets", type=Path, required=True)
 
     storage_parser = commands.add_parser("storage")
     storage_commands = storage_parser.add_subparsers(
@@ -125,6 +141,35 @@ def main(argv: list[str] | None = None) -> int:
                 f"non-interactive checks ({stage})"
             )
             return 0
+        if arguments.command == "conformance-matrix":
+            requirements = load_requirements(
+                arguments.requirements.resolve(strict=True)
+            )
+            validate_requirements(requirements)
+            providers = load_command_set(
+                arguments.commands.resolve(strict=True), requirements
+            )
+            report = run_conformance_matrix(
+                providers,
+                passes=2,
+                kilix_home=arguments.kilix_home,
+                contract_command=arguments.contract_command,
+                state_library=arguments.state_library,
+                land_assets=arguments.land_assets,
+            )
+            provider_population = len(report.providers)
+            invocation_population = provider_population * report.passes
+            check_population = sum(
+                len(provider.expected_checks) for provider in report.providers
+            ) * report.passes
+            print(
+                f"PASS: {provider_population}/{provider_population} providers; "
+                f"{report.passes}/{report.passes} passes; "
+                f"{report.invocation_count}/{invocation_population} invocations; "
+                f"{report.check_count}/{check_population} check occurrences "
+                "(developer common gate; not launcher acceptance)"
+            )
+            return 0
         if arguments.command == "storage":
             store = PersistenceStore()
             if arguments.storage_command == "schema":
@@ -191,6 +236,7 @@ def main(argv: list[str] | None = None) -> int:
         ConformanceError,
         DocumentError,
         PersistenceError,
+        ReadinessError,
         OSError,
         UnicodeError,
         ValueError,

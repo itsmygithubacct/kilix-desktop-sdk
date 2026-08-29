@@ -10,9 +10,11 @@ from unittest import mock
 
 from kilix_desktop_contract.conformance import (
     ConformanceError,
+    MatrixProvider,
     PROVIDER_ENVIRONMENT_NAMES,
     _sandbox_environment,
     run_conformance,
+    run_conformance_matrix,
     run_endpoint,
 )
 
@@ -137,6 +139,45 @@ class ConformanceTests(unittest.TestCase):
                 run_conformance(
                     ["ignored"], adapter_stage=True, **self.PROFILE
                 )
+
+    def test_common_matrix_runs_exact_provider_pass_and_check_populations(self) -> None:
+        identities = (
+            "kilix-95", "kilix-cap", "kilix-land-desktop", "kilix-tui",
+            "kilix-icewm",
+        )
+        providers = tuple(
+            MatrixProvider(
+                identity,
+                (
+                    "/usr/bin/env", f"KILIX_FAKE_PROVIDER_ID={identity}",
+                    "KILIX_FAKE_MIGRATION=1", "KILIX_FAKE_SETTINGS=1",
+                    f"KILIX_FAKE_SCREENSHOT={int(identity not in {'kilix-cap', 'kilix-icewm'})}",
+                    sys.executable, str(FAKE),
+                ),
+                (
+                    "version", "describe", "check", "config-schema", "config-get",
+                    "config-set",
+                    "screenshot" if identity not in {"kilix-cap", "kilix-icewm"}
+                    else "screenshot-unavailable",
+                    "migration-dry-run", "read-only-endpoints",
+                ),
+            )
+            for identity in identities
+        )
+        report = run_conformance_matrix(providers, passes=2, **self.PROFILE)
+        self.assertEqual(len(report.providers), 5)
+        self.assertEqual(report.passes, 2)
+        self.assertEqual(report.invocation_count, 10)
+        self.assertEqual(report.check_count, 90)
+
+    def test_common_matrix_rejects_a_changed_check_tuple(self) -> None:
+        provider = MatrixProvider(
+            "fake-provider",
+            ("/usr/bin/env", "KILIX_FAKE_MIGRATION=1", sys.executable, str(FAKE)),
+            ("version",),
+        )
+        with self.assertRaisesRegex(ConformanceError, "check tuple changed"):
+            run_conformance_matrix((provider,), passes=1, **self.PROFILE)
 
 
 if __name__ == "__main__":

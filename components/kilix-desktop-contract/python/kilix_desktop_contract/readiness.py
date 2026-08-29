@@ -1,0 +1,515 @@
+"""Validate Track E's consumer side of the non-forking launcher interface."""
+
+from __future__ import annotations
+
+import argparse
+import copy
+from pathlib import Path
+import sys
+from typing import Any, Callable
+
+from .jsonio import DocumentError, canonical_bytes, load_json
+from .conformance import MatrixProvider
+from .persistence import MIGRATION_ORDER, SEPARATE_CONSUMERS
+
+
+ROOT = Path(__file__).resolve().parents[2]
+DEFAULT_REQUIREMENTS = (
+    ROOT / "contracts" / "trusted-launcher-consumer-requirements-v1.json"
+)
+SCHEMA = "kilix.track-e.trusted-launcher-consumer-requirements/v1"
+STATUS = "developer-readiness-only-not-a-launch-profile"
+COMMAND_SET_SCHEMA = "kilix.desktop.conformance-command-set/v1"
+COMMON_CASES = ("ID-02", "ID-04", "SUB-04", "SUB-05", "SUB-06", "RES-10")
+RETURN_IDENTITIES = (
+    "public_commit",
+    "public_tree",
+    "launcher_sha256",
+    "bootstrap_sha256",
+    "interpreter_sha256",
+    "result_schema_sha256",
+    "profile_schema_sha256",
+    "e3_profile_sha256",
+    "e3_terminal_check_set_sha256",
+    "installed_command_profile_sha256",
+)
+E3_SURFACES = (
+    "installed-conformance",
+    "provider-kilix-95",
+    "provider-kilix-cap",
+    "provider-kilix-land-desktop",
+    "provider-kilix-tui",
+    "provider-kilix-icewm",
+    "installed-contract-command",
+)
+E3_CHILD_PROFILES = (
+    "f110.provider.kilix-95/v1",
+    "f110.provider.kilix-cap/v1",
+    "f110.provider.kilix-land-desktop/v1",
+    "f110.provider.kilix-tui/v1",
+    "f110.provider.kilix-icewm/v1",
+    "f110.installed-command/v1",
+)
+E3_ENVIRONMENT_NAMES = (
+    "LC_ALL", "TZ", "PATH", "HOME", "TMP", "TEMP", "TMPDIR",
+    "XDG_CACHE_HOME", "XDG_CONFIG_HOME", "XDG_DATA_HOME", "XDG_RUNTIME_DIR",
+    "XDG_STATE_HOME", "GPU_TERMINAL_HOME", "GPU_TERMINAL_SETTINGS_FILE",
+    "KILIX_HOME", "KILIX_STORAGE_HOME", "KILIX_CONFIG_HOME",
+    "KILIX_STATE_DIRECTORY", "KILIX_CACHE_HOME", "KILIX_DATA_HOME",
+    "KILIX_SESSION_HOME", "KILIX_BUILD_DIRECTORY", "KILIX_STATE_LIBRARY",
+    "KILIX95_STORAGE_HOME", "KILIX95_CONFIG_HOME", "KILIX95_STATE_HOME",
+    "KILIX95_CACHE_HOME", "KILIX95_DATA_HOME", "KILIX95_SESSION_HOME",
+    "KILIX_CAP_CONFIG_HOME", "KILIX_LAND_DESKTOP_CONFIG_HOME",
+    "KILIX_LAND_DESKTOP_ASSETS", "KILIX_ICEWM_STORAGE_HOME",
+    "KILIX_ICEWM_PREFIX", "KILIX_TUI_UTILS_PREFIX", "KILIX_DESKTOP_DIR",
+    "KILIX_RECYCLE_DIR", "KILIX_DESKTOP_CONTRACT_COMMAND",
+    "PYTHONDONTWRITEBYTECODE",
+)
+E3_BRANCH_LABELS = (
+    "version", "describe", "check", "config-schema", "config-get",
+    "config-set", "config-set-unavailable", "screenshot",
+    "screenshot-unavailable", "migration-gate", "migration-dry-run",
+    "read-only-endpoints",
+)
+E3_CAMPAIGNS = (
+    "common-matrix",
+    "CHN-01-through-CHN-06-for-every-intentional-child",
+    "hostile-cwd-and-environment-for-three-python-providers",
+    "two-independent-disposable-exports",
+    "two-final-mode-provider-passes",
+)
+E3_PROVIDER_FIXTURES = (
+    (
+        "kilix-95",
+        "f110.provider.kilix-95/v1",
+        "daf4e3aa4f7be9708fd026110c2f7de180c0a1ec",
+        "f1f659e2e6c8beb41d5ddfb08a17ddce93ee4dca",
+        ("version", "describe", "check", "config-schema", "config-get", "config-set", "screenshot", "migration-dry-run", "read-only-endpoints"),
+    ),
+    (
+        "kilix-cap",
+        "f110.provider.kilix-cap/v1",
+        "7cc98eece67f9b6547d5fb0149d483117721a5cf",
+        "720cf436517157d35112b2aab2ce3e2e81c97efd",
+        ("version", "describe", "check", "config-schema", "config-get", "config-set", "screenshot-unavailable", "migration-dry-run", "read-only-endpoints"),
+    ),
+    (
+        "kilix-land-desktop",
+        "f110.provider.kilix-land-desktop/v1",
+        "c0594aeb955352b904f006fed4c9774e496a2d38",
+        "394ccac938a1738b30be56f742d0fabd0f3ea610",
+        ("version", "describe", "check", "config-schema", "config-get", "config-set", "screenshot", "migration-dry-run", "read-only-endpoints"),
+    ),
+    (
+        "kilix-tui",
+        "f110.provider.kilix-tui/v1",
+        "63187ee199aa16f71a460ef0e95ec876bee8b787",
+        "3387e4305ba7ad840602dfadd5caf04e3949259a",
+        ("version", "describe", "check", "config-schema", "config-get", "config-set", "screenshot", "migration-dry-run", "read-only-endpoints"),
+    ),
+    (
+        "kilix-icewm",
+        "f110.provider.kilix-icewm/v1",
+        "ea45b9abf13688154fdb4146cdfa4ffdef4399f1",
+        "c08eec603dfb400d35bd29272a4d7e4e1b42d9c3",
+        ("version", "describe", "check", "config-schema", "config-get", "config-set", "screenshot-unavailable", "migration-dry-run", "read-only-endpoints"),
+    ),
+)
+E4_COMMAND_TEMPLATES = (
+    "storage authority",
+    "storage path PROVIDER CATEGORY",
+    "storage schema PROVIDER",
+    "storage get PROVIDER [KEY]",
+    "storage value PROVIDER KEY",
+    "storage set PROVIDER KEY VALUE",
+    "storage policy-path",
+    "storage policy get [KEY]",
+    "storage policy value KEY",
+    "storage policy set KEY VALUE",
+    "storage shared-settings get",
+    "storage shared-settings update CHANGES_JSON",
+    "storage migrate PROVIDER --from VERSION --dry-run",
+    "storage migrate PROVIDER --from VERSION",
+    "storage rollback --from VERSION",
+)
+E4_OBSERVATIONS = (
+    "dry-run-side-effects-zero",
+    "legacy-authority-through-first-three-migration-members",
+    "xdg-authority-only-after-kilix-95",
+    "legacy-bytes-unchanged",
+    "configuration-fingerprint-preserved",
+    "rollback-restores-legacy-authority",
+    "rollback-retains-inert-xdg-payload",
+)
+E4_SEQUENCE = (
+    ("migrate-dry-run", "kilix-land-desktop", "0.1.0"),
+    ("migrate-dry-run", "kilix-tui", "0.3.1"),
+    ("migrate-dry-run", "kilix-cap", "3.0.0"),
+    ("migrate-dry-run", "kilix-95", "0.2.0"),
+    ("migrate", "kilix-land-desktop", "0.1.0"),
+    ("migrate", "kilix-tui", "0.3.1"),
+    ("migrate", "kilix-cap", "3.0.0"),
+    ("migrate", "kilix-95", "0.2.0"),
+    ("rollback", None, "0.2.0"),
+)
+E1_PARENT = {
+    "commit": "b34fa9b85cad80cbfb33588378fac50f7fda21d3",
+    "inner_manifest_members": 49,
+    "outer_regular_files": 50,
+    "tree": "83fbb08934367c79120177dae5d095e373346c9f",
+    "version": "1.0.0rc1",
+}
+E2_LOCAL = {
+    "commit": "014e55b9b3fc40774b2558aca9395abef9a9d546",
+    "focused_tests": {"passed": 111, "population": 112, "skipped": 1},
+    "patch_sha256": "ec6b7cee53f1b3c4e5b31c41b29991020364623ae40fbf4f9bfbba08acb05bdd",
+    "publication": "owner-integrated-local-only-not-live-authority",
+    "request_commit": "6facfadba8d730302da2e8577683096a875c282e",
+    "stable_patch_id": "8fe0aa3fce380694597c854e8cc73c6806cf408e",
+    "tree": "68618b9235d825ca14e6537ae74fe2fc5f1fded7",
+}
+E4_LOCAL = {
+    "cleanup_probes": {"passing": 1, "population": 1},
+    "config_fingerprint_sha256": "be04fc889a170e4295caebcc847f2b29b6867ca2ed1eb82f48a50507d4805111",
+    "contract_commit": "5767b0442add4b83694008580e4cdc57f43508ac",
+    "dry_run_members": {"passing": 4, "population": 4},
+    "final_authority": "legacy",
+    "inert_xdg_payload_sha256": "0bd925df41d2ec51fa21dd2a1a53c13e0d9b8474d72a9e7d7010c1b2b3a1c36e",
+    "legacy_bundle_sha256": "32c8c79021508e44c8b3794e82bda64231181521e777ec5b8795641328c1fb47",
+    "migration_members": {"passing": 4, "population": 4},
+    "observations": {"passing": 7, "population": 7},
+    "publication": "isolated-local-rehearsal-not-live-authority",
+    "rollback": {"passing": 1, "population": 1},
+    "source_snapshot": {"bytes": 167866372, "files": 3576},
+}
+
+
+class ReadinessError(ValueError):
+    """The owned requirements cannot safely consume an upstream return."""
+
+
+def _object(value: Any, keys: set[str], label: str) -> dict[str, Any]:
+    if not isinstance(value, dict) or set(value) != keys:
+        observed = sorted(value) if isinstance(value, dict) else type(value).__name__
+        raise ReadinessError(
+            f"{label}: expected keys {sorted(keys)}, observed {observed}"
+        )
+    return value
+
+
+def load_requirements(path: Path = DEFAULT_REQUIREMENTS) -> dict[str, Any]:
+    try:
+        value = load_json(path)
+    except (DocumentError, OSError) as error:
+        raise ReadinessError(f"{path}: invalid requirements: {error}") from error
+    if not isinstance(value, dict):
+        raise ReadinessError("requirements: top level is not an object")
+    if path.read_bytes() != canonical_bytes(value):
+        raise ReadinessError(f"{path}: requirements are not canonical JSON")
+    return value
+
+
+def load_command_set(
+    path: Path, requirements: dict[str, Any]
+) -> tuple[MatrixProvider, ...]:
+    try:
+        value = load_json(path)
+    except (DocumentError, OSError) as error:
+        raise ReadinessError(f"{path}: invalid command set: {error}") from error
+    if path.read_bytes() != canonical_bytes(value):
+        raise ReadinessError(f"{path}: command set is not canonical JSON")
+    document = _object(value, {"commands", "schema"}, "command_set")
+    if document["schema"] != COMMAND_SET_SCHEMA:
+        raise ReadinessError("command_set: schema identity changed")
+    expected = requirements["consumer_requirements"][0]["providers"]
+    commands = document["commands"]
+    if not isinstance(commands, list) or len(commands) != len(expected):
+        raise ReadinessError(
+            f"command_set: provider population is not {len(expected)}"
+        )
+    result: list[MatrixProvider] = []
+    for ordinal, (item, provider) in enumerate(
+        zip(commands, expected, strict=True), start=1
+    ):
+        command_item = _object(
+            item, {"command", "provider_id"}, f"command_set provider {ordinal}"
+        )
+        provider_id = provider["provider_id"]
+        if command_item["provider_id"] != provider_id:
+            raise ReadinessError(
+                f"command_set provider {ordinal}: expected {provider_id}"
+            )
+        command = command_item["command"]
+        if (
+            not isinstance(command, list)
+            or not command
+            or any(
+                not isinstance(value, str) or not value or "\0" in value
+                for value in command
+            )
+            or not Path(command[0]).is_absolute()
+        ):
+            raise ReadinessError(
+                f"command_set provider {ordinal}: command must start with an absolute executable"
+            )
+        result.append(
+            MatrixProvider(
+                provider_id,
+                tuple(command),
+                tuple(provider["expected_checks"]),
+            )
+        )
+    return tuple(result)
+
+
+def _validate_upstream(value: Any) -> None:
+    gate = _object(
+        value,
+        {
+            "accepted_result_states", "assignments", "blocked_result_states",
+            "common_case_ids", "consumed_return_identities",
+            "independent_exports", "required_return_identities", "state",
+        },
+        "upstream_gate",
+    )
+    if gate["accepted_result_states"] != ["PASS", "REFUSED-AS-NAMED"]:
+        raise ReadinessError("upstream_gate: accepted result states changed")
+    if gate["blocked_result_states"] != ["NULL", "HARNESS-FAIL"]:
+        raise ReadinessError("upstream_gate: blocked result states changed")
+    if tuple(gate["common_case_ids"]) != COMMON_CASES:
+        raise ReadinessError("upstream_gate: common case population changed")
+    if tuple(gate["required_return_identities"]) != RETURN_IDENTITIES:
+        raise ReadinessError("upstream_gate: required identity population changed")
+    if gate["consumed_return_identities"] != []:
+        raise ReadinessError("upstream_gate: unreturned identities were consumed")
+    if gate["independent_exports"] != {"passing": 2, "population": 2}:
+        raise ReadinessError("upstream_gate: independent export requirement changed")
+    if gate["state"] != "blocked-upstream-returns-not-accepted":
+        raise ReadinessError("upstream_gate: an assignment was promoted without a result")
+    expected_assignments = [
+        {
+            "decision_id": "OD-13",
+            "owner": "reviewer2",
+            "state": "component-returned-release-integration-blocked",
+            "work": "ID-04-facility-implementation",
+        },
+        {
+            "decision_id": "OD-14",
+            "owner": "Track H",
+            "state": "candidate-returned-review-1-rejected-open-medium",
+            "work": "non-forking-profile-child-table-interface",
+        },
+    ]
+    if gate["assignments"] != expected_assignments:
+        raise ReadinessError("upstream_gate: OD-13/OD-14 assignment boundary changed")
+
+
+def _validate_e3(value: Any) -> None:
+    e3 = _object(
+        value,
+        {
+            "absolute_bindings", "campaigns", "check_occurrences_per_pass",
+            "check_occurrences_total", "child_profile_ids", "passes",
+            "post_child_verification", "profile_id", "provider_environment_names",
+            "provider_invocations", "providers", "requirement_id", "surface_ids",
+            "terminal_branch_labels",
+        },
+        "TE-E3",
+    )
+    if e3["requirement_id"] != "TE-E3" or e3["profile_id"] != "f110.installed-conformance/v1":
+        raise ReadinessError("TE-E3: requirement or top-level profile identity changed")
+    if tuple(e3["surface_ids"]) != E3_SURFACES:
+        raise ReadinessError("TE-E3: seven-surface population changed")
+    if tuple(e3["campaigns"]) != E3_CAMPAIGNS:
+        raise ReadinessError("TE-E3: campaign population changed")
+    if tuple(e3["child_profile_ids"]) != E3_CHILD_PROFILES:
+        raise ReadinessError("TE-E3: six-child-profile population changed")
+    if tuple(e3["provider_environment_names"]) != E3_ENVIRONMENT_NAMES:
+        raise ReadinessError("TE-E3: 39-name provider environment changed")
+    if tuple(e3["terminal_branch_labels"]) != E3_BRANCH_LABELS:
+        raise ReadinessError("TE-E3: twelve-label branch population changed")
+    if e3["absolute_bindings"] != [
+        {"environment_name": "KILIX_HOME", "token": "H"},
+        {"environment_name": "KILIX_DESKTOP_CONTRACT_COMMAND", "token": "C"},
+        {"environment_name": "KILIX_STATE_LIBRARY", "token": "S"},
+        {"environment_name": "KILIX_LAND_DESKTOP_ASSETS", "token": "L"},
+    ]:
+        raise ReadinessError("TE-E3: H/C/S/L binding population changed")
+    if (e3["passes"], e3["provider_invocations"], e3["check_occurrences_per_pass"], e3["check_occurrences_total"]) != (2, 10, 45, 90):
+        raise ReadinessError("TE-E3: two-pass/ten-invocation/ninety-check denominator changed")
+    if e3["post_child_verification"] != "required-after-every-child":
+        raise ReadinessError("TE-E3: post-child verification weakened")
+    providers = e3["providers"]
+    if not isinstance(providers, list) or len(providers) != 5:
+        raise ReadinessError("TE-E3: provider population is not five")
+    for ordinal, (provider, expected) in enumerate(
+        zip(providers, E3_PROVIDER_FIXTURES, strict=True), start=1
+    ):
+        item = _object(
+            provider,
+            {"child_profile_id", "commit", "expected_checks", "provider_id", "tree"},
+            f"TE-E3 provider {ordinal}",
+        )
+        provider_id, profile_id, commit, tree, checks = expected
+        observed = (
+            item["provider_id"], item["child_profile_id"], item["commit"],
+            item["tree"], tuple(item["expected_checks"]),
+        )
+        if observed != (provider_id, profile_id, commit, tree, checks):
+            raise ReadinessError(f"TE-E3 provider {ordinal}: exact fixture changed")
+    if sum(len(provider["expected_checks"]) for provider in providers) != 45:
+        raise ReadinessError("TE-E3: one-pass check occurrence population is not 45")
+
+
+def _validate_e4(value: Any) -> None:
+    e4 = _object(
+        value,
+        {
+            "child_profile_id", "command_templates", "migration_members",
+            "migration_sequence", "post_child_verification", "profile_relation",
+            "required_observations", "requirement_id", "separate_consumers",
+        },
+        "TE-E4",
+    )
+    if e4["requirement_id"] != "TE-E4":
+        raise ReadinessError("TE-E4: requirement identity changed")
+    if e4["child_profile_id"] != "f110.installed-command/v1":
+        raise ReadinessError("TE-E4: installed-command child profile changed")
+    if e4["profile_relation"] != "reuses-installed-command-child-not-a-third-top-level-profile":
+        raise ReadinessError("TE-E4: a third top-level profile was introduced")
+    if tuple(e4["command_templates"]) != E4_COMMAND_TEMPLATES:
+        raise ReadinessError("TE-E4: fifteen-command template population changed")
+    if tuple(e4["migration_members"]) != MIGRATION_ORDER:
+        raise ReadinessError("TE-E4: four-member migration order changed")
+    if tuple(e4["separate_consumers"]) != SEPARATE_CONSUMERS:
+        raise ReadinessError("TE-E4: separate-consumer population changed")
+    sequence = e4["migration_sequence"]
+    if not isinstance(sequence, list) or len(sequence) != 9:
+        raise ReadinessError("TE-E4: migration/rollback sequence is not nine")
+    expected_sequence = []
+    for order, (operation, provider_id, source_version) in enumerate(
+        E4_SEQUENCE, start=1
+    ):
+        item = {
+            "operation": operation,
+            "order": order,
+            "source_version": source_version,
+        }
+        if provider_id is not None:
+            item["provider_id"] = provider_id
+        expected_sequence.append(item)
+    if sequence != expected_sequence:
+        raise ReadinessError("TE-E4: exact dry-run/migrate/rollback sequence changed")
+    if tuple(e4["required_observations"]) != E4_OBSERVATIONS:
+        raise ReadinessError("TE-E4: seven-observation population changed")
+    if e4["post_child_verification"] != "required-after-every-command":
+        raise ReadinessError("TE-E4: post-command verification weakened")
+
+
+def validate_requirements(value: Any) -> None:
+    document = _object(
+        value,
+        {
+            "consumer_requirements", "local_evidence", "schema", "status",
+            "upstream_gate",
+        },
+        "requirements",
+    )
+    if document["schema"] != SCHEMA:
+        raise ReadinessError("requirements: schema identity changed")
+    if document["status"] != STATUS:
+        raise ReadinessError("requirements: readiness-only disclaimer changed")
+    consumers = document["consumer_requirements"]
+    if not isinstance(consumers, list) or len(consumers) != 2:
+        raise ReadinessError("requirements: consumer population is not two")
+    _validate_e3(consumers[0])
+    _validate_e4(consumers[1])
+    local = _object(
+        document["local_evidence"],
+        {"e1_parent", "e2_host_integration", "e4_installed_state_rehearsal"},
+        "local_evidence",
+    )
+    if local["e1_parent"] != E1_PARENT:
+        raise ReadinessError("local_evidence: E1 parent identity changed")
+    if local["e2_host_integration"] != E2_LOCAL:
+        raise ReadinessError("local_evidence: E2 local integration changed")
+    if local["e4_installed_state_rehearsal"] != E4_LOCAL:
+        raise ReadinessError("local_evidence: E4 rehearsal evidence changed")
+    _validate_upstream(document["upstream_gate"])
+
+
+def _mutations() -> list[Callable[[dict[str, Any]], None]]:
+    return [
+        lambda value: value["upstream_gate"]["common_case_ids"].pop(),
+        lambda value: value["upstream_gate"].__setitem__("state", "accepted"),
+        lambda value: value["consumer_requirements"][0]["providers"].pop(),
+        lambda value: value["consumer_requirements"][0]["provider_environment_names"].pop(),
+        lambda value: value["consumer_requirements"][1]["migration_sequence"].reverse(),
+        lambda value: value["local_evidence"]["e2_host_integration"].__setitem__("commit", "0" * 40),
+        lambda value: value["local_evidence"]["e4_installed_state_rehearsal"]["observations"].__setitem__("passing", 6),
+        lambda value: value["consumer_requirements"].append({"requirement_id": "TE-E5"}),
+    ]
+
+
+def self_test(value: dict[str, Any]) -> tuple[int, int]:
+    mutations = _mutations()
+    rejected = 0
+    for mutate in mutations:
+        candidate = copy.deepcopy(value)
+        mutate(candidate)
+        try:
+            validate_requirements(candidate)
+        except ReadinessError:
+            rejected += 1
+    if rejected != len(mutations):
+        raise ReadinessError(
+            f"readiness self-test rejected {rejected}/{len(mutations)} mutations"
+        )
+    return rejected, len(mutations)
+
+
+def summary(value: dict[str, Any], mutation_result: tuple[int, int] | None = None) -> str:
+    e3, e4 = value["consumer_requirements"]
+    gate = value["upstream_gate"]
+    parts = [
+        "PASS (developer readiness only; launcher adoption remains blocked)",
+        f"{len(COMMON_CASES)}/{len(COMMON_CASES)} common cases retained",
+        "2/2 consumer requirements retained",
+        f"{len(e3['surface_ids'])}/{len(E3_SURFACES)} E3 surfaces retained",
+        f"{len(e3['child_profile_ids'])}/{len(E3_CHILD_PROFILES)} E3 child profiles retained",
+        f"{len(e3['provider_environment_names'])}/{len(E3_ENVIRONMENT_NAMES)} provider environment names retained",
+        f"{len(e3['providers'])}/5 providers retained",
+        f"{e3['provider_invocations']}/10 provider invocations retained",
+        f"{e3['check_occurrences_total']}/90 check occurrences retained",
+        f"{len(e4['command_templates'])}/{len(E4_COMMAND_TEMPLATES)} E4 command templates retained",
+        f"{len(e4['migration_sequence'])}/9 E4 migration/rollback commands retained",
+        f"{E2_LOCAL['focused_tests']['passed']}/{E2_LOCAL['focused_tests']['population']} E2 focused tests passed",
+        f"{E2_LOCAL['focused_tests']['skipped']}/{E2_LOCAL['focused_tests']['population']} E2 focused tests skipped as external-provider dependent",
+        f"{E4_LOCAL['observations']['passing']}/{E4_LOCAL['observations']['population']} E4 observations retained",
+        f"{len(gate['consumed_return_identities'])}/{len(RETURN_IDENTITIES)} upstream return identities consumed",
+    ]
+    if mutation_result is not None:
+        parts.append(
+            f"{mutation_result[0]}/{mutation_result[1]} premature-adoption mutations rejected"
+        )
+    return "; ".join(parts)
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--requirements", type=Path, default=DEFAULT_REQUIREMENTS)
+    parser.add_argument("--self-test", action="store_true")
+    arguments = parser.parse_args(argv)
+    value = load_requirements(arguments.requirements.resolve(strict=True))
+    validate_requirements(value)
+    mutations = self_test(value) if arguments.self_test else None
+    print(summary(value, mutations))
+    return 0
+
+
+if __name__ == "__main__":
+    try:
+        raise SystemExit(main())
+    except (OSError, ReadinessError) as error:
+        print(f"FAIL: {error}", file=sys.stderr)
+        raise SystemExit(1)

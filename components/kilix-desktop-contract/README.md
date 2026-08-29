@@ -147,6 +147,42 @@ state) are not inherited. The release gate binds the four absolute inputs before
 this runner starts; these command-line flags do not establish that outer
 trusted-launcher authority by themselves.
 
+`contracts/trusted-launcher-consumer-requirements-v1.json` makes the owned side
+of that future interface machine-checkable. It fixes the E3 surface, child,
+provider, environment and terminal populations, records the exact local E2/E4
+evidence, and fixes the E4 installed-command migration/rollback sequence
+without defining a competing launcher profile. The OD-13 component return and
+the independently rejected OD-14 candidate remain non-consumable, so the
+checker fails closed if either is promoted without an accepted return packet:
+
+```sh
+make launcher-consumer-readiness UV=/absolute/path/to/release-pinned-uv-0.12.5
+make f110-local-gate UV=/absolute/path/to/release-pinned-uv-0.12.5
+```
+
+Passing this developer-readiness check does not adopt the shared launcher or
+turn the local E3/E4 construction evidence into release acceptance.
+
+The common developer gate takes a canonical command-set document with schema
+`kilix.desktop.conformance-command-set/v1`. Its `commands` array must contain
+the exact five provider IDs, in contract order, and each command must start
+with an absolute executable. It runs two fresh final-mode passes and refuses a
+changed provider identity or ordered nine-check tuple:
+
+```sh
+make common-conformance-gate \
+  UV=/absolute/path/to/release-pinned-uv-0.12.5 \
+  COMMANDS=/absolute/provider-commands.json \
+  KILIX_HOME=/absolute/bound/kilix \
+  CONTRACT_COMMAND=/absolute/bound/kilix-desktop-contract-bridge \
+  STATE_LIBRARY=/absolute/bound/libkilix-state.so \
+  LAND_ASSETS=/absolute/bound/kilix-land-desktop
+```
+
+A 5/5-provider, 2/2-pass, 10/10-invocation and 90/90-check result from this
+runner is local SDK evidence only. The separate launcher must still supply and
+protect all required return identities before release acceptance.
+
 Both modes enforce bounded output and deadlines, exact JSON/newline rules,
 schema and semantic validation, consistent provider identities, truthful
 screenshot behavior, unavailable diagnostics, and zero live descendants after

@@ -14,6 +14,9 @@ def emit(document: dict[str, object]) -> None:
 
 
 def main(argv: list[str]) -> int:
+    provider_id = os.environ.get("KILIX_FAKE_PROVIDER_ID", "fake-provider")
+    settings_available = os.environ.get("KILIX_FAKE_SETTINGS") == "1"
+    screenshot_available = os.environ.get("KILIX_FAKE_SCREENSHOT", "1") == "1"
     if argv == ["--version"]:
         print("fake-provider 1.2.3")
         return 0
@@ -26,17 +29,17 @@ def main(argv: list[str]) -> int:
             {
                 "capabilities": {
                     "audio": False,
-                    "headless_screenshot": True,
+                    "headless_screenshot": screenshot_available,
                     "keyboard": True,
                     "launcher": False,
                     "mouse": False,
                     "reduced_motion": True,
-                    "settings": False,
+                    "settings": settings_available,
                 },
                 "config_schema": "kilix.desktop.config.provider.v1",
                 "contract_version": 1,
                 "display_modes": ["terminal-text"],
-                "provider_id": "fake-provider",
+                "provider_id": provider_id,
                 "provider_version": "1.2.3",
                 "required_capabilities": ["keyboard"],
                 "schema_version": 1,
@@ -62,7 +65,7 @@ def main(argv: list[str]) -> int:
                     }
                 ],
                 "contract_version": 1,
-                "provider_id": "fake-provider",
+                "provider_id": provider_id,
                 "schema_version": 1,
                 "status": "ready",
                 "summary": "The fake provider is ready.",
@@ -72,35 +75,82 @@ def main(argv: list[str]) -> int:
     if argv == ["provider", "config", "schema", "--json"]:
         emit(
             {
-                "$id": "https://schemas.kilix.org/desktop/config/fake-provider/v1",
+                "$id": f"https://schemas.kilix.org/desktop/config/{provider_id}/v1",
                 "$schema": "https://json-schema.org/draft/2020-12/schema",
                 "additionalProperties": True,
                 "properties": {},
                 "type": "object",
                 "x-kilix-contract-version": 1,
-                "x-kilix-provider-id": "fake-provider",
+                "x-kilix-provider-id": provider_id,
             }
         )
         return 0
-    if argv == ["provider", "config", "get", "--json"]:
+    if (
+        argv == ["provider", "config", "get", "--json"]
+        or len(argv) == 5
+        and argv[:3] == ["provider", "config", "get"]
+        and argv[4] == "--json"
+    ):
+        state_path = Path(os.environ["KILIX_CONFIG_HOME"]) / "fixture.json"
+        state = {"revision": 0, "values": {}}
+        if state_path.is_file():
+            state = json.loads(state_path.read_text(encoding="utf-8"))
+        values = state["values"]
+        if len(argv) == 5:
+            key = argv[3]
+            values = {key: values[key]} if key in values else {}
         emit(
             {
                 "contract_version": 1,
-                "provider_id": "fake-provider",
-                "revision": 0,
+                "provider_id": provider_id,
+                "revision": state["revision"],
                 "schema_version": 1,
-                "values": {},
+                "values": values,
             }
         )
         return 0
     if len(argv) == 5 and argv[:3] == ["provider", "config", "set"]:
-        print("fake-provider: configuration writes are unavailable", file=sys.stderr)
+        if settings_available:
+            state_path = Path(os.environ["KILIX_CONFIG_HOME"]) / "fixture.json"
+            state_path.parent.mkdir(parents=True, exist_ok=True)
+            state = {"revision": 0, "values": {}}
+            if state_path.is_file():
+                state = json.loads(state_path.read_text(encoding="utf-8"))
+            state["revision"] += 1
+            state["values"][argv[3]] = json.loads(argv[4])
+            state_path.write_text(
+                json.dumps(state, separators=(",", ":"), sort_keys=True) + "\n",
+                encoding="utf-8",
+            )
+            return 0
+        print(f"{provider_id}: configuration writes are unavailable", file=sys.stderr)
         return 4
     if len(argv) == 3 and argv[:2] == ["provider", "screenshot"]:
+        if not screenshot_available:
+            print(f"{provider_id}: screenshot is unavailable", file=sys.stderr)
+            return 4
         Path(argv[2]).write_bytes(b"fixture screenshot\n")
         return 0
     if len(argv) == 5 and argv[:2] == ["provider", "migrate"]:
-        print("fake-provider: migration is unavailable", file=sys.stderr)
+        if os.environ.get("KILIX_FAKE_MIGRATION") == "1":
+            emit(
+                {
+                    "authoritative_store": "legacy",
+                    "contract_version": 1,
+                    "dry_run": True,
+                    "from_version": argv[3],
+                    "migration_id": f"{provider_id}-fixture-to-contract-v1",
+                    "operations": [],
+                    "provider_id": provider_id,
+                    "recovery_paths": [],
+                    "schema": "kilix.desktop.migration/v1",
+                    "schema_version": 1,
+                    "state": "planned",
+                    "to_contract_version": 1,
+                }
+            )
+            return 0
+        print(f"{provider_id}: migration is unavailable", file=sys.stderr)
         return 4
     print("fake-provider: unsupported fixture command", file=sys.stderr)
     return 2

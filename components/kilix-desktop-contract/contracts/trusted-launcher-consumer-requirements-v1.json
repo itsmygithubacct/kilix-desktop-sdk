@@ -1,0 +1,399 @@
+{
+  "consumer_requirements": [
+    {
+      "absolute_bindings": [
+        {
+          "environment_name": "KILIX_HOME",
+          "token": "H"
+        },
+        {
+          "environment_name": "KILIX_DESKTOP_CONTRACT_COMMAND",
+          "token": "C"
+        },
+        {
+          "environment_name": "KILIX_STATE_LIBRARY",
+          "token": "S"
+        },
+        {
+          "environment_name": "KILIX_LAND_DESKTOP_ASSETS",
+          "token": "L"
+        }
+      ],
+      "campaigns": [
+        "common-matrix",
+        "CHN-01-through-CHN-06-for-every-intentional-child",
+        "hostile-cwd-and-environment-for-three-python-providers",
+        "two-independent-disposable-exports",
+        "two-final-mode-provider-passes"
+      ],
+      "check_occurrences_per_pass": 45,
+      "check_occurrences_total": 90,
+      "child_profile_ids": [
+        "f110.provider.kilix-95/v1",
+        "f110.provider.kilix-cap/v1",
+        "f110.provider.kilix-land-desktop/v1",
+        "f110.provider.kilix-tui/v1",
+        "f110.provider.kilix-icewm/v1",
+        "f110.installed-command/v1"
+      ],
+      "passes": 2,
+      "post_child_verification": "required-after-every-child",
+      "profile_id": "f110.installed-conformance/v1",
+      "provider_environment_names": [
+        "LC_ALL",
+        "TZ",
+        "PATH",
+        "HOME",
+        "TMP",
+        "TEMP",
+        "TMPDIR",
+        "XDG_CACHE_HOME",
+        "XDG_CONFIG_HOME",
+        "XDG_DATA_HOME",
+        "XDG_RUNTIME_DIR",
+        "XDG_STATE_HOME",
+        "GPU_TERMINAL_HOME",
+        "GPU_TERMINAL_SETTINGS_FILE",
+        "KILIX_HOME",
+        "KILIX_STORAGE_HOME",
+        "KILIX_CONFIG_HOME",
+        "KILIX_STATE_DIRECTORY",
+        "KILIX_CACHE_HOME",
+        "KILIX_DATA_HOME",
+        "KILIX_SESSION_HOME",
+        "KILIX_BUILD_DIRECTORY",
+        "KILIX_STATE_LIBRARY",
+        "KILIX95_STORAGE_HOME",
+        "KILIX95_CONFIG_HOME",
+        "KILIX95_STATE_HOME",
+        "KILIX95_CACHE_HOME",
+        "KILIX95_DATA_HOME",
+        "KILIX95_SESSION_HOME",
+        "KILIX_CAP_CONFIG_HOME",
+        "KILIX_LAND_DESKTOP_CONFIG_HOME",
+        "KILIX_LAND_DESKTOP_ASSETS",
+        "KILIX_ICEWM_STORAGE_HOME",
+        "KILIX_ICEWM_PREFIX",
+        "KILIX_TUI_UTILS_PREFIX",
+        "KILIX_DESKTOP_DIR",
+        "KILIX_RECYCLE_DIR",
+        "KILIX_DESKTOP_CONTRACT_COMMAND",
+        "PYTHONDONTWRITEBYTECODE"
+      ],
+      "provider_invocations": 10,
+      "providers": [
+        {
+          "child_profile_id": "f110.provider.kilix-95/v1",
+          "commit": "daf4e3aa4f7be9708fd026110c2f7de180c0a1ec",
+          "expected_checks": [
+            "version",
+            "describe",
+            "check",
+            "config-schema",
+            "config-get",
+            "config-set",
+            "screenshot",
+            "migration-dry-run",
+            "read-only-endpoints"
+          ],
+          "provider_id": "kilix-95",
+          "tree": "f1f659e2e6c8beb41d5ddfb08a17ddce93ee4dca"
+        },
+        {
+          "child_profile_id": "f110.provider.kilix-cap/v1",
+          "commit": "7cc98eece67f9b6547d5fb0149d483117721a5cf",
+          "expected_checks": [
+            "version",
+            "describe",
+            "check",
+            "config-schema",
+            "config-get",
+            "config-set",
+            "screenshot-unavailable",
+            "migration-dry-run",
+            "read-only-endpoints"
+          ],
+          "provider_id": "kilix-cap",
+          "tree": "720cf436517157d35112b2aab2ce3e2e81c97efd"
+        },
+        {
+          "child_profile_id": "f110.provider.kilix-land-desktop/v1",
+          "commit": "c0594aeb955352b904f006fed4c9774e496a2d38",
+          "expected_checks": [
+            "version",
+            "describe",
+            "check",
+            "config-schema",
+            "config-get",
+            "config-set",
+            "screenshot",
+            "migration-dry-run",
+            "read-only-endpoints"
+          ],
+          "provider_id": "kilix-land-desktop",
+          "tree": "394ccac938a1738b30be56f742d0fabd0f3ea610"
+        },
+        {
+          "child_profile_id": "f110.provider.kilix-tui/v1",
+          "commit": "63187ee199aa16f71a460ef0e95ec876bee8b787",
+          "expected_checks": [
+            "version",
+            "describe",
+            "check",
+            "config-schema",
+            "config-get",
+            "config-set",
+            "screenshot",
+            "migration-dry-run",
+            "read-only-endpoints"
+          ],
+          "provider_id": "kilix-tui",
+          "tree": "3387e4305ba7ad840602dfadd5caf04e3949259a"
+        },
+        {
+          "child_profile_id": "f110.provider.kilix-icewm/v1",
+          "commit": "ea45b9abf13688154fdb4146cdfa4ffdef4399f1",
+          "expected_checks": [
+            "version",
+            "describe",
+            "check",
+            "config-schema",
+            "config-get",
+            "config-set",
+            "screenshot-unavailable",
+            "migration-dry-run",
+            "read-only-endpoints"
+          ],
+          "provider_id": "kilix-icewm",
+          "tree": "c08eec603dfb400d35bd29272a4d7e4e1b42d9c3"
+        }
+      ],
+      "requirement_id": "TE-E3",
+      "surface_ids": [
+        "installed-conformance",
+        "provider-kilix-95",
+        "provider-kilix-cap",
+        "provider-kilix-land-desktop",
+        "provider-kilix-tui",
+        "provider-kilix-icewm",
+        "installed-contract-command"
+      ],
+      "terminal_branch_labels": [
+        "version",
+        "describe",
+        "check",
+        "config-schema",
+        "config-get",
+        "config-set",
+        "config-set-unavailable",
+        "screenshot",
+        "screenshot-unavailable",
+        "migration-gate",
+        "migration-dry-run",
+        "read-only-endpoints"
+      ]
+    },
+    {
+      "child_profile_id": "f110.installed-command/v1",
+      "command_templates": [
+        "storage authority",
+        "storage path PROVIDER CATEGORY",
+        "storage schema PROVIDER",
+        "storage get PROVIDER [KEY]",
+        "storage value PROVIDER KEY",
+        "storage set PROVIDER KEY VALUE",
+        "storage policy-path",
+        "storage policy get [KEY]",
+        "storage policy value KEY",
+        "storage policy set KEY VALUE",
+        "storage shared-settings get",
+        "storage shared-settings update CHANGES_JSON",
+        "storage migrate PROVIDER --from VERSION --dry-run",
+        "storage migrate PROVIDER --from VERSION",
+        "storage rollback --from VERSION"
+      ],
+      "migration_members": [
+        "kilix-land-desktop",
+        "kilix-tui",
+        "kilix-cap",
+        "kilix-95"
+      ],
+      "migration_sequence": [
+        {
+          "operation": "migrate-dry-run",
+          "order": 1,
+          "provider_id": "kilix-land-desktop",
+          "source_version": "0.1.0"
+        },
+        {
+          "operation": "migrate-dry-run",
+          "order": 2,
+          "provider_id": "kilix-tui",
+          "source_version": "0.3.1"
+        },
+        {
+          "operation": "migrate-dry-run",
+          "order": 3,
+          "provider_id": "kilix-cap",
+          "source_version": "3.0.0"
+        },
+        {
+          "operation": "migrate-dry-run",
+          "order": 4,
+          "provider_id": "kilix-95",
+          "source_version": "0.2.0"
+        },
+        {
+          "operation": "migrate",
+          "order": 5,
+          "provider_id": "kilix-land-desktop",
+          "source_version": "0.1.0"
+        },
+        {
+          "operation": "migrate",
+          "order": 6,
+          "provider_id": "kilix-tui",
+          "source_version": "0.3.1"
+        },
+        {
+          "operation": "migrate",
+          "order": 7,
+          "provider_id": "kilix-cap",
+          "source_version": "3.0.0"
+        },
+        {
+          "operation": "migrate",
+          "order": 8,
+          "provider_id": "kilix-95",
+          "source_version": "0.2.0"
+        },
+        {
+          "operation": "rollback",
+          "order": 9,
+          "source_version": "0.2.0"
+        }
+      ],
+      "post_child_verification": "required-after-every-command",
+      "profile_relation": "reuses-installed-command-child-not-a-third-top-level-profile",
+      "required_observations": [
+        "dry-run-side-effects-zero",
+        "legacy-authority-through-first-three-migration-members",
+        "xdg-authority-only-after-kilix-95",
+        "legacy-bytes-unchanged",
+        "configuration-fingerprint-preserved",
+        "rollback-restores-legacy-authority",
+        "rollback-retains-inert-xdg-payload"
+      ],
+      "requirement_id": "TE-E4",
+      "separate_consumers": [
+        "kilix-icewm"
+      ]
+    }
+  ],
+  "local_evidence": {
+    "e1_parent": {
+      "commit": "b34fa9b85cad80cbfb33588378fac50f7fda21d3",
+      "inner_manifest_members": 49,
+      "outer_regular_files": 50,
+      "tree": "83fbb08934367c79120177dae5d095e373346c9f",
+      "version": "1.0.0rc1"
+    },
+    "e2_host_integration": {
+      "commit": "014e55b9b3fc40774b2558aca9395abef9a9d546",
+      "focused_tests": {
+        "passed": 111,
+        "population": 112,
+        "skipped": 1
+      },
+      "patch_sha256": "ec6b7cee53f1b3c4e5b31c41b29991020364623ae40fbf4f9bfbba08acb05bdd",
+      "publication": "owner-integrated-local-only-not-live-authority",
+      "request_commit": "6facfadba8d730302da2e8577683096a875c282e",
+      "stable_patch_id": "8fe0aa3fce380694597c854e8cc73c6806cf408e",
+      "tree": "68618b9235d825ca14e6537ae74fe2fc5f1fded7"
+    },
+    "e4_installed_state_rehearsal": {
+      "cleanup_probes": {
+        "passing": 1,
+        "population": 1
+      },
+      "config_fingerprint_sha256": "be04fc889a170e4295caebcc847f2b29b6867ca2ed1eb82f48a50507d4805111",
+      "contract_commit": "5767b0442add4b83694008580e4cdc57f43508ac",
+      "dry_run_members": {
+        "passing": 4,
+        "population": 4
+      },
+      "final_authority": "legacy",
+      "inert_xdg_payload_sha256": "0bd925df41d2ec51fa21dd2a1a53c13e0d9b8474d72a9e7d7010c1b2b3a1c36e",
+      "legacy_bundle_sha256": "32c8c79021508e44c8b3794e82bda64231181521e777ec5b8795641328c1fb47",
+      "migration_members": {
+        "passing": 4,
+        "population": 4
+      },
+      "observations": {
+        "passing": 7,
+        "population": 7
+      },
+      "publication": "isolated-local-rehearsal-not-live-authority",
+      "rollback": {
+        "passing": 1,
+        "population": 1
+      },
+      "source_snapshot": {
+        "bytes": 167866372,
+        "files": 3576
+      }
+    }
+  },
+  "schema": "kilix.track-e.trusted-launcher-consumer-requirements/v1",
+  "status": "developer-readiness-only-not-a-launch-profile",
+  "upstream_gate": {
+    "accepted_result_states": [
+      "PASS",
+      "REFUSED-AS-NAMED"
+    ],
+    "assignments": [
+      {
+        "decision_id": "OD-13",
+        "owner": "reviewer2",
+        "state": "component-returned-release-integration-blocked",
+        "work": "ID-04-facility-implementation"
+      },
+      {
+        "decision_id": "OD-14",
+        "owner": "Track H",
+        "state": "candidate-returned-review-1-rejected-open-medium",
+        "work": "non-forking-profile-child-table-interface"
+      }
+    ],
+    "blocked_result_states": [
+      "NULL",
+      "HARNESS-FAIL"
+    ],
+    "common_case_ids": [
+      "ID-02",
+      "ID-04",
+      "SUB-04",
+      "SUB-05",
+      "SUB-06",
+      "RES-10"
+    ],
+    "consumed_return_identities": [],
+    "independent_exports": {
+      "passing": 2,
+      "population": 2
+    },
+    "required_return_identities": [
+      "public_commit",
+      "public_tree",
+      "launcher_sha256",
+      "bootstrap_sha256",
+      "interpreter_sha256",
+      "result_schema_sha256",
+      "profile_schema_sha256",
+      "e3_profile_sha256",
+      "e3_terminal_check_set_sha256",
+      "installed_command_profile_sha256"
+    ],
+    "state": "blocked-upstream-returns-not-accepted"
+  }
+}
