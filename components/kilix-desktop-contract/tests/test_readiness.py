@@ -33,7 +33,7 @@ class TrustedLauncherReadinessTests(unittest.TestCase):
         self.assertIn("0/10 upstream return identities consumed", result)
 
     def test_all_premature_adoption_mutations_are_rejected(self) -> None:
-        self.assertEqual(self_test(self.requirements), (9, 9))
+        self.assertEqual(self_test(self.requirements), (18, 18))
 
     def test_third_consumer_cannot_be_smuggled_into_the_interface(self) -> None:
         candidate = copy.deepcopy(self.requirements)

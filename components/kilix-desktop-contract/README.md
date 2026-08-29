@@ -168,7 +168,8 @@ The common developer gate takes a canonical command-set document with schema
 the exact five provider IDs, in contract order, and each command must start
 with an absolute executable. Each row also binds the expected canonical source
 root, source commit, source tree, absolute logical entry path and entry
-SHA-256. The entry must reside below that source root. Before and after every
+SHA-256. The entry must be a canonical path with no symlinked ancestor and
+must reside below that source root. Before and after every
 invocation the gate checks the entry as a regular non-symlink, re-reads its
 digest, proves the Git `HEAD` and tree identities, and requires a clean tracked
 and untracked worktree including submodules. It runs two fresh final-mode

@@ -249,6 +249,50 @@ class ConformanceTests(unittest.TestCase):
                 ):
                     run_conformance_matrix((provider,), passes=1, **self.PROFILE)
 
+    def test_common_matrix_rejects_a_symlinked_entry_ancestor(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            source_root = Path(directory) / "source"
+            real_root = source_root / "real"
+            real_root.mkdir(parents=True)
+            real_entry = real_root / "provider"
+            real_entry.write_text("provider\n")
+            (source_root / "alias").symlink_to("real", target_is_directory=True)
+            subprocess.run(
+                ("/usr/bin/git", "init", "-q", str(source_root)), check=True
+            )
+            subprocess.run(
+                ("/usr/bin/git", "-C", str(source_root), "add", "."), check=True
+            )
+            subprocess.run(
+                (
+                    "/usr/bin/git", "-C", str(source_root),
+                    "-c", "user.name=F110 Test",
+                    "-c", "user.email=f110@example.invalid",
+                    "commit", "-q", "-m", "fixture",
+                ),
+                check=True,
+            )
+            commit, tree = subprocess.check_output(
+                (
+                    "/usr/bin/git", "-C", str(source_root), "rev-parse",
+                    "HEAD", "HEAD^{tree}",
+                ),
+                text=True,
+            ).splitlines()
+            alias_entry = source_root / "alias" / "provider"
+            provider = MatrixProvider(
+                "fake-provider",
+                (str(alias_entry),),
+                ("version",),
+                alias_entry,
+                hashlib.sha256(real_entry.read_bytes()).hexdigest(),
+                source_root,
+                commit,
+                tree,
+            )
+            with self.assertRaisesRegex(ConformanceError, "not a canonical path"):
+                run_conformance_matrix((provider,), passes=1, **self.PROFILE)
+
 
 if __name__ == "__main__":
     unittest.main()

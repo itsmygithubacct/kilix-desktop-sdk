@@ -548,7 +548,17 @@ def _verify_matrix_source(provider: MatrixProvider, phase: str) -> None:
             f"conformance matrix source binding has no entry for {provider.provider_id}"
         )
     try:
-        provider.entry_path.relative_to(provider.source_root)
+        resolved_entry = provider.entry_path.resolve(strict=True)
+    except OSError as error:
+        raise ConformanceError(
+            f"conformance matrix entry for {provider.provider_id} cannot be resolved {phase}: {error}"
+        ) from error
+    if resolved_entry != provider.entry_path:
+        raise ConformanceError(
+            f"conformance matrix entry for {provider.provider_id} is not a canonical path {phase}"
+        )
+    try:
+        resolved_entry.relative_to(resolved_root)
     except ValueError as error:
         raise ConformanceError(
             f"conformance matrix entry for {provider.provider_id} is outside its source root {phase}"

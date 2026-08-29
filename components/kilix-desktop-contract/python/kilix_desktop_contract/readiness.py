@@ -522,7 +522,16 @@ def _mutations() -> list[Callable[[dict[str, Any]], None]]:
         lambda value: value["consumer_requirements"][0]["provider_environment_names"].pop(),
         lambda value: value["consumer_requirements"][1]["migration_sequence"].reverse(),
         lambda value: value["local_evidence"]["e2_host_integration"].__setitem__("commit", "0" * 40),
+        lambda value: value["local_evidence"]["e2_host_integration"].__setitem__("tree", "0" * 40),
+        lambda value: value["local_evidence"]["e2_host_integration"]["focused_tests"].__setitem__("skipped", 0),
+        lambda value: value["local_evidence"]["e2_host_integration"].__setitem__("publication", "live-authority"),
         lambda value: value["local_evidence"]["e4_installed_state_rehearsal"]["observations"].__setitem__("passing", 6),
+        lambda value: value["local_evidence"]["e4_installed_state_rehearsal"].__setitem__("final_authority", "xdg"),
+        lambda value: value["local_evidence"]["e4_installed_state_rehearsal"]["dry_run_members"].__setitem__("passing", 3),
+        lambda value: value["local_evidence"]["e4_installed_state_rehearsal"]["migration_members"].__setitem__("passing", 3),
+        lambda value: value["local_evidence"]["e4_installed_state_rehearsal"]["rollback"].__setitem__("passing", 0),
+        lambda value: value["local_evidence"]["e4_installed_state_rehearsal"]["cleanup_probes"].__setitem__("passing", 0),
+        lambda value: value["local_evidence"]["e4_installed_state_rehearsal"].__setitem__("legacy_bundle_sha256", "0" * 64),
         lambda value: value["consumer_requirements"].append({"requirement_id": "TE-E5"}),
     ]
 
