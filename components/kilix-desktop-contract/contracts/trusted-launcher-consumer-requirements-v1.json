@@ -295,6 +295,88 @@
       ]
     }
   ],
+  "launcher_profile_requirements": {
+    "adoption_state": "construction-inputs-only-upstream-review-pending",
+    "e1_profile": {
+      "argument_mode": "forbidden",
+      "command_name": "qualify",
+      "freeze_legs": [
+        {
+          "child_id": "freeze-1",
+          "child_kind": "python-script",
+          "child_profile_id": "f110.contract-freeze.freeze-1/v1"
+        },
+        {
+          "child_id": "freeze-2",
+          "child_kind": "python-script",
+          "child_profile_id": "f110.contract-freeze.freeze-2/v1"
+        }
+      ],
+      "post_child_verification": "required-after-every-child",
+      "profile_id": "f110.contract-freeze/v1",
+      "subject_entry": {
+        "path": "validate_contract.py",
+        "root": "subject"
+      }
+    },
+    "e3_profile": {
+      "argument_mode": "forbidden",
+      "check_occurrences_total": 90,
+      "child_profiles": [
+        {
+          "child_kind": "python-script",
+          "child_profile_id": "f110.provider.kilix-95/v1",
+          "surface_id": "provider-kilix-95"
+        },
+        {
+          "child_kind": "native-executable",
+          "child_profile_id": "f110.provider.kilix-cap/v1",
+          "surface_id": "provider-kilix-cap"
+        },
+        {
+          "child_kind": "native-executable",
+          "child_profile_id": "f110.provider.kilix-land-desktop/v1",
+          "surface_id": "provider-kilix-land-desktop"
+        },
+        {
+          "child_kind": "python-script",
+          "child_profile_id": "f110.provider.kilix-tui/v1",
+          "surface_id": "provider-kilix-tui"
+        },
+        {
+          "child_kind": "python-script",
+          "child_profile_id": "f110.provider.kilix-icewm/v1",
+          "surface_id": "provider-kilix-icewm"
+        },
+        {
+          "child_kind": "python-module",
+          "child_profile_id": "f110.installed-command/v1",
+          "surface_id": "installed-contract-command"
+        }
+      ],
+      "command_name": "qualify",
+      "passes": 2,
+      "post_child_verification": "required-after-every-child",
+      "profile_id": "f110.installed-conformance/v1",
+      "provider_invocations": 10
+    },
+    "interface_controls": [
+      "canonical-duplicate-free-profile-json",
+      "closed-profile-command-and-child-members",
+      "data-driven-child-table-without-profile-id-branches",
+      "exact-retained-root-and-path-bindings",
+      "closed-environment-and-typed-argv",
+      "descriptor-bound-python-and-native-provider-execution",
+      "installed-distribution-record-bound-before-import",
+      "result-writer-unavailable-before-any-subject-descendant",
+      "post-child-authority-subject-runtime-dependency-verification",
+      "ordered-child-terminal-set-digest",
+      "one-bounded-canonical-outer-result",
+      "exact-profile-and-result-schema-digests"
+    ],
+    "profile_schema": "kilix.trusted-launcher.profile/v1",
+    "top_level_profile_count": 2
+  },
   "local_evidence": {
     "e1_parent": {
       "commit": "b34fa9b85cad80cbfb33588378fac50f7fda21d3",
@@ -364,9 +446,12 @@
         "work": "ID-04-facility-implementation"
       },
       {
+        "construction_commit": "debff369aea2fc98b11c338ea973c93326a16b40",
+        "construction_ref": "refs/heads/work/0.2.1-f120-profile-interface",
+        "construction_tree": "9ac05d8226d23c849c0b6bb2b0a2a19ebf7b3b61",
         "decision_id": "OD-14",
         "owner": "Track H",
-        "state": "candidate-returned-review-1-rejected-open-medium",
+        "state": "correction-published-independent-review-pending",
         "work": "non-forking-profile-child-table-interface"
       }
     ],

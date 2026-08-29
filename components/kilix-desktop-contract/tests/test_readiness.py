@@ -33,7 +33,21 @@ class TrustedLauncherReadinessTests(unittest.TestCase):
         self.assertIn("0/10 upstream return identities consumed", result)
 
     def test_all_premature_adoption_mutations_are_rejected(self) -> None:
-        self.assertEqual(self_test(self.requirements), (18, 18))
+        self.assertEqual(self_test(self.requirements), (45, 45))
+
+    def test_f110_profile_inputs_cover_the_required_interface(self) -> None:
+        profiles = self.requirements["launcher_profile_requirements"]
+        self.assertEqual(profiles["top_level_profile_count"], 2)
+        self.assertEqual(len(profiles["e1_profile"]["freeze_legs"]), 2)
+        children = profiles["e3_profile"]["child_profiles"]
+        self.assertEqual(len(children), 6)
+        self.assertEqual(
+            {child["child_kind"] for child in children},
+            {"native-executable", "python-module", "python-script"},
+        )
+        self.assertEqual(len(profiles["interface_controls"]), 12)
+        self.assertEqual(profiles["adoption_state"], "construction-inputs-only-upstream-review-pending")
+        self.assertEqual(len(self.requirements["upstream_gate"]["consumed_return_identities"]), 0)
 
     def test_third_consumer_cannot_be_smuggled_into_the_interface(self) -> None:
         candidate = copy.deepcopy(self.requirements)

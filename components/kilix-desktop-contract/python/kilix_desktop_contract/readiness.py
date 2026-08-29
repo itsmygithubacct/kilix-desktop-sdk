@@ -158,6 +158,57 @@ E4_SEQUENCE = (
     ("migrate", "kilix-95", "0.2.0"),
     ("rollback", None, "0.2.0"),
 )
+PROFILE_SCHEMA = "kilix.trusted-launcher.profile/v1"
+PROFILE_ADOPTION_STATE = "construction-inputs-only-upstream-review-pending"
+E1_PROFILE = {
+    "argument_mode": "forbidden",
+    "command_name": "qualify",
+    "freeze_legs": [
+        {
+            "child_id": "freeze-1",
+            "child_kind": "python-script",
+            "child_profile_id": "f110.contract-freeze.freeze-1/v1",
+        },
+        {
+            "child_id": "freeze-2",
+            "child_kind": "python-script",
+            "child_profile_id": "f110.contract-freeze.freeze-2/v1",
+        },
+    ],
+    "post_child_verification": "required-after-every-child",
+    "profile_id": "f110.contract-freeze/v1",
+    "subject_entry": {"path": "validate_contract.py", "root": "subject"},
+}
+E3_PROFILE_CHILDREN = (
+    ("python-script", "f110.provider.kilix-95/v1", "provider-kilix-95"),
+    ("native-executable", "f110.provider.kilix-cap/v1", "provider-kilix-cap"),
+    (
+        "native-executable",
+        "f110.provider.kilix-land-desktop/v1",
+        "provider-kilix-land-desktop",
+    ),
+    ("python-script", "f110.provider.kilix-tui/v1", "provider-kilix-tui"),
+    (
+        "python-script",
+        "f110.provider.kilix-icewm/v1",
+        "provider-kilix-icewm",
+    ),
+    ("python-module", "f110.installed-command/v1", "installed-contract-command"),
+)
+PROFILE_INTERFACE_CONTROLS = (
+    "canonical-duplicate-free-profile-json",
+    "closed-profile-command-and-child-members",
+    "data-driven-child-table-without-profile-id-branches",
+    "exact-retained-root-and-path-bindings",
+    "closed-environment-and-typed-argv",
+    "descriptor-bound-python-and-native-provider-execution",
+    "installed-distribution-record-bound-before-import",
+    "result-writer-unavailable-before-any-subject-descendant",
+    "post-child-authority-subject-runtime-dependency-verification",
+    "ordered-child-terminal-set-digest",
+    "one-bounded-canonical-outer-result",
+    "exact-profile-and-result-schema-digests",
+)
 E1_PARENT = {
     "commit": "b34fa9b85cad80cbfb33588378fac50f7fda21d3",
     "inner_manifest_members": 49,
@@ -364,14 +415,80 @@ def _validate_upstream(value: Any) -> None:
             "work": "ID-04-facility-implementation",
         },
         {
+            "construction_commit": "debff369aea2fc98b11c338ea973c93326a16b40",
+            "construction_ref": "refs/heads/work/0.2.1-f120-profile-interface",
+            "construction_tree": "9ac05d8226d23c849c0b6bb2b0a2a19ebf7b3b61",
             "decision_id": "OD-14",
             "owner": "Track H",
-            "state": "candidate-returned-review-1-rejected-open-medium",
+            "state": "correction-published-independent-review-pending",
             "work": "non-forking-profile-child-table-interface",
         },
     ]
     if gate["assignments"] != expected_assignments:
         raise ReadinessError("upstream_gate: OD-13/OD-14 assignment boundary changed")
+
+
+def _validate_launcher_profiles(value: Any) -> None:
+    profiles = _object(
+        value,
+        {
+            "adoption_state", "e1_profile", "e3_profile", "interface_controls",
+            "profile_schema", "top_level_profile_count",
+        },
+        "launcher_profile_requirements",
+    )
+    if profiles["adoption_state"] != PROFILE_ADOPTION_STATE:
+        raise ReadinessError("launcher profiles: construction was promoted without review")
+    if profiles["profile_schema"] != PROFILE_SCHEMA:
+        raise ReadinessError("launcher profiles: upstream profile schema changed")
+    if profiles["top_level_profile_count"] != 2:
+        raise ReadinessError("launcher profiles: top-level profile population changed")
+    if profiles["e1_profile"] != E1_PROFILE:
+        raise ReadinessError("launcher profiles: E1 profile input changed")
+    e3 = _object(
+        profiles["e3_profile"],
+        {
+            "argument_mode", "check_occurrences_total", "child_profiles",
+            "command_name", "passes", "post_child_verification", "profile_id",
+            "provider_invocations",
+        },
+        "launcher profiles E3",
+    )
+    if (
+        e3["argument_mode"],
+        e3["command_name"],
+        e3["passes"],
+        e3["post_child_verification"],
+        e3["profile_id"],
+        e3["provider_invocations"],
+        e3["check_occurrences_total"],
+    ) != (
+        "forbidden",
+        "qualify",
+        2,
+        "required-after-every-child",
+        "f110.installed-conformance/v1",
+        10,
+        90,
+    ):
+        raise ReadinessError("launcher profiles: E3 aggregate profile changed")
+    children = e3["child_profiles"]
+    if not isinstance(children, list) or len(children) != len(E3_PROFILE_CHILDREN):
+        raise ReadinessError("launcher profiles: E3 child-table population changed")
+    observed = []
+    for ordinal, child in enumerate(children, start=1):
+        item = _object(
+            child,
+            {"child_kind", "child_profile_id", "surface_id"},
+            f"launcher profiles E3 child {ordinal}",
+        )
+        observed.append(
+            (item["child_kind"], item["child_profile_id"], item["surface_id"])
+        )
+    if tuple(observed) != E3_PROFILE_CHILDREN:
+        raise ReadinessError("launcher profiles: E3 child-table mapping changed")
+    if tuple(profiles["interface_controls"]) != PROFILE_INTERFACE_CONTROLS:
+        raise ReadinessError("launcher profiles: interface-control population changed")
 
 
 def _validate_e3(value: Any) -> None:
@@ -485,8 +602,8 @@ def validate_requirements(value: Any) -> None:
     document = _object(
         value,
         {
-            "consumer_requirements", "local_evidence", "schema", "status",
-            "upstream_gate",
+            "consumer_requirements", "launcher_profile_requirements",
+            "local_evidence", "schema", "status", "upstream_gate",
         },
         "requirements",
     )
@@ -499,6 +616,7 @@ def validate_requirements(value: Any) -> None:
         raise ReadinessError("requirements: consumer population is not two")
     _validate_e3(consumers[0])
     _validate_e4(consumers[1])
+    _validate_launcher_profiles(document["launcher_profile_requirements"])
     local = _object(
         document["local_evidence"],
         {"e1_parent", "e2_host_integration", "e4_installed_state_rehearsal"},
@@ -517,22 +635,49 @@ def _mutations() -> list[Callable[[dict[str, Any]], None]]:
     return [
         lambda value: value["upstream_gate"]["common_case_ids"].pop(),
         lambda value: value["upstream_gate"].__setitem__("state", "accepted"),
+        lambda value: value["upstream_gate"]["assignments"][1].__setitem__("construction_commit", "0" * 40),
         lambda value: value["consumer_requirements"][0]["providers"].pop(),
         lambda value: value["consumer_requirements"][0]["providers"][0].__setitem__("entry_sha256", "0" * 64),
         lambda value: value["consumer_requirements"][0]["provider_environment_names"].pop(),
         lambda value: value["consumer_requirements"][1]["migration_sequence"].reverse(),
+        lambda value: value["consumer_requirements"].append({"requirement_id": "TE-E5"}),
+        lambda value: value["launcher_profile_requirements"].__setitem__("adoption_state", "accepted"),
+        lambda value: value["launcher_profile_requirements"].__setitem__("profile_schema", "kilix.trusted-launcher.profile/v2"),
+        lambda value: value["launcher_profile_requirements"].__setitem__("top_level_profile_count", 3),
+        lambda value: value["launcher_profile_requirements"]["e1_profile"].__setitem__("profile_id", "f110.contract-freeze/v2"),
+        lambda value: value["launcher_profile_requirements"]["e1_profile"]["freeze_legs"].pop(),
+        lambda value: value["launcher_profile_requirements"]["e1_profile"].__setitem__("post_child_verification", "after-all-children"),
+        lambda value: value["launcher_profile_requirements"]["e3_profile"].__setitem__("profile_id", "f110.installed-conformance/v2"),
+        lambda value: value["launcher_profile_requirements"]["e3_profile"]["child_profiles"].pop(),
+        lambda value: value["launcher_profile_requirements"]["e3_profile"]["child_profiles"][1].__setitem__("child_kind", "python-script"),
+        lambda value: value["launcher_profile_requirements"]["interface_controls"].pop(),
         lambda value: value["local_evidence"]["e2_host_integration"].__setitem__("commit", "0" * 40),
-        lambda value: value["local_evidence"]["e2_host_integration"].__setitem__("tree", "0" * 40),
+        lambda value: value["local_evidence"]["e2_host_integration"]["focused_tests"].__setitem__("passed", 110),
+        lambda value: value["local_evidence"]["e2_host_integration"]["focused_tests"].__setitem__("population", 113),
         lambda value: value["local_evidence"]["e2_host_integration"]["focused_tests"].__setitem__("skipped", 0),
+        lambda value: value["local_evidence"]["e2_host_integration"].__setitem__("patch_sha256", "0" * 64),
         lambda value: value["local_evidence"]["e2_host_integration"].__setitem__("publication", "live-authority"),
+        lambda value: value["local_evidence"]["e2_host_integration"].__setitem__("request_commit", "0" * 40),
+        lambda value: value["local_evidence"]["e2_host_integration"].__setitem__("stable_patch_id", "0" * 40),
+        lambda value: value["local_evidence"]["e2_host_integration"].__setitem__("tree", "0" * 40),
+        lambda value: value["local_evidence"]["e4_installed_state_rehearsal"]["cleanup_probes"].__setitem__("passing", 0),
+        lambda value: value["local_evidence"]["e4_installed_state_rehearsal"]["cleanup_probes"].__setitem__("population", 2),
+        lambda value: value["local_evidence"]["e4_installed_state_rehearsal"].__setitem__("config_fingerprint_sha256", "0" * 64),
+        lambda value: value["local_evidence"]["e4_installed_state_rehearsal"].__setitem__("contract_commit", "0" * 40),
+        lambda value: value["local_evidence"]["e4_installed_state_rehearsal"]["dry_run_members"].__setitem__("passing", 3),
+        lambda value: value["local_evidence"]["e4_installed_state_rehearsal"]["dry_run_members"].__setitem__("population", 5),
         lambda value: value["local_evidence"]["e4_installed_state_rehearsal"]["observations"].__setitem__("passing", 6),
         lambda value: value["local_evidence"]["e4_installed_state_rehearsal"].__setitem__("final_authority", "xdg"),
-        lambda value: value["local_evidence"]["e4_installed_state_rehearsal"]["dry_run_members"].__setitem__("passing", 3),
-        lambda value: value["local_evidence"]["e4_installed_state_rehearsal"]["migration_members"].__setitem__("passing", 3),
-        lambda value: value["local_evidence"]["e4_installed_state_rehearsal"]["rollback"].__setitem__("passing", 0),
-        lambda value: value["local_evidence"]["e4_installed_state_rehearsal"]["cleanup_probes"].__setitem__("passing", 0),
+        lambda value: value["local_evidence"]["e4_installed_state_rehearsal"].__setitem__("inert_xdg_payload_sha256", "0" * 64),
         lambda value: value["local_evidence"]["e4_installed_state_rehearsal"].__setitem__("legacy_bundle_sha256", "0" * 64),
-        lambda value: value["consumer_requirements"].append({"requirement_id": "TE-E5"}),
+        lambda value: value["local_evidence"]["e4_installed_state_rehearsal"]["migration_members"].__setitem__("passing", 3),
+        lambda value: value["local_evidence"]["e4_installed_state_rehearsal"]["migration_members"].__setitem__("population", 5),
+        lambda value: value["local_evidence"]["e4_installed_state_rehearsal"]["observations"].__setitem__("population", 8),
+        lambda value: value["local_evidence"]["e4_installed_state_rehearsal"].__setitem__("publication", "live-authority"),
+        lambda value: value["local_evidence"]["e4_installed_state_rehearsal"]["rollback"].__setitem__("passing", 0),
+        lambda value: value["local_evidence"]["e4_installed_state_rehearsal"]["rollback"].__setitem__("population", 2),
+        lambda value: value["local_evidence"]["e4_installed_state_rehearsal"]["source_snapshot"].__setitem__("bytes", 0),
+        lambda value: value["local_evidence"]["e4_installed_state_rehearsal"]["source_snapshot"].__setitem__("files", 0),
     ]
 
 
@@ -555,6 +700,7 @@ def self_test(value: dict[str, Any]) -> tuple[int, int]:
 
 def summary(value: dict[str, Any], mutation_result: tuple[int, int] | None = None) -> str:
     e3, e4 = value["consumer_requirements"]
+    profiles = value["launcher_profile_requirements"]
     gate = value["upstream_gate"]
     parts = [
         "PASS (developer readiness only; launcher adoption remains blocked)",
@@ -566,8 +712,15 @@ def summary(value: dict[str, Any], mutation_result: tuple[int, int] | None = Non
         f"{len(e3['providers'])}/5 providers retained",
         f"{e3['provider_invocations']}/10 provider invocations retained",
         f"{e3['check_occurrences_total']}/90 check occurrences retained",
+        f"{profiles['top_level_profile_count']}/2 top-level profile inputs retained",
+        f"{len(profiles['e1_profile']['freeze_legs'])}/2 E1 freeze legs retained",
+        f"{len(profiles['e3_profile']['child_profiles'])}/{len(E3_PROFILE_CHILDREN)} E3 child-table rows retained",
+        f"{len({item['child_kind'] for item in profiles['e3_profile']['child_profiles']})}/3 E3 child kinds retained",
+        f"{len(profiles['interface_controls'])}/{len(PROFILE_INTERFACE_CONTROLS)} launcher interface controls retained",
         f"{len(e4['command_templates'])}/{len(E4_COMMAND_TEMPLATES)} E4 command templates retained",
         f"{len(e4['migration_sequence'])}/9 E4 migration/rollback commands retained",
+        "9/9 E2 local-evidence leaves retained",
+        "18/18 E4 local-evidence leaves retained",
         f"{E2_LOCAL['focused_tests']['passed']}/{E2_LOCAL['focused_tests']['population']} E2 focused tests passed",
         f"{E2_LOCAL['focused_tests']['skipped']}/{E2_LOCAL['focused_tests']['population']} E2 focused tests skipped as external-provider dependent",
         f"{E4_LOCAL['observations']['passing']}/{E4_LOCAL['observations']['population']} E4 observations retained",

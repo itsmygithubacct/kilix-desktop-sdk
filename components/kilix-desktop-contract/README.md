@@ -148,12 +148,20 @@ this runner starts; these command-line flags do not establish that outer
 trusted-launcher authority by themselves.
 
 `contracts/trusted-launcher-consumer-requirements-v1.json` makes the owned side
-of that future interface machine-checkable. It fixes the E3 surface, child,
-provider, environment and terminal populations, records the exact local E2/E4
-evidence, and fixes the E4 installed-command migration/rollback sequence
-without defining a competing launcher profile. The OD-13 component return and
-the independently rejected OD-14 candidate remain non-consumable, so the
-checker fails closed if either is promoted without an accepted return packet:
+of that future interface machine-checkable. It fixes 2/2 top-level profile
+inputs, 2/2 E1 freeze legs, 6/6 E3 child-table rows, 3/3 required child kinds
+and 12/12 interface controls without copying the shared launcher
+implementation. In particular, the child table must support the 3/3 Python
+script, Python module and retained native-executable kinds that the 5/5
+provider plus 1/1 installed-command population requires. It also fixes the E3
+surface, provider, environment and terminal populations, records 9/9 E2 and
+18/18 E4 local-evidence leaves, and fixes the E4 installed-command
+migration/rollback sequence.
+
+These are construction inputs, not accepted launcher profiles. The published
+OD-14 correction remains under independent review and 0/10 protected return
+identities have been consumed, so the checker fails closed if the correction
+or the OD-13 component is promoted without an accepted return packet:
 
 ```sh
 make launcher-consumer-readiness UV=/absolute/path/to/release-pinned-uv-0.12.5
