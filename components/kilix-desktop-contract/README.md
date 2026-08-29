@@ -205,13 +205,14 @@ population while recording bridge acceptance as 0/1. This does not choose an
 F119 representation: Track B still owns verbatim refusal provenance, lifecycle
 variants, reason retention and the multi-case aggregate/partition rule.
 
-The current R6 packet also has an open owner correction for its published
-arbitrary-CWD checksum command. The requirements bind the exact finding,
-request, README and manifest identities: the documented arbitrary-CWD form
-passes 0/1 attempts, while the packet-directory form passes 1/1 attempts and
-8/8 current members. A corrected F119 successor and its 8/8 successor members
-remain consumed in 0/1 and 0/8 cases; this SDK does not rewrite the historical
-packet.
+The historical R6 packet's published arbitrary-CWD checksum command remains
+recorded at 0/1 passes, while its packet-directory form passes 1/1 attempts
+and 8/8 current members. The requirements now bind Track B's returned R7
+successor for 1/1 packets and all 8/8 checksum members: exact packet/report
+paths, 9/9 packet files, line/byte totals, 8/8 artifact hashes, manifest and
+report SHA-256 identities, and the passing 1/1 outside-directory command.
+This is preparation-only consumer evidence; the SDK rewrites historical R6
+packet bytes in 0/9 cases and does not promote formal F119 entry.
 
 Exact result-channel objects and R6 readiness fractions use recursive JSON
 type comparison. Boolean/integer aliases such as `true`/`1` and numeric

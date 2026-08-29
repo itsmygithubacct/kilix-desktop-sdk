@@ -34,7 +34,7 @@ class TrustedLauncherReadinessTests(unittest.TestCase):
         self.assertIn("0/10 upstream return identities consumed", result)
 
     def test_all_premature_adoption_mutations_are_rejected(self) -> None:
-        self.assertEqual(self_test(self.requirements), (161, 161))
+        self.assertEqual(self_test(self.requirements), (172, 172))
 
     def test_all_r6_fraction_scalar_type_aliases_are_rejected(self) -> None:
         rejected = 0
@@ -125,13 +125,17 @@ class TrustedLauncherReadinessTests(unittest.TestCase):
             {"denominator": 1, "numerator": 0},
         )
 
-    def test_r6_checksum_correction_stays_open_until_owner_successor(self) -> None:
+    def test_r6_checksum_successor_is_bound_without_formal_entry(self) -> None:
         correction = self.requirements["f119_result_channel_requirements"][
             "r6_checksum_reproduction_correction"
         ]
-        self.assertEqual(len(correction), 10)
+        self.assertEqual(len(correction), 21)
         self.assertEqual(correction["finding_id"], "B-F110-R6-L01")
         self.assertEqual(correction["owner"], "F119/Track B")
+        self.assertEqual(
+            correction["adoption_state"],
+            "owner-successor-returned-consumer-bound-preparation-only",
+        )
         self.assertEqual(
             correction["current_arbitrary_cwd_command_passes"],
             {"denominator": 1, "numerator": 0},
@@ -142,11 +146,29 @@ class TrustedLauncherReadinessTests(unittest.TestCase):
         )
         self.assertEqual(
             correction["successor_binding_returned"],
-            {"denominator": 1, "numerator": 0},
+            {"denominator": 1, "numerator": 1},
         )
         self.assertEqual(
             correction["successor_checksum_members"],
-            {"denominator": 8, "numerator": 0},
+            {"denominator": 8, "numerator": 8},
+        )
+        self.assertEqual(len(correction["successor_packet_artifacts"]), 8)
+        self.assertEqual(correction["successor_packet_files"], 9)
+        self.assertEqual(correction["successor_packet_lines"], 2547)
+        self.assertEqual(correction["successor_packet_bytes"], 123778)
+        self.assertEqual(correction["successor_report_lines"], 272)
+        self.assertEqual(correction["successor_report_bytes"], 12298)
+        self.assertEqual(
+            correction["successor_outside_directory_command_passes"],
+            {"denominator": 1, "numerator": 1},
+        )
+        self.assertEqual(
+            correction["successor_manifest_sha256"],
+            "818d246102f4341cd99aeddf47f1cfa3f7d01962cad64d0223138c588bcf4a4d",
+        )
+        self.assertEqual(
+            correction["successor_report_sha256"],
+            "29109f8c1b1d513da4a44935ba89c6dec31549bce9615b31ac4205961a8565b6",
         )
 
     def test_f110_profile_inputs_cover_the_required_interface(self) -> None:

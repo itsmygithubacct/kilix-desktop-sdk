@@ -305,7 +305,7 @@ F119_R6_CHANNEL_FIELDS = (
 F119_R6_CHECKSUM_CORRECTION = {
     "affected_manifest_sha256": "1e6b75db1c472e7a24fe67ca033e9c00603dbe641eba02b2e7fab6c447784dcc",
     "affected_readme_sha256": "1c6b918eadec70f82a10a1b829ad59df125af2bad8d256ed17ad9bc654f25df0",
-    "adoption_state": "open-owner-correction-request",
+    "adoption_state": "owner-successor-returned-consumer-bound-preparation-only",
     "current_arbitrary_cwd_command_passes": {"denominator": 1, "numerator": 0},
     "current_packet_directory_command_passes": {
         "denominator": 1,
@@ -314,8 +314,31 @@ F119_R6_CHECKSUM_CORRECTION = {
     "finding_id": "B-F110-R6-L01",
     "owner": "F119/Track B",
     "request_sha256": "8b8a0e72a04f95a6a6ccbe907ee6b63a5a7802c4942989b823556d1abb4a5c43",
-    "successor_binding_returned": {"denominator": 1, "numerator": 0},
-    "successor_checksum_members": {"denominator": 8, "numerator": 0},
+    "successor_binding_returned": {"denominator": 1, "numerator": 1},
+    "successor_checksum_members": {"denominator": 8, "numerator": 8},
+    "successor_manifest_sha256": "818d246102f4341cd99aeddf47f1cfa3f7d01962cad64d0223138c588bcf4a4d",
+    "successor_outside_directory_command_passes": {
+        "denominator": 1,
+        "numerator": 1,
+    },
+    "successor_packet_artifacts": {
+        "README.md": "e02ec6d86a279e9596bddbd9b1afc67f74e5121d395e2ae5606ae9c03eca130e",
+        "adapter_runtime.py": "96fed44f1a9aee07753f5d11230d764f9ee86c5d4cffd0dde09ec00ee8bfdc46",
+        "completion-audit.prep.json": "4b51eb415300b08c284af23e299890f16dae38bb7cb60b0eae140e522d3b4acb",
+        "isolation_extensions.py": "08fc69ea786f42ed2faabde02c9c125e76b898647fc439e8230b2bf9881461c0",
+        "preparation.json": "d70f771db0c77a19b1b3b43ffaf6cfb148f63f1f8f0721ccaa62e6b040315bb0",
+        "schema_validate.js": "5fa43d5dd415ba0260865f896020399313be25a6bcb1b495e0dad195753abc94",
+        "selftest.py": "a6e77c258736f3ecf2afe6622e43c23081ddbca445a6143c63dc561fa02fdca0",
+        "verify.py": "cab8918993fbc3ec6711784de3e599d37500adaf2b7d1b9594adf73d08c78487",
+    },
+    "successor_packet_bytes": 123778,
+    "successor_packet_files": 9,
+    "successor_packet_lines": 2547,
+    "successor_packet_path": "/home/pleb/research/gpu_terminal/f119-p1-p2-readiness-r7",
+    "successor_report_bytes": 12298,
+    "successor_report_lines": 272,
+    "successor_report_path": "/home/pleb/research/gpu_terminal/0.2.1-F119-P1-P2-READINESS-R7.md",
+    "successor_report_sha256": "29109f8c1b1d513da4a44935ba89c6dec31549bce9615b31ac4205961a8565b6",
 }
 F119_R6_CONFORMANCE_PREPARATION = {
     "accepted_f100_bound_values_supplied": {"denominator": 32, "numerator": 0},
@@ -714,7 +737,10 @@ def _validate_f119_result_channel(value: Any) -> None:
         raise ReadinessError("F119 channel: F111 bridge requirements changed")
     if channel["r5_executable_preparation"] != F119_R5_EXECUTABLE_PREPARATION:
         raise ReadinessError("F119 channel: R5 executable preparation changed")
-    if channel["r6_checksum_reproduction_correction"] != F119_R6_CHECKSUM_CORRECTION:
+    if not exact_json_equal(
+        channel["r6_checksum_reproduction_correction"],
+        F119_R6_CHECKSUM_CORRECTION,
+    ):
         raise ReadinessError("F119 channel: R6 checksum correction state changed")
     if not exact_json_equal(
         channel["r6_conformance_preparation"], F119_R6_CONFORMANCE_PREPARATION
@@ -969,12 +995,26 @@ def _mutations() -> list[Callable[[dict[str, Any]], None]]:
         r6_checksum("request_sha256", "0" * 64),
         r6_checksum(
             "successor_binding_returned",
-            {"denominator": 1, "numerator": 1},
+            {"denominator": 1, "numerator": True},
         ),
         r6_checksum(
             "successor_checksum_members",
-            {"denominator": 8, "numerator": 8},
+            {"denominator": 8, "numerator": 8.0},
         ),
+        r6_checksum("successor_manifest_sha256", "0" * 64),
+        r6_checksum(
+            "successor_outside_directory_command_passes",
+            {"denominator": 1, "numerator": 0},
+        ),
+        r6_checksum("successor_packet_artifacts", {}),
+        r6_checksum("successor_packet_bytes", 123778.0),
+        r6_checksum("successor_packet_files", 9.0),
+        r6_checksum("successor_packet_lines", 2547.0),
+        r6_checksum("successor_packet_path", "/tmp/f119-r7"),
+        r6_checksum("successor_report_bytes", 12298.0),
+        r6_checksum("successor_report_lines", 272.0),
+        r6_checksum("successor_report_path", "/tmp/f119-r7.md"),
+        r6_checksum("successor_report_sha256", "0" * 64),
         r6("accepted_f100_bound_values_supplied", {"denominator": 32, "numerator": 1}),
         r6("adapter_rows", {"denominator": 4, "numerator": 3}),
         r6("adapter_terminal_population", {"denominator": 32, "numerator": 31}),
