@@ -33,7 +33,7 @@ class TrustedLauncherReadinessTests(unittest.TestCase):
         self.assertIn("0/10 upstream return identities consumed", result)
 
     def test_all_premature_adoption_mutations_are_rejected(self) -> None:
-        self.assertEqual(self_test(self.requirements), (114, 114))
+        self.assertEqual(self_test(self.requirements), (124, 124))
 
     def test_f119_result_channel_preparation_is_bound_but_not_consumed(self) -> None:
         channel = self.requirements["f119_result_channel_requirements"]
@@ -81,6 +81,30 @@ class TrustedLauncherReadinessTests(unittest.TestCase):
         self.assertEqual(
             conformance["formal_schema_freezes"],
             {"denominator": 2, "numerator": 0},
+        )
+
+    def test_f111_bridge_repairs_are_bound_without_inventing_acceptance(self) -> None:
+        bridge = self.requirements["f119_result_channel_requirements"][
+            "f111_bridge_requirements"
+        ]
+        self.assertEqual(len(bridge), 10)
+        self.assertEqual(bridge["owner"], "F119/Track B")
+        self.assertEqual(
+            bridge["requested_repair_ids"],
+            [
+                "F111-F119-BRIDGE-01",
+                "F111-F119-BRIDGE-02",
+                "F111-F119-BRIDGE-03",
+                "F111-F119-BRIDGE-04",
+            ],
+        )
+        self.assertEqual(
+            bridge["acceptance_vectors"],
+            {"denominator": 9, "numerator": 9},
+        )
+        self.assertEqual(
+            bridge["bridge_accepted"],
+            {"denominator": 1, "numerator": 0},
         )
 
     def test_f110_profile_inputs_cover_the_required_interface(self) -> None:

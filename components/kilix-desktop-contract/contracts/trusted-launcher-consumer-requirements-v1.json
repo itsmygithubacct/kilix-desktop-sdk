@@ -316,6 +316,32 @@
       "grade-direct-bounded-in-memory-bytes",
       "persistent-copy-never-authoritative"
     ],
+    "f111_bridge_requirements": {
+      "acceptance_vectors": {
+        "denominator": 9,
+        "numerator": 9
+      },
+      "adoption_state": "consumer-input-only-f119-owner-decision-pending",
+      "amendment_input_schema": "f111.r30.f119-qualification-amendment-input/v1",
+      "amendment_input_sha256": "d37d6b330509c339fc80b103691a76c085cf6b6ade25090a9a06150b2f2c0140",
+      "bridge_accepted": {
+        "denominator": 1,
+        "numerator": 0
+      },
+      "owner": "F119/Track B",
+      "packet_manifest_sha256": "3a661553d2843df37e8cc04dad15fd1ed60880c9ecede1618086cb94c0fc55ec",
+      "report_sha256": "8ae3ce0f113cd9da6bc2930c4829cba4dfa0beb242120306bd73f049d75ac061",
+      "requested_repair_ids": [
+        "F111-F119-BRIDGE-01",
+        "F111-F119-BRIDGE-02",
+        "F111-F119-BRIDGE-03",
+        "F111-F119-BRIDGE-04"
+      ],
+      "requested_repairs": {
+        "denominator": 4,
+        "numerator": 4
+      }
+    },
     "formal_state": {
       "adapters_implemented": {
         "denominator": 4,

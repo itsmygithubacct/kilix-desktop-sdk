@@ -222,6 +222,23 @@ F119_CONSUMER_INVARIANTS = (
     "grade-direct-bounded-in-memory-bytes",
     "persistent-copy-never-authoritative",
 )
+F111_F119_BRIDGE_REQUIREMENTS = {
+    "acceptance_vectors": {"denominator": 9, "numerator": 9},
+    "adoption_state": "consumer-input-only-f119-owner-decision-pending",
+    "amendment_input_schema": "f111.r30.f119-qualification-amendment-input/v1",
+    "amendment_input_sha256": "d37d6b330509c339fc80b103691a76c085cf6b6ade25090a9a06150b2f2c0140",
+    "bridge_accepted": {"denominator": 1, "numerator": 0},
+    "owner": "F119/Track B",
+    "packet_manifest_sha256": "3a661553d2843df37e8cc04dad15fd1ed60880c9ecede1618086cb94c0fc55ec",
+    "report_sha256": "8ae3ce0f113cd9da6bc2930c4829cba4dfa0beb242120306bd73f049d75ac061",
+    "requested_repair_ids": [
+        "F111-F119-BRIDGE-01",
+        "F111-F119-BRIDGE-02",
+        "F111-F119-BRIDGE-03",
+        "F111-F119-BRIDGE-04",
+    ],
+    "requested_repairs": {"denominator": 4, "numerator": 4},
+}
 F119_PHASE_IDS = tuple(f"CH-{ordinal:02d}" for ordinal in range(1, 13))
 F119_TRANSITION_IDS = tuple(f"CT-{ordinal:02d}" for ordinal in range(1, 12))
 F119_DISPOSITION_IDS = tuple(f"CD-{ordinal:02d}" for ordinal in range(1, 7))
@@ -615,8 +632,8 @@ def _validate_f119_result_channel(value: Any) -> None:
         value,
         {
             "adapter_kinds", "adoption_state", "candidate_schema",
-            "consumer_invariants", "formal_state", "handoff_contract_id",
-            "handoff_phase_ids", "launcher_result_fd",
+            "consumer_invariants", "f111_bridge_requirements", "formal_state",
+            "handoff_contract_id", "handoff_phase_ids", "launcher_result_fd",
             "od20_additive_group_ids", "od20_authority",
             "preparation_artifacts", "r3_field_mappings",
             "r5_executable_preparation", "r6_conformance_preparation",
@@ -672,6 +689,8 @@ def _validate_f119_result_channel(value: Any) -> None:
         raise ReadinessError("F119 channel: OD-20 authority binding changed")
     if channel["preparation_artifacts"] != F119_PREPARATION_ARTIFACTS:
         raise ReadinessError("F119 channel: preparation artifact identity changed")
+    if channel["f111_bridge_requirements"] != F111_F119_BRIDGE_REQUIREMENTS:
+        raise ReadinessError("F119 channel: F111 bridge requirements changed")
     if channel["r5_executable_preparation"] != F119_R5_EXECUTABLE_PREPARATION:
         raise ReadinessError("F119 channel: R5 executable preparation changed")
     if channel["r6_conformance_preparation"] != F119_R6_CONFORMANCE_PREPARATION:
@@ -821,6 +840,11 @@ def validate_requirements(value: Any) -> None:
 
 
 def _mutations() -> list[Callable[[dict[str, Any]], None]]:
+    def bridge(key: str, replacement: Any) -> Callable[[dict[str, Any]], None]:
+        return lambda value: value["f119_result_channel_requirements"][
+            "f111_bridge_requirements"
+        ].__setitem__(key, replacement)
+
     def r5(key: str, replacement: Any) -> Callable[[dict[str, Any]], None]:
         return lambda value: value["f119_result_channel_requirements"][
             "r5_executable_preparation"
@@ -865,6 +889,16 @@ def _mutations() -> list[Callable[[dict[str, Any]], None]]:
         lambda value: value["f119_result_channel_requirements"]["terminal_disposition_ids"].pop(),
         lambda value: value["f119_result_channel_requirements"]["transport_kinds"].pop(),
         lambda value: value["f119_result_channel_requirements"]["adapter_kinds"].pop(),
+        bridge("acceptance_vectors", {"denominator": 9, "numerator": 8}),
+        bridge("adoption_state", "accepted"),
+        bridge("amendment_input_schema", "f111.r30.f119-qualification-amendment-input/v2"),
+        bridge("amendment_input_sha256", "0" * 64),
+        bridge("bridge_accepted", {"denominator": 1, "numerator": 1}),
+        bridge("owner", "F110/Track E"),
+        bridge("packet_manifest_sha256", "0" * 64),
+        bridge("report_sha256", "0" * 64),
+        lambda value: value["f119_result_channel_requirements"]["f111_bridge_requirements"]["requested_repair_ids"].pop(),
+        bridge("requested_repairs", {"denominator": 4, "numerator": 3}),
         r5("adapter_plans", {"denominator": 4, "numerator": 3}),
         r5("adoption_state", "accepted"),
         r5("anonymous_result_channels", {"denominator": 12, "numerator": 11}),
@@ -969,6 +1003,7 @@ def self_test(value: dict[str, Any]) -> tuple[int, int]:
 def summary(value: dict[str, Any], mutation_result: tuple[int, int] | None = None) -> str:
     e3, e4 = value["consumer_requirements"]
     channel = value["f119_result_channel_requirements"]
+    bridge = channel["f111_bridge_requirements"]
     r6 = channel["r6_conformance_preparation"]
     profiles = value["launcher_profile_requirements"]
     gate = value["upstream_gate"]
@@ -997,6 +1032,10 @@ def summary(value: dict[str, Any], mutation_result: tuple[int, int] | None = Non
         f"{len(channel['transport_kinds'])}/2 anonymous transports retained",
         f"{len(channel['consumer_invariants'])}/{len(F119_CONSUMER_INVARIANTS)} channel invariants retained",
         f"{channel['launcher_result_fd']['returned']['numerator']}/{channel['launcher_result_fd']['returned']['denominator']} F100 result-descriptor values consumed",
+        f"{len(bridge)}/{len(F111_F119_BRIDGE_REQUIREMENTS)} F111 bridge requirement leaves retained",
+        f"{len(bridge['requested_repair_ids'])}/4 F111 bridge repair IDs retained",
+        f"{bridge['acceptance_vectors']['numerator']}/{bridge['acceptance_vectors']['denominator']} F111 bridge acceptance vectors retained",
+        f"{bridge['bridge_accepted']['numerator']}/{bridge['bridge_accepted']['denominator']} F119 bridge acceptances consumed",
         "22/22 F119 R5 executable-preparation leaves retained",
         f"{channel['r5_executable_preparation']['anonymous_result_channels']['numerator']}/{channel['r5_executable_preparation']['anonymous_result_channels']['denominator']} R5 anonymous-channel executions retained",
         f"{len(r6)}/{len(F119_R6_CONFORMANCE_PREPARATION)} F119 R6 conformance-preparation fields retained",

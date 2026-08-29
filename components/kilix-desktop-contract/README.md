@@ -198,6 +198,13 @@ it does not validate the complete R6 result, replay any of the 0/84 formal
 vectors, implement any of the 0/4 adapters, or promote either of the 0/2
 candidate schemas.
 
+The requirements also bind the returned F111 consumer amendment as an input to
+that future F119 decision. They retain the exact amendment, report and packet
+manifest identities, all 4/4 requested repair IDs and the 9/9 acceptance-vector
+population while recording bridge acceptance as 0/1. This does not choose an
+F119 representation: Track B still owns verbatim refusal provenance, lifecycle
+variants, reason retention and the multi-case aggregate/partition rule.
+
 Run both readiness surfaces with:
 
 ```sh
