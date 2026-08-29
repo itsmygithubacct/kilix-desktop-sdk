@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import copy
+import hashlib
 from pathlib import Path
 import sys
 from typing import Any, Callable
@@ -84,6 +85,7 @@ E3_PROVIDER_FIXTURES = (
         "f110.provider.kilix-95/v1",
         "daf4e3aa4f7be9708fd026110c2f7de180c0a1ec",
         "f1f659e2e6c8beb41d5ddfb08a17ddce93ee4dca",
+        "da69c4c170a0b097e545479eb9ad7d504957e1847e6ffd08322aa1e7e0ab15f6",
         ("version", "describe", "check", "config-schema", "config-get", "config-set", "screenshot", "migration-dry-run", "read-only-endpoints"),
     ),
     (
@@ -91,6 +93,7 @@ E3_PROVIDER_FIXTURES = (
         "f110.provider.kilix-cap/v1",
         "7cc98eece67f9b6547d5fb0149d483117721a5cf",
         "720cf436517157d35112b2aab2ce3e2e81c97efd",
+        "4493e11b8817b5d9f6cc820e8580e5dd677927b72ab9381b60195b8dbbc7854d",
         ("version", "describe", "check", "config-schema", "config-get", "config-set", "screenshot-unavailable", "migration-dry-run", "read-only-endpoints"),
     ),
     (
@@ -98,6 +101,7 @@ E3_PROVIDER_FIXTURES = (
         "f110.provider.kilix-land-desktop/v1",
         "c0594aeb955352b904f006fed4c9774e496a2d38",
         "394ccac938a1738b30be56f742d0fabd0f3ea610",
+        "aee55e67f65289630c4e17b1becb85d19abac8b2d43ef6f8288d4bb1086dec75",
         ("version", "describe", "check", "config-schema", "config-get", "config-set", "screenshot", "migration-dry-run", "read-only-endpoints"),
     ),
     (
@@ -105,6 +109,7 @@ E3_PROVIDER_FIXTURES = (
         "f110.provider.kilix-tui/v1",
         "63187ee199aa16f71a460ef0e95ec876bee8b787",
         "3387e4305ba7ad840602dfadd5caf04e3949259a",
+        "d3da3a50337bce28eaa8419daf7af441249672dac2f8b97534099bfca38a1277",
         ("version", "describe", "check", "config-schema", "config-get", "config-set", "screenshot", "migration-dry-run", "read-only-endpoints"),
     ),
     (
@@ -112,6 +117,7 @@ E3_PROVIDER_FIXTURES = (
         "f110.provider.kilix-icewm/v1",
         "ea45b9abf13688154fdb4146cdfa4ffdef4399f1",
         "c08eec603dfb400d35bd29272a4d7e4e1b42d9c3",
+        "89bcbf1cdad30043b7d8a4b455fc0d78c746f600633915ad4fbaa0a5933f7a12",
         ("version", "describe", "check", "config-schema", "config-get", "config-set", "screenshot-unavailable", "migration-dry-run", "read-only-endpoints"),
     ),
 )
@@ -232,12 +238,29 @@ def load_command_set(
         zip(commands, expected, strict=True), start=1
     ):
         command_item = _object(
-            item, {"command", "provider_id"}, f"command_set provider {ordinal}"
+            item,
+            {
+                "command", "entry_path", "entry_sha256", "provider_id",
+                "source_commit", "source_tree",
+            },
+            f"command_set provider {ordinal}",
         )
         provider_id = provider["provider_id"]
         if command_item["provider_id"] != provider_id:
             raise ReadinessError(
                 f"command_set provider {ordinal}: expected {provider_id}"
+            )
+        if command_item["source_commit"] != provider["commit"]:
+            raise ReadinessError(
+                f"command_set provider {ordinal}: source commit changed"
+            )
+        if command_item["source_tree"] != provider["tree"]:
+            raise ReadinessError(
+                f"command_set provider {ordinal}: source tree changed"
+            )
+        if command_item["entry_sha256"] != provider["entry_sha256"]:
+            raise ReadinessError(
+                f"command_set provider {ordinal}: entry digest changed"
             )
         command = command_item["command"]
         if (
@@ -252,11 +275,40 @@ def load_command_set(
             raise ReadinessError(
                 f"command_set provider {ordinal}: command must start with an absolute executable"
             )
+        entry_path_value = command_item["entry_path"]
+        if (
+            not isinstance(entry_path_value, str)
+            or not entry_path_value
+            or "\0" in entry_path_value
+            or not Path(entry_path_value).is_absolute()
+            or command.count(entry_path_value) != 1
+        ):
+            raise ReadinessError(
+                f"command_set provider {ordinal}: entry path is not one exact command member"
+            )
+        entry_path = Path(entry_path_value)
+        try:
+            entry_path.lstat()
+            entry_digest = hashlib.sha256(entry_path.read_bytes()).hexdigest()
+        except OSError as error:
+            raise ReadinessError(
+                f"command_set provider {ordinal}: cannot read entry: {error}"
+            ) from error
+        if entry_path.is_symlink() or not entry_path.is_file():
+            raise ReadinessError(
+                f"command_set provider {ordinal}: entry is not a regular non-symlink"
+            )
+        if entry_digest != command_item["entry_sha256"]:
+            raise ReadinessError(
+                f"command_set provider {ordinal}: entry bytes changed"
+            )
         result.append(
             MatrixProvider(
                 provider_id,
                 tuple(command),
                 tuple(provider["expected_checks"]),
+                entry_path,
+                entry_digest,
             )
         )
     return tuple(result)
@@ -347,15 +399,20 @@ def _validate_e3(value: Any) -> None:
     ):
         item = _object(
             provider,
-            {"child_profile_id", "commit", "expected_checks", "provider_id", "tree"},
+            {
+                "child_profile_id", "commit", "entry_sha256", "expected_checks",
+                "provider_id", "tree",
+            },
             f"TE-E3 provider {ordinal}",
         )
-        provider_id, profile_id, commit, tree, checks = expected
+        provider_id, profile_id, commit, tree, entry_sha256, checks = expected
         observed = (
             item["provider_id"], item["child_profile_id"], item["commit"],
-            item["tree"], tuple(item["expected_checks"]),
+            item["tree"], item["entry_sha256"], tuple(item["expected_checks"]),
         )
-        if observed != (provider_id, profile_id, commit, tree, checks):
+        if observed != (
+            provider_id, profile_id, commit, tree, entry_sha256, checks
+        ):
             raise ReadinessError(f"TE-E3 provider {ordinal}: exact fixture changed")
     if sum(len(provider["expected_checks"]) for provider in providers) != 45:
         raise ReadinessError("TE-E3: one-pass check occurrence population is not 45")
@@ -443,6 +500,7 @@ def _mutations() -> list[Callable[[dict[str, Any]], None]]:
         lambda value: value["upstream_gate"]["common_case_ids"].pop(),
         lambda value: value["upstream_gate"].__setitem__("state", "accepted"),
         lambda value: value["consumer_requirements"][0]["providers"].pop(),
+        lambda value: value["consumer_requirements"][0]["providers"][0].__setitem__("entry_sha256", "0" * 64),
         lambda value: value["consumer_requirements"][0]["provider_environment_names"].pop(),
         lambda value: value["consumer_requirements"][1]["migration_sequence"].reverse(),
         lambda value: value["local_evidence"]["e2_host_integration"].__setitem__("commit", "0" * 40),

@@ -94,6 +94,8 @@ class MatrixProvider:
     provider_id: str
     command: tuple[str, ...]
     expected_checks: tuple[str, ...]
+    entry_path: Path | None = None
+    entry_sha256: str | None = None
 
 
 @dataclass(frozen=True)
@@ -449,10 +451,12 @@ def run_conformance_matrix(
             raise ConformanceError(
                 f"conformance matrix checks for {provider.provider_id} are empty"
             )
+        _verify_matrix_entry(provider, "before matrix")
 
     reports: list[ConformanceReport] = []
     for _pass in range(passes):
         for provider in population:
+            _verify_matrix_entry(provider, "before invocation")
             report = run_conformance(
                 provider.command,
                 kilix_home=kilix_home,
@@ -471,8 +475,33 @@ def run_conformance_matrix(
                 )
             if report.adapter_stage:
                 raise ConformanceError("conformance matrix did not run in final mode")
+            _verify_matrix_entry(provider, "after invocation")
             reports.append(report)
     return MatrixReport(passes, population, tuple(reports))
+
+
+def _verify_matrix_entry(provider: MatrixProvider, phase: str) -> None:
+    if provider.entry_path is None and provider.entry_sha256 is None:
+        return
+    if provider.entry_path is None or provider.entry_sha256 is None:
+        raise ConformanceError(
+            f"conformance matrix entry binding is incomplete for {provider.provider_id}"
+        )
+    try:
+        status = provider.entry_path.lstat()
+        digest = hashlib.sha256(provider.entry_path.read_bytes()).hexdigest()
+    except OSError as error:
+        raise ConformanceError(
+            f"conformance matrix entry for {provider.provider_id} is unreadable {phase}: {error}"
+        ) from error
+    if not stat.S_ISREG(status.st_mode) or provider.entry_path.is_symlink():
+        raise ConformanceError(
+            f"conformance matrix entry for {provider.provider_id} is not a regular non-symlink {phase}"
+        )
+    if digest != provider.entry_sha256:
+        raise ConformanceError(
+            f"conformance matrix entry digest changed for {provider.provider_id} {phase}"
+        )
 
 
 def _run_conformance(

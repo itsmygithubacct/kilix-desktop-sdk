@@ -166,8 +166,11 @@ turn the local E3/E4 construction evidence into release acceptance.
 The common developer gate takes a canonical command-set document with schema
 `kilix.desktop.conformance-command-set/v1`. Its `commands` array must contain
 the exact five provider IDs, in contract order, and each command must start
-with an absolute executable. It runs two fresh final-mode passes and refuses a
-changed provider identity or ordered nine-check tuple:
+with an absolute executable. Each row also binds the expected source commit,
+source tree, absolute logical entry path and entry SHA-256. The gate checks the
+entry as a regular non-symlink before and after every invocation. It runs two
+fresh final-mode passes and refuses source-identity, entry-byte, provider-ID or
+ordered nine-check-tuple drift:
 
 ```sh
 make common-conformance-gate \

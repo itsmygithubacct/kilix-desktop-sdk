@@ -85,6 +85,7 @@
         {
           "child_profile_id": "f110.provider.kilix-95/v1",
           "commit": "daf4e3aa4f7be9708fd026110c2f7de180c0a1ec",
+          "entry_sha256": "da69c4c170a0b097e545479eb9ad7d504957e1847e6ffd08322aa1e7e0ab15f6",
           "expected_checks": [
             "version",
             "describe",
@@ -102,6 +103,7 @@
         {
           "child_profile_id": "f110.provider.kilix-cap/v1",
           "commit": "7cc98eece67f9b6547d5fb0149d483117721a5cf",
+          "entry_sha256": "4493e11b8817b5d9f6cc820e8580e5dd677927b72ab9381b60195b8dbbc7854d",
           "expected_checks": [
             "version",
             "describe",
@@ -119,6 +121,7 @@
         {
           "child_profile_id": "f110.provider.kilix-land-desktop/v1",
           "commit": "c0594aeb955352b904f006fed4c9774e496a2d38",
+          "entry_sha256": "aee55e67f65289630c4e17b1becb85d19abac8b2d43ef6f8288d4bb1086dec75",
           "expected_checks": [
             "version",
             "describe",
@@ -136,6 +139,7 @@
         {
           "child_profile_id": "f110.provider.kilix-tui/v1",
           "commit": "63187ee199aa16f71a460ef0e95ec876bee8b787",
+          "entry_sha256": "d3da3a50337bce28eaa8419daf7af441249672dac2f8b97534099bfca38a1277",
           "expected_checks": [
             "version",
             "describe",
@@ -153,6 +157,7 @@
         {
           "child_profile_id": "f110.provider.kilix-icewm/v1",
           "commit": "ea45b9abf13688154fdb4146cdfa4ffdef4399f1",
+          "entry_sha256": "89bcbf1cdad30043b7d8a4b455fc0d78c746f600633915ad4fbaa0a5933f7a12",
           "expected_checks": [
             "version",
             "describe",

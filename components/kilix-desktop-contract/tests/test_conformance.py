@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import os
 from pathlib import Path
 import subprocess
@@ -177,6 +178,20 @@ class ConformanceTests(unittest.TestCase):
             ("version",),
         )
         with self.assertRaisesRegex(ConformanceError, "check tuple changed"):
+            run_conformance_matrix((provider,), passes=1, **self.PROFILE)
+
+    def test_common_matrix_rejects_entry_digest_drift_before_execution(self) -> None:
+        provider = MatrixProvider(
+            "fake-provider",
+            (sys.executable, str(FAKE)),
+            ("version",),
+            FAKE,
+            "0" * 64,
+        )
+        self.assertNotEqual(
+            hashlib.sha256(FAKE.read_bytes()).hexdigest(), provider.entry_sha256
+        )
+        with self.assertRaisesRegex(ConformanceError, "entry digest changed"):
             run_conformance_matrix((provider,), passes=1, **self.PROFILE)
 
 
