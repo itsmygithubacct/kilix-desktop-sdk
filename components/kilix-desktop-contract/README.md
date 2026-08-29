@@ -161,7 +161,17 @@ migration/rollback sequence.
 These are construction inputs, not accepted launcher profiles. The published
 OD-14 correction remains under independent review and 0/10 protected return
 identities have been consumed, so the checker fails closed if the correction
-or the OD-13 component is promoted without an accepted return packet:
+or the OD-13 component is promoted without an accepted return packet.
+
+The same requirements document also binds F119 R4's authority-independent
+result-channel preparation without treating it as a formal return. It retains
+18/18 candidate fields, 6/6 inherited field mappings, 12/12 OD-20 additions,
+4/4 adapter kinds, 12/12 handoff phases, 11/11 transitions, 6/6 terminal
+dispositions, 2/2 anonymous transport kinds and 10/10 consumer invariants.
+The F100-owned launcher result descriptor remains consumed in 0/1 cases;
+formal F119 P1 entry remains 0/1.
+
+Run both readiness surfaces with:
 
 ```sh
 make launcher-consumer-readiness UV=/absolute/path/to/release-pinned-uv-0.12.5

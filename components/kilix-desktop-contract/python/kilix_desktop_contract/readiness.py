@@ -209,6 +209,44 @@ PROFILE_INTERFACE_CONTROLS = (
     "one-bounded-canonical-outer-result",
     "exact-profile-and-result-schema-digests",
 )
+F119_ADAPTER_KINDS = ("unittest", "plain-assert", "shell", "make")
+F119_CONSUMER_INVARIANTS = (
+    "anonymous-transport-with-null-path",
+    "kernel-type-attested-before-subject-start",
+    "adapter-retains-only-reader",
+    "launcher-receives-only-writer",
+    "adapter-writer-copy-closed-before-subject",
+    "subject-and-descendants-receive-zero-channel-access",
+    "one-bounded-canonical-record",
+    "descendants-writers-eof-and-launcher-final-before-grade",
+    "grade-direct-bounded-in-memory-bytes",
+    "persistent-copy-never-authoritative",
+)
+F119_PHASE_IDS = tuple(f"CH-{ordinal:02d}" for ordinal in range(1, 13))
+F119_TRANSITION_IDS = tuple(f"CT-{ordinal:02d}" for ordinal in range(1, 12))
+F119_DISPOSITION_IDS = tuple(f"CD-{ordinal:02d}" for ordinal in range(1, 7))
+F119_ADDITIVE_GROUP_IDS = tuple(f"OD20-A{ordinal:02d}" for ordinal in range(1, 13))
+F119_R3_FIELD_MAPPINGS = (
+    "id:transport.object_identity",
+    "writer_identity:writer_endpoint.holder",
+    "bounded_bytes:bounds.max_bytes",
+    "records_seen:terminal_record.records_seen",
+    "unique_to_run:transport.unique_to_run",
+    "descendant_writable:writer_endpoint.descendant_inheritable-inverse",
+)
+F119_REQUIRED_FIELDS = (
+    "schema", "run_id", "case_id", "adapter", "subject_uid", "creator_uid",
+    "transport", "writer_endpoint", "reader_endpoint", "subject_access",
+    "bounds", "terminal_record", "finality", "grade_source",
+    "persistent_capture", "kernel_attestation", "handoff", "od20",
+)
+F119_PREPARATION_ARTIFACTS = {
+    "adapter_handoff_sha256": "7d687df52d7b910d18d33b54d71743903bd13f9d735e84ee8e232fb8815618c1",
+    "packet_manifest_sha256": "7589fe45120192a6f937ab17442fd23b2603638b7b67facd569a4727391f56a3",
+    "readiness_record_sha256": "46b6fd213e4909f8a9354ef9f40ad9ec88bedcc4b4595a1929e2eeb8da69a0a3",
+    "result_channel_schema_sha256": "f65b092332fadb05dbbba29a7d45bbeaf808b4eda7e891eefa797dd325edf11e",
+    "schema_adapter_delta_sha256": "aa90d728623d47b53c7a92bb4091ec85cf39512799553b5e6e059dc5ab550efe",
+}
 E1_PARENT = {
     "commit": "b34fa9b85cad80cbfb33588378fac50f7fda21d3",
     "inner_manifest_members": 49,
@@ -491,6 +529,69 @@ def _validate_launcher_profiles(value: Any) -> None:
         raise ReadinessError("launcher profiles: interface-control population changed")
 
 
+def _validate_f119_result_channel(value: Any) -> None:
+    channel = _object(
+        value,
+        {
+            "adapter_kinds", "adoption_state", "candidate_schema",
+            "consumer_invariants", "formal_state", "handoff_contract_id",
+            "handoff_phase_ids", "launcher_result_fd",
+            "od20_additive_group_ids", "od20_authority",
+            "preparation_artifacts", "r3_field_mappings",
+            "required_top_level_fields", "schema", "success_transition_ids",
+            "terminal_disposition_ids", "transport_kinds",
+        },
+        "f119_result_channel_requirements",
+    )
+    if channel["schema"] != "kilix.track-e.f119-result-channel-consumer/v1":
+        raise ReadinessError("F119 channel: consumer schema changed")
+    if channel["adoption_state"] != "preparation-only-accepted-return-pending":
+        raise ReadinessError("F119 channel: preparation was promoted without acceptance")
+    if channel["candidate_schema"] != "kilix.test.od20-result-channel/v1":
+        raise ReadinessError("F119 channel: preparation schema identity changed")
+    if tuple(channel["adapter_kinds"]) != F119_ADAPTER_KINDS:
+        raise ReadinessError("F119 channel: adapter population changed")
+    if tuple(channel["consumer_invariants"]) != F119_CONSUMER_INVARIANTS:
+        raise ReadinessError("F119 channel: consumer invariant population changed")
+    if tuple(channel["required_top_level_fields"]) != F119_REQUIRED_FIELDS:
+        raise ReadinessError("F119 channel: required field population changed")
+    if tuple(channel["r3_field_mappings"]) != F119_R3_FIELD_MAPPINGS:
+        raise ReadinessError("F119 channel: R3 field mapping changed")
+    if tuple(channel["od20_additive_group_ids"]) != F119_ADDITIVE_GROUP_IDS:
+        raise ReadinessError("F119 channel: OD-20 additive population changed")
+    if tuple(channel["handoff_phase_ids"]) != F119_PHASE_IDS:
+        raise ReadinessError("F119 channel: handoff phase population changed")
+    if tuple(channel["success_transition_ids"]) != F119_TRANSITION_IDS:
+        raise ReadinessError("F119 channel: handoff transition population changed")
+    if tuple(channel["terminal_disposition_ids"]) != F119_DISPOSITION_IDS:
+        raise ReadinessError("F119 channel: terminal disposition population changed")
+    if channel["transport_kinds"] != ["anonymous_pipe", "unnamed_socketpair"]:
+        raise ReadinessError("F119 channel: anonymous transport population changed")
+    if channel["handoff_contract_id"] != "kilix.f119.adapter-channel-handoff/v1":
+        raise ReadinessError("F119 channel: handoff contract identity changed")
+    if channel["launcher_result_fd"] != {
+        "owner": "Track A / F100 accepted launcher profile",
+        "returned": {"denominator": 1, "numerator": 0},
+        "value": None,
+    }:
+        raise ReadinessError("F119 channel: unreturned F100 result descriptor consumed")
+    if channel["formal_state"] != {
+        "adapters_implemented": {"denominator": 4, "numerator": 0},
+        "p1_entered": {"denominator": 1, "numerator": 0},
+        "schema_freezes": {"denominator": 2, "numerator": 0},
+        "vectors_executed": {"denominator": 84, "numerator": 0},
+    }:
+        raise ReadinessError("F119 channel: formal state was overstated")
+    if channel["od20_authority"] != {
+        "authority_id": "OD-20",
+        "owner_decision_sha256": "b7c70acba32ca74518868e894330c6c8158f4436765d0a556a258fe4c4f1de3e",
+        "ratification_status": "RATIFIED_AS_FILED",
+    }:
+        raise ReadinessError("F119 channel: OD-20 authority binding changed")
+    if channel["preparation_artifacts"] != F119_PREPARATION_ARTIFACTS:
+        raise ReadinessError("F119 channel: preparation artifact identity changed")
+
+
 def _validate_e3(value: Any) -> None:
     e3 = _object(
         value,
@@ -602,8 +703,9 @@ def validate_requirements(value: Any) -> None:
     document = _object(
         value,
         {
-            "consumer_requirements", "launcher_profile_requirements",
-            "local_evidence", "schema", "status", "upstream_gate",
+            "consumer_requirements", "f119_result_channel_requirements",
+            "launcher_profile_requirements", "local_evidence", "schema",
+            "status", "upstream_gate",
         },
         "requirements",
     )
@@ -616,6 +718,7 @@ def validate_requirements(value: Any) -> None:
         raise ReadinessError("requirements: consumer population is not two")
     _validate_e3(consumers[0])
     _validate_e4(consumers[1])
+    _validate_f119_result_channel(document["f119_result_channel_requirements"])
     _validate_launcher_profiles(document["launcher_profile_requirements"])
     local = _object(
         document["local_evidence"],
@@ -651,6 +754,21 @@ def _mutations() -> list[Callable[[dict[str, Any]], None]]:
         lambda value: value["launcher_profile_requirements"]["e3_profile"]["child_profiles"].pop(),
         lambda value: value["launcher_profile_requirements"]["e3_profile"]["child_profiles"][1].__setitem__("child_kind", "python-script"),
         lambda value: value["launcher_profile_requirements"]["interface_controls"].pop(),
+        lambda value: value["f119_result_channel_requirements"].__setitem__("adoption_state", "accepted"),
+        lambda value: value["f119_result_channel_requirements"].__setitem__("candidate_schema", "kilix.test.od20-result-channel/v2"),
+        lambda value: value["f119_result_channel_requirements"]["consumer_invariants"].pop(),
+        lambda value: value["f119_result_channel_requirements"]["formal_state"]["adapters_implemented"].__setitem__("numerator", 1),
+        lambda value: value["f119_result_channel_requirements"]["formal_state"]["p1_entered"].__setitem__("numerator", 1),
+        lambda value: value["f119_result_channel_requirements"]["handoff_phase_ids"].pop(),
+        lambda value: value["f119_result_channel_requirements"]["launcher_result_fd"]["returned"].__setitem__("numerator", 1),
+        lambda value: value["f119_result_channel_requirements"]["od20_additive_group_ids"].pop(),
+        lambda value: value["f119_result_channel_requirements"]["preparation_artifacts"].__setitem__("readiness_record_sha256", "0" * 64),
+        lambda value: value["f119_result_channel_requirements"]["r3_field_mappings"].pop(),
+        lambda value: value["f119_result_channel_requirements"]["required_top_level_fields"].pop(),
+        lambda value: value["f119_result_channel_requirements"]["success_transition_ids"].pop(),
+        lambda value: value["f119_result_channel_requirements"]["terminal_disposition_ids"].pop(),
+        lambda value: value["f119_result_channel_requirements"]["transport_kinds"].pop(),
+        lambda value: value["f119_result_channel_requirements"]["adapter_kinds"].pop(),
         lambda value: value["local_evidence"]["e2_host_integration"].__setitem__("commit", "0" * 40),
         lambda value: value["local_evidence"]["e2_host_integration"]["focused_tests"].__setitem__("passed", 110),
         lambda value: value["local_evidence"]["e2_host_integration"]["focused_tests"].__setitem__("population", 113),
@@ -700,6 +818,7 @@ def self_test(value: dict[str, Any]) -> tuple[int, int]:
 
 def summary(value: dict[str, Any], mutation_result: tuple[int, int] | None = None) -> str:
     e3, e4 = value["consumer_requirements"]
+    channel = value["f119_result_channel_requirements"]
     profiles = value["launcher_profile_requirements"]
     gate = value["upstream_gate"]
     parts = [
@@ -717,6 +836,16 @@ def summary(value: dict[str, Any], mutation_result: tuple[int, int] | None = Non
         f"{len(profiles['e3_profile']['child_profiles'])}/{len(E3_PROFILE_CHILDREN)} E3 child-table rows retained",
         f"{len({item['child_kind'] for item in profiles['e3_profile']['child_profiles']})}/3 E3 child kinds retained",
         f"{len(profiles['interface_controls'])}/{len(PROFILE_INTERFACE_CONTROLS)} launcher interface controls retained",
+        f"{len(channel['required_top_level_fields'])}/{len(F119_REQUIRED_FIELDS)} F119 channel fields retained",
+        f"{len(channel['r3_field_mappings'])}/{len(F119_R3_FIELD_MAPPINGS)} F119 R3 field mappings retained",
+        f"{len(channel['od20_additive_group_ids'])}/{len(F119_ADDITIVE_GROUP_IDS)} OD-20 additive groups retained",
+        f"{len(channel['adapter_kinds'])}/{len(F119_ADAPTER_KINDS)} F119 adapter kinds retained",
+        f"{len(channel['handoff_phase_ids'])}/{len(F119_PHASE_IDS)} result-channel phases retained",
+        f"{len(channel['success_transition_ids'])}/{len(F119_TRANSITION_IDS)} result-channel transitions retained",
+        f"{len(channel['terminal_disposition_ids'])}/{len(F119_DISPOSITION_IDS)} channel dispositions retained",
+        f"{len(channel['transport_kinds'])}/2 anonymous transports retained",
+        f"{len(channel['consumer_invariants'])}/{len(F119_CONSUMER_INVARIANTS)} channel invariants retained",
+        f"{channel['launcher_result_fd']['returned']['numerator']}/{channel['launcher_result_fd']['returned']['denominator']} F100 result-descriptor values consumed",
         f"{len(e4['command_templates'])}/{len(E4_COMMAND_TEMPLATES)} E4 command templates retained",
         f"{len(e4['migration_sequence'])}/9 E4 migration/rollback commands retained",
         "9/9 E2 local-evidence leaves retained",

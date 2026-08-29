@@ -295,6 +295,149 @@
       ]
     }
   ],
+  "f119_result_channel_requirements": {
+    "adapter_kinds": [
+      "unittest",
+      "plain-assert",
+      "shell",
+      "make"
+    ],
+    "adoption_state": "preparation-only-accepted-return-pending",
+    "candidate_schema": "kilix.test.od20-result-channel/v1",
+    "consumer_invariants": [
+      "anonymous-transport-with-null-path",
+      "kernel-type-attested-before-subject-start",
+      "adapter-retains-only-reader",
+      "launcher-receives-only-writer",
+      "adapter-writer-copy-closed-before-subject",
+      "subject-and-descendants-receive-zero-channel-access",
+      "one-bounded-canonical-record",
+      "descendants-writers-eof-and-launcher-final-before-grade",
+      "grade-direct-bounded-in-memory-bytes",
+      "persistent-copy-never-authoritative"
+    ],
+    "formal_state": {
+      "adapters_implemented": {
+        "denominator": 4,
+        "numerator": 0
+      },
+      "p1_entered": {
+        "denominator": 1,
+        "numerator": 0
+      },
+      "schema_freezes": {
+        "denominator": 2,
+        "numerator": 0
+      },
+      "vectors_executed": {
+        "denominator": 84,
+        "numerator": 0
+      }
+    },
+    "handoff_contract_id": "kilix.f119.adapter-channel-handoff/v1",
+    "handoff_phase_ids": [
+      "CH-01",
+      "CH-02",
+      "CH-03",
+      "CH-04",
+      "CH-05",
+      "CH-06",
+      "CH-07",
+      "CH-08",
+      "CH-09",
+      "CH-10",
+      "CH-11",
+      "CH-12"
+    ],
+    "launcher_result_fd": {
+      "owner": "Track A / F100 accepted launcher profile",
+      "returned": {
+        "denominator": 1,
+        "numerator": 0
+      },
+      "value": null
+    },
+    "od20_additive_group_ids": [
+      "OD20-A01",
+      "OD20-A02",
+      "OD20-A03",
+      "OD20-A04",
+      "OD20-A05",
+      "OD20-A06",
+      "OD20-A07",
+      "OD20-A08",
+      "OD20-A09",
+      "OD20-A10",
+      "OD20-A11",
+      "OD20-A12"
+    ],
+    "od20_authority": {
+      "authority_id": "OD-20",
+      "owner_decision_sha256": "b7c70acba32ca74518868e894330c6c8158f4436765d0a556a258fe4c4f1de3e",
+      "ratification_status": "RATIFIED_AS_FILED"
+    },
+    "preparation_artifacts": {
+      "adapter_handoff_sha256": "7d687df52d7b910d18d33b54d71743903bd13f9d735e84ee8e232fb8815618c1",
+      "packet_manifest_sha256": "7589fe45120192a6f937ab17442fd23b2603638b7b67facd569a4727391f56a3",
+      "readiness_record_sha256": "46b6fd213e4909f8a9354ef9f40ad9ec88bedcc4b4595a1929e2eeb8da69a0a3",
+      "result_channel_schema_sha256": "f65b092332fadb05dbbba29a7d45bbeaf808b4eda7e891eefa797dd325edf11e",
+      "schema_adapter_delta_sha256": "aa90d728623d47b53c7a92bb4091ec85cf39512799553b5e6e059dc5ab550efe"
+    },
+    "r3_field_mappings": [
+      "id:transport.object_identity",
+      "writer_identity:writer_endpoint.holder",
+      "bounded_bytes:bounds.max_bytes",
+      "records_seen:terminal_record.records_seen",
+      "unique_to_run:transport.unique_to_run",
+      "descendant_writable:writer_endpoint.descendant_inheritable-inverse"
+    ],
+    "required_top_level_fields": [
+      "schema",
+      "run_id",
+      "case_id",
+      "adapter",
+      "subject_uid",
+      "creator_uid",
+      "transport",
+      "writer_endpoint",
+      "reader_endpoint",
+      "subject_access",
+      "bounds",
+      "terminal_record",
+      "finality",
+      "grade_source",
+      "persistent_capture",
+      "kernel_attestation",
+      "handoff",
+      "od20"
+    ],
+    "schema": "kilix.track-e.f119-result-channel-consumer/v1",
+    "success_transition_ids": [
+      "CT-01",
+      "CT-02",
+      "CT-03",
+      "CT-04",
+      "CT-05",
+      "CT-06",
+      "CT-07",
+      "CT-08",
+      "CT-09",
+      "CT-10",
+      "CT-11"
+    ],
+    "terminal_disposition_ids": [
+      "CD-01",
+      "CD-02",
+      "CD-03",
+      "CD-04",
+      "CD-05",
+      "CD-06"
+    ],
+    "transport_kinds": [
+      "anonymous_pipe",
+      "unnamed_socketpair"
+    ]
+  },
   "launcher_profile_requirements": {
     "adoption_state": "construction-inputs-only-upstream-review-pending",
     "e1_profile": {
