@@ -171,6 +171,14 @@ dispositions, 2/2 anonymous transport kinds and 10/10 consumer invariants.
 The F100-owned launcher result descriptor remains consumed in 0/1 cases;
 formal F119 P1 entry remains 0/1.
 
+`kilix_desktop_contract.result_channel.parse_result_channel` is the F110-side
+consumer check for that future return. It accepts only bytes read directly
+from the anonymous endpoint, applies an outer trusted byte bound before JSON
+parsing, requires the exact 18/18-field prepared envelope, and rejects all
+32/32 prepared negative mutations. It does not construct any of the 4/4 F119
+adapters, select the 0/1 unreturned launcher descriptor, or promote either of
+the 0/2 candidate schemas.
+
 Run both readiness surfaces with:
 
 ```sh
