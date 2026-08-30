@@ -41,3 +41,41 @@ the imported trees and are the next behavioural work, not a documentation gap:
 - `kilix-launcher` is still shipped by `components/kilix-tui-utils/install.sh`.
 
 A repository-wide grep gate asserting zero peer imports is therefore **0/1**.
+
+## Finding: the harness cannot express a monorepo component's identity
+
+This is what the import rehearsal was for, and it found something.
+
+`kilix_desktop_contract.conformance._verify_matrix_source` binds each provider
+by running, at the provider's `source_root`:
+
+```sh
+git -C <source_root> rev-parse --show-toplevel HEAD HEAD^{tree}
+```
+
+and requiring the three results to equal `source_root`, `source_commit` and
+`source_tree` exactly. That model assumes **one Git repository per provider**.
+Measured against this parent for `kilix-95`:
+
+| Field | What the harness reads | What the binding requires |
+| --- | --- | --- |
+| `--show-toplevel` | the parent repository root | the provider directory |
+| `HEAD` | the parent's commit | `daf4e3aa4f7be9708fd026110c2f7de180c0a1ec` |
+| `HEAD^{tree}` | the parent's tree | `f1f659e2e6c8beb41d5ddfb08a17ddce93ee4dca` |
+
+All three differ, so the check raises `conformance matrix source identity
+changed` for **4/4** in-tree providers. Only `kilix-icewm`, which stays a
+separate repository, still satisfies it — **1/5**.
+
+Consequently the five-provider matrix has **not** been re-run against this
+layout, and this candidate does not claim it. What the candidate does claim, and
+what is independently checkable, is tree identity: **5/5** component trees here
+are byte-identical to the revisions the 90/90 matrix was measured against, and
+**4/4** of the in-tree ones are the exact `source_tree` values in
+`providers.toml`. The same bytes, at a different path.
+
+Closing this needs the contract's source-binding surface to gain a component
+identity — a repository root plus a component path plus that path's subtree —
+rather than a repository HEAD. That is a **contract change**, so it belongs to
+the E1 freeze, which is itself blocked. It is recorded here, not worked around:
+no binding was loosened and no check was disabled to make a number look better.
