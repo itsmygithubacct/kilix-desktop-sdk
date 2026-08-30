@@ -67,12 +67,53 @@ All three differ, so the check raises `conformance matrix source identity
 changed` for **4/4** in-tree providers. Only `kilix-icewm`, which stays a
 separate repository, still satisfies it — **1/5**.
 
-Consequently the five-provider matrix has **not** been re-run against this
-layout, and this candidate does not claim it. What the candidate does claim, and
-what is independently checkable, is tree identity: **5/5** component trees here
-are byte-identical to the revisions the 90/90 matrix was measured against, and
-**4/4** of the in-tree ones are the exact `source_tree` values in
-`providers.toml`. The same bytes, at a different path.
+### The matrix was then actually run against this layout — three ways
+
+Reading the code is not evidence. All four in-tree providers were **built from
+this monorepo** (Cap and Land compiled from their `components/` roots with the
+19/19 upstream submodules materialised at their manifest gitlinks), and the
+matrix was run through the harness's own API, unmodified, against the
+E2-integrated Kilix host at `014e55b9…` (tree `68618b92…`):
+
+| Run | Source binding | Population | Result |
+| --- | --- | --- | --- |
+| **A** | frozen, per-repository | 5/5 | `REFUSED — conformance matrix source identity changed for kilix-95 before matrix` |
+| **B** | omitted (the harness permits it) | 5/5 | `REFUSED — conformance matrix entry digest changed for kilix-land-desktop before matrix` |
+| **C** | omitted | 4/5 | **PASS — 4/5 providers, 2/2 passes, 8/8 invocations, 72/72 checks** |
+
+Run A confirms the finding above by execution rather than by reading. Run C is
+the useful number: with the source binding absent — **0/5 source identities
+verified, and this candidate does not claim otherwise** — the relocated
+providers **behaviourally conform at their new paths**, 72/72 checks over two
+fresh passes.
+
+### Second finding: Land's binary is not reproducible from a new root
+
+Run B refuses before any provider executes, and the cause is not the contract.
+Rebuilt from `components/`, three of the four in-tree entries reproduce their
+frozen `entry_sha256` **byte for byte** — including Cap's compiled binary at
+`4493e11b…`. Kilix Land's does not: bound `aee55e67…`, rebuilt `eecaad14…`.
+
+Measured cause: Land compiles with `CFLAGS ?= -O2 -g` and Cap does not, so
+Land's binary embeds its absolute build path — **16** occurrences of the
+monorepo root, against **0** in Cap's. Rebuilding Land with
+`-ffile-prefix-map` pointing back at the old root cuts that to **6** and still
+does not reproduce the digest; the remaining six enter through the sub-makes
+(`kilix-game-kit`, `kilix-ui`, `kilix-top-down-engine`), which pass absolute
+build directories of their own.
+
+**A relocation therefore changes Land's entry digest by construction**, and the
+frozen requirements pin that digest. Closing it means making Land's build
+path-independent — a change to `components/kilix-land-desktop` and its
+sub-makes, which moves the tree the 90/90 matrix was measured against and so
+must land as reviewed component work, not as a build-time flag someone passes
+to make a number pass. It is recorded, not papered over: the run that would
+have needed it is reported as REFUSED above.
+
+Tree identity still holds and is independently checkable: **5/5** component
+trees here are byte-identical to the revisions the 90/90 matrix was measured
+against, and **4/4** in-tree ones are the exact `source_tree` values in
+`providers.toml`.
 
 Closing this needs the contract's source-binding surface to gain a component
 identity — a repository root plus a component path plus that path's subtree —
