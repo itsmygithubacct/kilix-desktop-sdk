@@ -12,7 +12,7 @@ import subprocess, sys, pathlib, tomllib
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 EXPECTED_TOP = {
-    ".reuse", "LICENSES", "README.md", "components", "docs",
+    ".gitmodules", ".reuse", "LICENSES", "README.md", "components", "docs",
     "integration", "manifest.toml", "tools",
 }
 

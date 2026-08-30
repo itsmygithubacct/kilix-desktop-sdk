@@ -1,0 +1,22 @@
+# Upstream submodules retained from the imported components.
+#
+# Each component kept its own .gitmodules in its imported tree, byte identical
+# to its source revision. Git only reads the root file, so those nested ones are
+# inert in this parent and are retained as history, not as configuration. This
+# file is the one that works: it re-declares the same upstream repositories at
+# their monorepo paths, so `git submodule update --init --recursive` materialises
+# exactly what Cap and Land pinned.
+#
+# These are upstream, not owned: they stay gitlinks and are never vendored.
+
+[submodule "components/kilix-cap/third_party/kilix-game-sdk"]
+	path = components/kilix-cap/third_party/kilix-game-sdk
+	url = https://github.com/itsmygithubacct/kilix-game-sdk.git
+
+[submodule "components/kilix-land-desktop/third_party/kilix-game-sdk"]
+	path = components/kilix-land-desktop/third_party/kilix-game-sdk
+	url = https://github.com/itsmygithubacct/kilix-game-sdk.git
+
+[submodule "components/kilix-land-desktop/third_party/kilix-mask"]
+	path = components/kilix-land-desktop/third_party/kilix-mask
+	url = https://github.com/itsmygithubacct/kilix-mask.git
