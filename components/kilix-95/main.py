@@ -1,0 +1,1385 @@
+#!/usr/bin/env python3
+"""kilix desktop — a Windows 95-style desktop environment in a kilix pane.
+
+The whole desktop is rendered as pixels (PIL framebuffer, blitted through
+the kitty graphics protocol via private Kilix 95 session files
+uses, or inline t=d in streamed sessions) with pixel-precise SGR mouse
+input. Start bar, overlapping windows, desktop launchers, a file manager,
+Notepad, an image viewer and a Settings app that edits the kilix config
+live. Programs launch into new kilix tabs over kitty remote control.
+
+Usage:  kilix desktop                 (from inside kilix)
+        main.py --screenshot out.png --scene start   (headless render, tests)
+Quit :  Start ▸ Shut Down…  ·  Ctrl+Alt+Q
+"""
+import argparse
+import base64
+import fcntl
+import os
+import select
+import shutil
+import signal
+import stat
+import sys
+import tempfile
+import time
+
+_here = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, _here)
+
+# Protocol metadata must be available before provider storage, Pillow or the
+# host SDK is touched. Launch and screenshot are translated onto the existing
+# foreground entry points so their mature cleanup/render paths remain the one
+# implementation.
+if __name__ == "__main__":
+    import provider_protocol as _provider_protocol
+    _provider_argv = _provider_protocol.dispatch(sys.argv[1:])
+    if _provider_argv is not None:
+        sys.argv[1:] = _provider_argv
+    del _provider_argv, _provider_protocol
+
+# Set the bytecode destination before importing any project module.  This also
+# keeps a direct `python3 main.py` launch from creating __pycache__ in the tree.
+def _normalized(path):
+    return os.path.abspath(os.path.expanduser(path))
+
+
+def _private_bootstrap_dir(path):
+    """Create/repair one app-owned boundary before project imports."""
+    path = _normalized(path)
+    os.makedirs(path, mode=0o700, exist_ok=True)
+    info = os.lstat(path)
+    if stat.S_ISLNK(info.st_mode) or not stat.S_ISDIR(info.st_mode):
+        raise RuntimeError(f"Kilix 95 storage path is not a real directory: {path}")
+    if info.st_uid != os.geteuid():
+        raise RuntimeError(f"Kilix 95 storage path is not owned by this user: {path}")
+    os.chmod(path, 0o700)
+    return path
+
+
+def _is_within(path, root):
+    try:
+        return os.path.commonpath((path, root)) == root
+    except ValueError:
+        return False
+
+
+import contract_bridge as _contract_bridge
+
+_storage_base = _normalized(os.environ.get("GPU_TERMINAL_HOME") or
+                            "~/.local/gpu_terminal")
+if _contract_bridge.available():
+    try:
+        _cache_home = _contract_bridge.resolved_path("kilix-95", "cache")
+    except (_contract_bridge.BridgeError,
+            _contract_bridge.BridgeUnavailable) as _error:
+        raise RuntimeError(
+            "Kilix 95 cannot determine the authoritative persistence store: "
+            f"{_error}") from _error
+    _legacy_storage_home = _normalized(
+        os.environ.get("KILIX95_STORAGE_HOME")
+        or os.path.join(_storage_base, "kilix-95")
+    )
+    _cache_override = os.environ.get("KILIX95_CACHE_HOME")
+    if (
+        _cache_override
+        and _normalized(_cache_override) == _cache_home
+        and not _is_within(_cache_home, _legacy_storage_home)
+    ):
+        # Match the legacy bootstrap contract for operator-managed cache roots.
+        os.makedirs(_cache_home, mode=0o700, exist_ok=True)
+    else:
+        _cache_home = _private_bootstrap_dir(_cache_home)
+else:
+    if _contract_bridge.required():
+        raise RuntimeError(
+            "Kilix 95 cannot determine the authoritative persistence store")
+    _storage_home = _normalized(os.environ.get("KILIX95_STORAGE_HOME") or
+                                os.path.join(_storage_base, "kilix-95"))
+    if _storage_home in (os.path.abspath(os.sep), _normalized("~"),
+                         _storage_base):
+        raise RuntimeError(
+            "KILIX95_STORAGE_HOME must be a dedicated component directory")
+    _storage_home = _private_bootstrap_dir(_storage_home)
+    _cache_home = _normalized(os.environ.get("KILIX95_CACHE_HOME") or
+                              os.path.join(_storage_home, "cache"))
+    if _is_within(_cache_home, _storage_home):
+        _cache_home = _private_bootstrap_dir(_cache_home)
+    else:
+        # Preserve an operator-managed external cache root.  Only Kilix 95's
+        # dedicated bytecode leaf below it is tightened.
+        os.makedirs(_cache_home, mode=0o700, exist_ok=True)
+_pycache = _private_bootstrap_dir(os.path.join(_cache_home, "pycache"))
+sys.pycache_prefix = _pycache
+
+import storage
+import host as kilix_host
+
+KILIX_HOME = kilix_host.add_kilix_config_path()   # kilix_sdk
+
+from PIL import Image, ImageDraw
+
+try:
+    from kilix_sdk import require_compatible as require_kilix_sdk
+except ImportError as exc:
+    raise RuntimeError(
+        "Kilix 95 requires kilix_sdk 1.14; update the Kilix host checkout "
+        "and initialize its submodules"
+    ) from exc
+from kilix_sdk import graphics as kilix_graphics
+from kilix_sdk import settings as shared_settings
+from kilix_sdk import state as kilix_state
+from kilix_sdk import term as kilix_term
+require_kilix_sdk("1.14")
+try:
+    shared_settings.ensure_file()
+except OSError as exc:
+    raise RuntimeError(
+        "Kilix 95 cannot initialize shared settings at "
+        f"{shared_settings.settings_path()}"
+    ) from exc
+import icons
+import shell as shell_mod
+import taskbar as taskbar_mod
+import theme as T
+import widgets as W
+import wm as wm_mod
+
+try:
+    _RESAMPLE = Image.Resampling.BICUBIC
+except AttributeError:  # Pillow < 9.1
+    _RESAMPLE = Image.BICUBIC
+
+SCREEN_DIR = os.path.join(_here, "assets", "screens")
+SYSTEM_SCREEN_SECONDS = 1.2
+SYSTEM_SCREEN_MIN_SECONDS = 1.0
+SYSTEM_SCREEN_MAX_SECONDS = 2.0
+
+# keys the host terminal parser doesn't map (it never needed F-keys): add them
+kilix_term.SPECIAL_TILDE.update({
+    11: ("F1", "F1", 112), 12: ("F2", "F2", 113), 13: ("F3", "F3", 114),
+    14: ("F4", "F4", 115), 15: ("F5", "F5", 116), 17: ("F6", "F6", 117),
+    18: ("F7", "F7", 118), 19: ("F8", "F8", 119), 20: ("F9", "F9", 120),
+    21: ("F10", "F10", 121), 23: ("F11", "F11", 122),
+    24: ("F12", "F12", 123)})
+kilix_term.SPECIAL_CSI.update({
+    "P": ("F1", "F1", 112), "Q": ("F2", "F2", 113),
+    "S": ("F4", "F4", 115)})
+
+# kitty reports the numeric keypad only as functional (PUA) codes under flags
+# 13 (no KP folding, no embedded text) — map them to (key, text) here so the
+# keypad types and navigates like the main block.
+_KEYPAD = {
+    57409: (".", "."), 57410: ("/", "/"), 57411: ("*", "*"),
+    57412: ("-", "-"), 57413: ("+", "+"), 57414: ("Enter", "\r"),
+    57415: ("=", "="), 57417: ("ArrowLeft", ""), 57418: ("ArrowRight", ""),
+    57419: ("ArrowUp", ""), 57420: ("ArrowDown", ""), 57421: ("PageUp", ""),
+    57422: ("PageDown", ""), 57423: ("Home", ""), 57424: ("End", ""),
+    57425: ("Insert", ""), 57426: ("Delete", "")}
+for _i in range(10):
+    _KEYPAD[57399 + _i] = (str(_i), str(_i))
+
+
+class DeskTerm(kilix_term.Term):
+    """Kilix terminal parser with any-motion mouse tracking (hover, drags)."""
+
+    def enter(self):
+        import tty
+        tty.setraw(self.fd)
+        # ``run`` has an outer restoration guard for failures during startup,
+        # before the main loop's own finally block is active.  Track entry so
+        # that normal shutdown can safely pass through both guards.
+        self._kilix95_entered = True
+        # alt screen, hide cursor, no autowrap, kitty kbd protocol,
+        # any-motion + SGR + SGR-pixels mouse, bracketed paste.
+        # >15u adds event-type reporting (flag 2) on top of the usual
+        # disambiguate+alternates+all-keys so the loop sees the Alt and Super
+        # keys' releases — Alt-up commits the Alt+Tab switcher, Super-up opens
+        # the Start menu (_parse_csi tags every key event with its type;
+        # _norm_key drops the releases).
+        self.write("\x1b[?1049h\x1b[2J\x1b[?25l\x1b[?7l\x1b[>15u"
+                   "\x1b[?1003h\x1b[?1006h\x1b[?1016h\x1b[?2004h"
+                   f"\x1b]2;{T.PRODUCT_NAME}\x07")
+
+    def _parse_csi(self, params, final):
+        # tag key events with the kitty event type (1 press, 2 repeat,
+        # 3 release) — browse drops it; the switcher needs it
+        ev = super()._parse_csi(params, final)
+        if ev and ev.get("kind") == "key":
+            evt = 1
+            parts = params.split(";")
+            if len(parts) > 1:
+                sub = parts[1].split(":")
+                if len(sub) > 1 and sub[1]:
+                    try:
+                        evt = int(sub[1])
+                    except ValueError:
+                        evt = 1
+            ev["evt"] = evt
+        return ev
+
+    def restore(self):
+        if not getattr(self, "_kilix95_entered", False):
+            return
+        self._kilix95_entered = False
+        try:
+            # tmux filters unwrapped APCs, so in a streamed tmux session the
+            # placement-delete must ride the same passthrough envelope the
+            # frames do or the dead desktop's last frame stays on attached
+            # clients (mirrors blit_direct's in_tmux path).
+            delete = "\x1b_Ga=d,d=A\x1b\\"
+            if os.environ.get("KILIX_STREAM") == "1" and os.environ.get("TMUX"):
+                delete = kilix_graphics.wrap_tmux_passthrough(delete)
+            self.write("\x1b[<u\x1b[?1003l\x1b[?1006l\x1b[?1016l\x1b[?2004l"
+                       "\x1b[?7h" + delete + "\x1b[?25h\x1b[?1049l")
+        finally:
+            import termios
+            termios.tcsetattr(self.fd, termios.TCSADRAIN, self.saved)
+
+
+class Desk:
+    def __init__(self, term=None, size=None, draw_cursor=False):
+        self.term = term
+        if term:
+            self.w = int(term.cols * term.cell_w)
+            self.h = int(term.rows * term.cell_h)
+        else:
+            self.w, self.h = size or (1024, 768)
+        self.fb = Image.new("RGB", (self.w, self.h), T.DESKTOP)
+        self.dirty = True
+        self.running = True
+        self.clipboard = ""
+        self._clip_sinks = []         # realms that mirror the hub (XPanes, host)
+        self.clip_host = None         # host-X CLIPBOARD bridge (set up in run())
+        self.draw_cursor = draw_cursor
+        self.mouse_pos = (self.w // 2, self.h // 2)
+        self.menus = W.MenuHost(self)
+        self.wm = wm_mod.WM(self)
+        self.shell = shell_mod.Shell(self)
+        self.taskbar = taskbar_mod.Taskbar(self)
+        self.password_nag = False      # default-password tray reminder (armed in run)
+        self.fd_hooks = {}            # fd -> callback (XPane video feeds etc.)
+        self.tick_hooks = []          # callables(now), each loop pass
+        self.mouse_owner = None
+        self._owner_btn = 0           # button that captured mouse_owner/drag
+        self._buttons = 0
+        self._last_click = (0.0, -99, -99, 0, 0)
+        # graphics transport (mirrors the host browser transport)
+        self.stream = os.environ.get("KILIX_STREAM") == "1"
+        wid = os.environ.get("KITTY_WINDOW_ID", str(os.getpid()))
+        self.wid = wid
+        self.img_id = 1 + ((int(wid) if wid.isdigit() else os.getpid())
+                           % 4000)
+        self.seq = 0
+        self._frame_dir = None
+        self._frame_dir_fd = None       # lifetime flock identifies a live owner
+        # WM/loop polish state
+        self.switcher = None          # Alt+Tab overlay: {"wins", "sel"} or None
+        self._super_tap = False       # bare Super press pending (menu on release)
+        self._tooltip = None          # current tooltip text or None
+        self._tooltip_pos = (0, 0)
+        self._hover_pos = self.mouse_pos
+        self._hover_since = 0.0
+        self.saver = None             # active screensaver instance or None
+        self.saving = False
+        self.busy = False             # hourglass pointer for staged operations
+        self.dialup_state = {"connected": False, "status": "Disconnected"}
+        self.new_hardware = False
+        self.hardware_signature = ()
+        self._hardware_checked = 0.0
+        self.drag_outline = None       # classic outline-only window dragging
+        self.window_animation = None   # minimize/restore outline animation
+        self.bsod = False             # code-rendered full-screen panic state
+        self._saver_last = 0.0
+        self._last_input = time.time()
+        try:
+            self.saver_idle = float(os.environ.get("KILIX_SAVER_IDLE") or
+                                    self.shell.state.get("saver_idle", 180))
+        except ValueError:
+            self.saver_idle = 180.0
+
+    def size(self):
+        return self.w, self.h
+
+    def add_fd(self, fd, cb):
+        """Watch fd in the main select loop; cb() when readable."""
+        self.fd_hooks[fd] = cb
+
+    def remove_fd(self, fd):
+        self.fd_hooks.pop(fd, None)
+
+    def quit(self):
+        self.running = False
+
+    def add_clip_sink(self, sink):
+        """Register a realm (an XPane's Xvfb, the host X) that should mirror
+        the clipboard hub. `sink` is a callable(text)."""
+        self._clip_sinks.append(sink)
+
+    def remove_clip_sink(self, sink):
+        if sink in self._clip_sinks:
+            self._clip_sinks.remove(sink)
+
+    def set_clipboard(self, text, source=None):
+        """Publish `text` as the one clipboard. `source`, when given, is the
+        sink the copy came from — it is skipped in the fan-out so a read from
+        one realm never echoes straight back into it."""
+        self.clipboard = text
+        # OSC 52 mirrors to the host terminal/tabs — but only when no host X
+        # bridge is active, or the two would fight over the host CLIPBOARD
+        if self.term and self.clip_host is None:
+            b64 = base64.b64encode(text.encode()).decode()
+            self.term.write(f"\x1b]52;c;{b64}\x07")
+        for sink in list(self._clip_sinks):
+            if sink is source:
+                continue
+            try:
+                sink(text)
+            except Exception:
+                pass
+
+    def play_sound(self, name):
+        """Fire-and-forget UI sound. No-op headless (term is None) or when the
+        tray volume is muted/zero; never blocks the loop, never raises."""
+        if self.term is None:
+            return
+        try:
+            st = self.shell.state
+            vol, muted = int(st.get("volume", 75)), bool(st.get("muted", False))
+        except Exception:
+            vol, muted = 75, False
+        try:
+            import sounds
+            sounds.play(name, volume=vol, muted=muted)
+        except Exception:
+            pass
+
+    # ── rendering ───────────────────────────────────────────────────────────
+    def render(self):
+        if not self.dirty:
+            return
+        if self.bsod:
+            self.fb = self._bsod_image()
+            self.dirty = False
+            self.blit()
+            return
+        fb = self.fb
+        d = W.drawer(fb)
+        self.shell.draw(fb, d)
+        for win in self.wm.windows:
+            if win.minimized:
+                continue
+            surf = win.render()
+            fb.paste(surf, (win.x, win.y), win.compose_mask)
+        self.taskbar.draw(fb, d)
+        self.menus.draw(fb, d)
+        if self.drag_outline:
+            self._draw_outline(d, self.drag_outline)
+        if self.window_animation:
+            self._draw_outline(d, self.window_animation["rect"])
+        if self.switcher is not None:
+            self._draw_switcher(d)
+        elif self._tooltip:
+            self._draw_tooltip(d)
+        if self.draw_cursor:
+            self._paint_cursor(d)
+        self.dirty = False
+        self.blit()
+
+    def _paint_cursor(self, d):
+        x, y = self.mouse_pos
+        if self.busy:
+            # The pointer stays visible beside the familiar hourglass.
+            d.line([(x + 10, y + 1), (x + 20, y + 1)], fill=T.TEXT, width=2)
+            d.line([(x + 10, y + 14), (x + 20, y + 14)], fill=T.TEXT, width=2)
+            d.line([(x + 11, y + 3), (x + 19, y + 12)], fill=T.TEXT)
+            d.line([(x + 19, y + 3), (x + 11, y + 12)], fill=T.TEXT)
+        pts = [(x, y), (x, y + 14), (x + 4, y + 10), (x + 7, y + 16),
+               (x + 9, y + 15), (x + 6, y + 9), (x + 11, y + 9)]
+        scheme = self.shell.state.get("cursor_scheme", "Standard")
+        if scheme == "Dinosaur":
+            d.polygon([(x, y + 3), (x + 9, y), (x + 14, y + 4),
+                       (x + 10, y + 8), (x + 5, y + 7), (x + 2, y + 14)],
+                      fill=(0, 128, 0), outline=T.TEXT)
+            d.point((x + 10, y + 3), fill=T.LIGHT)
+        else:
+            fill = T.TEXT if scheme == "Black" else T.LIGHT
+            outline = T.LIGHT if scheme == "Inverted" else T.TEXT
+            d.polygon(pts, fill=fill, outline=outline)
+
+    def _draw_outline(self, d, rect):
+        x, y, w, h = (int(value) for value in rect)
+        if w > 2 and h > 2:
+            T.focus_rect(d, x, y, x + w - 1, y + h - 1)
+
+    def animate_window(self, start, end, duration=.16):
+        self.window_animation = {
+            "start": tuple(start), "end": tuple(end), "rect": tuple(start),
+            "started": time.time(), "duration": duration,
+        }
+        self.dirty = True
+
+    def _tick_animation(self, now):
+        animation = self.window_animation
+        if not animation:
+            return
+        amount = min(1.0, max(0.0, (now - animation["started"]) /
+                              animation["duration"]))
+        animation["rect"] = tuple(
+            round(a + (b - a) * amount)
+            for a, b in zip(animation["start"], animation["end"]))
+        self.dirty = True
+        if amount >= 1:
+            self.window_animation = None
+
+    # ── Alt+Tab window switcher ──────────────────────────────────────────────
+    def _switch(self, direction):
+        """Open (or advance) the switcher overlay by one step."""
+        wins = self.wm.switch_list()
+        if not wins:
+            return
+        if self.switcher is None:
+            self.switcher = {"wins": wins, "sel": 0}
+        sel = (self.switcher["sel"] + direction) % len(self.switcher["wins"])
+        self.switcher["sel"] = sel
+        self.dirty = True
+
+    def _end_switch(self, commit=True):
+        sw, self.switcher = self.switcher, None
+        if sw is None:
+            return
+        wins, sel = sw["wins"], sw["sel"]
+        # a window may have closed mid-switch (an XPane teardown fires from a
+        # tick hook while Alt is held) — only activate one still on the stack
+        if (commit and 0 <= sel < len(wins)
+                and wins[sel] in self.wm.windows):
+            self.wm.activate(wins[sel])
+        self.dirty = True
+
+    def _cycle(self, direction):
+        """Alt+Esc: raise the next/previous window with no overlay."""
+        wins = self.wm.switch_list()
+        if len(wins) >= 2:
+            self.wm.activate(wins[direction % len(wins)])
+
+    def _draw_switcher(self, d):
+        sw = self.switcher
+        wins = sw["wins"]
+        if not wins:
+            return
+        row_h, pad = 22, 8
+        tw = max(T.text_w(T.FONT, w.title) for w in wins)
+        pw = max(180, min(tw + 26 + 24, self.w - 40))
+        ph = pad * 2 + len(wins) * row_h
+        px = (self.w - pw) // 2
+        py = (self.h - ph) // 2
+        T.raised(d, px, py, px + pw - 1, py + ph - 1)
+        for i, win in enumerate(wins):
+            ry = py + pad + i * row_h
+            rx0, rx1 = px + pad, px + pw - pad - 1
+            if i == sw["sel"]:
+                d.rectangle([rx0, ry, rx1, ry + row_h - 2], fill=T.SEL_BG)
+                T.focus_rect(d, rx0, ry, rx1, ry + row_h - 2, off=T.SEL_BG)
+                col = T.SEL_TX
+            else:
+                col = T.TEXT
+            icons.paint(self.fb, win.icon, rx0 + 4, ry + (row_h - 2 - 16) // 2,
+                        16)
+            label = T.ellipsize(T.FONT, win.title, pw - 26 - 2 * pad)
+            d.text((rx0 + 26, ry + (row_h - 13) // 2), label, font=T.FONT,
+                   fill=col)
+
+    # ── tooltips ─────────────────────────────────────────────────────────────
+    def _hide_tooltip(self):
+        if self._tooltip is not None:
+            self._tooltip = None
+            self.dirty = True
+
+    def _tooltip_query(self, x, y):
+        win = self.wm.window_at(x, y)
+        obj = win if win is not None else (
+            self.taskbar if self.taskbar.hit(x, y) else self.shell)
+        fn = getattr(obj, "tooltip_at", None)
+        if fn is None:
+            return None
+        try:
+            return fn(x, y)
+        except Exception:
+            return None
+
+    def _draw_tooltip(self, d):
+        txt = self._tooltip
+        x, y = self._tooltip_pos
+        tw = T.text_w(T.FONT, txt)
+        bx, by = x + 12, y + 20
+        bx = min(bx, self.w - tw - 8)
+        if by + 16 > self.h:
+            by = y - 18
+        d.rectangle([bx, by, bx + tw + 5, by + 15], fill=T.INFO_BG,
+                    outline=T.TEXT)
+        d.text((bx + 3, by + 2), txt, font=T.FONT, fill=T.TEXT)
+
+    # ── idle screensaver ─────────────────────────────────────────────────────
+    def maybe_start_saver(self, now=None):
+        """Engage the screensaver if idle past the timeout. Never headless."""
+        now = now if now is not None else time.time()
+        if (self.term is not None and not self.saving and self.saver_idle > 0
+                and now - self._last_input >= self.saver_idle):
+            self._start_saver()
+            return True
+        return False
+
+    def _start_saver(self, name=None):
+        import screensaver
+        name = name or self.shell.state.get("saver_name", "Mystify")
+        self.saver = screensaver.pick(self.size(), name)
+        self.saving = True
+        self._saver_last = time.time()
+        self.dirty = True
+
+    def _wake_saver(self):
+        if not self.saving:
+            return
+        self.saving = False
+        self.saver = None
+        self._last_input = time.time()
+        self.dirty = True
+        state = self.shell.state
+        if state.get("saver_lock") and state.get("saver_password"):
+            try:
+                from apps.displayprops import show_unlock
+                show_unlock(self)
+            except Exception:
+                pass
+
+    def _hardware_tick(self, now):
+        """Notice block-device arrivals without mounting or changing them."""
+        if not self.shell.full_experience_enabled():
+            return
+        if now - self._hardware_checked < 5:
+            return
+        self._hardware_checked = now
+        try:
+            import nostalgia
+            current = nostalgia.block_device_signature()
+        except Exception:
+            return
+        previous = self.hardware_signature
+        self.hardware_signature = current
+        if previous and set(current) - set(previous):
+            self.new_hardware = True
+            self.taskbar.invalidate()
+
+    # ── shutdown screen ──────────────────────────────────────────────────────
+    def _system_screen(self, name):
+        path = os.path.join(SCREEN_DIR, f"{name}.png")
+        try:
+            img = Image.open(path).convert("RGB")
+        except Exception:
+            img = self._fallback_system_screen(name)
+        if img.size != (self.w, self.h):
+            # These are full-screen splash screens. Preserve the whole artwork
+            # and center it instead of stretching it out of proportion, so the
+            # title/progress art stays readable on wide VM displays.
+            img = self._fit_system_screen(img)
+        return img
+
+    def _fit_system_screen(self, img):
+        sw, sh = img.size
+        scale = min(self.w / max(1, sw), self.h / max(1, sh))
+        nw = max(1, int(round(sw * scale)))
+        nh = max(1, int(round(sh * scale)))
+        bg = img.getpixel((0, 0))
+        out = Image.new("RGB", (self.w, self.h), bg)
+        resized = img.resize((nw, nh), _RESAMPLE)
+        out.paste(resized, ((self.w - nw) // 2, (self.h - nh) // 2))
+        return out
+
+    def _fallback_system_screen(self, name):
+        color = (174, 232, 240) if name != "shutdown" else (150, 218, 230)
+        img = Image.new("RGB", (self.w, self.h), color)
+        d = ImageDraw.Draw(img)
+        margin = max(16, min(self.w, self.h) // 28)
+        d.rectangle([0, 0, self.w - 1, self.h - 1], outline=(0, 92, 128),
+                    width=2)
+        if name == "shutdown":
+            text = "Kilix 95 is shutting down.\nDo not turn off your pc"
+        else:
+            text = "Kilix 95"
+        try:
+            box = d.multiline_textbbox((0, 0), text, font=T.BOLD,
+                                       spacing=8, align="center")
+            tw, th = box[2] - box[0], box[3] - box[1]
+        except AttributeError:
+            lines = text.split("\n")
+            tw = max(T.text_w(T.BOLD, line) for line in lines)
+            th = len(lines) * 18
+        x = max(margin, (self.w - tw) // 2)
+        y = max(margin, (self.h - th) // 2)
+        d.multiline_text((x + 2, y + 2), text, font=T.BOLD,
+                         fill=(0, 70, 96), spacing=8, align="center")
+        d.multiline_text((x, y), text, font=T.BOLD, fill=(255, 255, 255),
+                         spacing=8, align="center")
+        return img
+
+    def _show_system_screen(self, name, seconds):
+        img = self._system_screen(name)
+        self.fb = img.copy()
+        self.dirty = False
+        self.blit(img)
+        if seconds > 0:
+            end = time.time() + seconds
+            while True:
+                remaining = end - time.time()
+                if remaining <= 0:
+                    break
+                time.sleep(min(0.2, remaining))
+                self.blit(img)
+        self.dirty = True
+
+    def _system_screen_seconds(self, name):
+        env = ("KILIX_SHUTDOWN_SCREEN_SECONDS" if name == "shutdown"
+               else "KILIX_STARTUP_SCREEN_SECONDS")
+        try:
+            seconds = float(os.environ.get(env) or SYSTEM_SCREEN_SECONDS)
+        except ValueError:
+            seconds = SYSTEM_SCREEN_SECONDS
+        return max(SYSTEM_SCREEN_MIN_SECONDS,
+                   min(SYSTEM_SCREEN_MAX_SECONDS, seconds))
+
+    def _bsod_image(self):
+        img = Image.new("RGB", (self.w, self.h), (0, 0, 170))
+        d = ImageDraw.Draw(img)
+        fg = (255, 255, 255)
+        y = max(18, self.h // 16)
+        title = "KILIX 95 PANIC"
+        title_w = T.text_w(T.BOLD, title)
+        d.rectangle([(self.w - title_w) // 2 - 12, y - 6,
+                     (self.w + title_w) // 2 + 12, y + 18], fill=fg)
+        d.text(((self.w - title_w) // 2, y - 2), title, font=T.BOLD,
+               fill=(0, 0, 170))
+        y += 52
+        lines = [
+            "A fatal desktop exception has occurred.",
+            "",
+            "OOM killer reported: no memory left for pretending everything is fine.",
+            "core dumped, but the dump buffer also dumped core.",
+            "panic: allocator failed while allocating failure metadata.",
+            "filesystem buffers, terminal panes, and background jobs are suspect.",
+            "",
+            "Technical information:",
+            "  STOP: 0x00000095  CORE_DUMP_OOM_STACK_FAIL",
+            "  module: kilix95.desktop.sys",
+            "  recovery: press any key or click to reboot the desktop illusion",
+        ]
+        left = max(24, self.w // 10)
+        max_w = self.w - left * 2
+        for line in lines:
+            if not line:
+                y += 18
+                continue
+            chunks = self._wrap_bsod_line(line, max_w)
+            for chunk in chunks:
+                d.text((left, y), chunk, font=T.FONT, fill=fg)
+                y += 18
+        return img
+
+    def _wrap_bsod_line(self, line, max_w):
+        if T.text_w(T.FONT, line) <= max_w:
+            return [line]
+        out, cur = [], ""
+        for word in line.split():
+            nxt = f"{cur} {word}".strip()
+            if cur and T.text_w(T.FONT, nxt) > max_w:
+                out.append(cur)
+                cur = word
+            else:
+                cur = nxt
+        if cur:
+            out.append(cur)
+        return out or [line]
+
+    def show_bsod(self):
+        self.saving = False
+        self.saver = None
+        self.bsod = True
+        self.switcher = None
+        self.mouse_owner = None
+        self.menus.close_all()
+        self.dirty = True
+
+    def _dismiss_bsod(self):
+        if not self.bsod:
+            return False
+        self.bsod = False
+        self.fb = Image.new("RGB", (self.w, self.h), T.DESKTOP)
+        self.dirty = True
+        return True
+
+    def shutdown(self):
+        """Quit path. Plays the shutdown cue and briefly shows the shutdown
+        screen before returning to the terminal."""
+        self.play_sound("shutdown")
+        self._show_system_screen("shutdown",
+                                 self._system_screen_seconds("shutdown"))
+
+    def blit(self, img=None, force_full=False):
+        if not self.term:
+            return
+        rgb = (img if img is not None else self.fb).tobytes()
+        in_tmux = bool(os.environ.get("TMUX"))
+        # Damage path: when the screen already shows the desktop fb at the
+        # current size, diff against the previous fb frame and edit only the
+        # changed row band of the displayed image (a=f) instead of resending
+        # the whole framebuffer — a clock tick or one window's frame no longer
+        # costs a full w*h*3 retransmit. Splash/system-screen blits (img=),
+        # size changes, and force_full (the run loop's keepalive re-blits,
+        # which exist to recover placements kitty dropped while settling — a
+        # band edit cannot recover a missing placement) fall through to a full
+        # placement, which re-arms the band path by recording what's on
+        # screen. The hasattr guard keeps this kilix-95 working against an
+        # older host kilix checkout whose kilix_sdk lacks the damage helpers.
+        # _last_blit is stamped only when bytes are transmitted, so the
+        # keepalive cadence tracks real retransmissions.
+        band = None
+        if (not force_full and img is None
+                and hasattr(kilix_graphics, "diff_band")
+                and getattr(self, "_prev_rgb", None) is not None
+                and len(self._prev_rgb) == len(rgb)
+                and getattr(self, "_blit_base", None)
+                == ("fb", self.w, self.h)):
+            band = kilix_graphics.diff_band(self._prev_rgb, rgb,
+                                            self.w, self.h)
+            if band is None:
+                self._prev_rgb = rgb
+                return                     # frame unchanged: nothing to send
+            if band[1] > int(self.h * 0.65):
+                band = None                # mostly changed: full frame wins
+        if img is None:
+            self._prev_rgb = rgb
+        self._last_blit = time.time()
+        if band is not None:
+            y0, bh = band
+            data = rgb[y0 * self.w * 3:(y0 + bh) * self.w * 3]
+            if self.stream:
+                kilix_graphics.blit_frame_edit(self.term, data, self.w, bh,
+                                               0, y0, self.img_id,
+                                               in_tmux=in_tmux)
+                return
+            # unique per-blit names: a lagging kitty must ENOENT on a stale
+            # escape, never mmap a slot reused with a different band geometry
+            # (kitty deletes each file after reading; the dir is cleaned up).
+            self._band_n = getattr(self, "_band_n", 0) + 1
+            path = self._frame_path("band", self._band_n)
+            flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL
+            if hasattr(os, "O_NOFOLLOW"):
+                flags |= os.O_NOFOLLOW
+            fd = os.open(path, flags, 0o600)
+            with os.fdopen(fd, "wb") as f:
+                f.write(data)
+            self.term.write(kilix_graphics.build_frame_edit_file(
+                path, self.w, bh, 0, y0, self.img_id))
+            return
+        self._blit_base = ("fb" if img is None else "img", self.w, self.h)
+        if self.stream:
+            kilix_graphics.blit_direct(
+                self.term, rgb, self.w, self.h, self.term.cols,
+                self.term.rows, self.img_id, in_tmux=in_tmux)
+            return
+        # kitty may still be opening a previously announced t=t path after a
+        # later frame is ready.  Never recycle a filename: truncating a path
+        # that kitty has mmaped can SIGBUS the terminal process.
+        self.seq += 1
+        path = self._frame_path("full", self.seq)
+        flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL
+        if hasattr(os, "O_NOFOLLOW"):
+            flags |= os.O_NOFOLLOW
+        fd = os.open(path, flags, 0o600)
+        with os.fdopen(fd, "wb") as f:
+            f.write(rgb)
+        payload = base64.b64encode(path.encode()).decode()
+        self.term.write(
+            f"\x1b[H\x1b_Ga=T,i={self.img_id},p=1,z=-1,t=t,f=24,"
+            f"s={self.w},v={self.h},c={self.term.cols},r={self.term.rows},"
+            f"q=2,C=1,N=1;{payload}\x1b\\")
+
+    def _frame_path(self, kind, sequence):
+        if self._frame_dir is None:
+            self._prepare_frame_dir()
+        return os.path.join(self._frame_dir, f"{kind}-{sequence}.rgb")
+
+    @staticmethod
+    def _open_frame_dir(path):
+        flags = os.O_RDONLY
+        for name in ("O_CLOEXEC", "O_DIRECTORY", "O_NOFOLLOW"):
+            flags |= getattr(os, name, 0)
+        return os.open(path, flags)
+
+    def _reap_frame_dirs(self, root):
+        """Remove frame directories whose owning desktop is no longer live.
+
+        A desktop holds an exclusive flock on its directory fd for the whole
+        directory lifetime.  Locks disappear even after SIGKILL or power loss,
+        so a later desktop can safely distinguish an orphan from a concurrent
+        live desktop without leaving a long-lived marker in the frames tree.
+        """
+        try:
+            entries = os.scandir(root)
+        except FileNotFoundError:
+            return
+        with entries:
+            for entry in entries:
+                if not entry.name.startswith("tty-graphics-protocol-"):
+                    continue
+                try:
+                    if not entry.is_dir(follow_symlinks=False):
+                        continue
+                    fd = self._open_frame_dir(entry.path)
+                except OSError:
+                    continue
+                try:
+                    try:
+                        fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                    except BlockingIOError:
+                        continue                 # a live desktop owns this dir
+                    shutil.rmtree(entry.path, ignore_errors=True)
+                finally:
+                    os.close(fd)
+
+    def _prepare_frame_dir(self):
+        root = storage.private_session_dir("frames")
+        root_fd = self._open_frame_dir(root)
+        frame_dir = None
+        frame_fd = None
+        try:
+            # Serialize reap+create so a second patched desktop cannot inspect
+            # the tiny interval between our mkdir and lifetime-lock acquisition.
+            fcntl.flock(root_fd, fcntl.LOCK_EX)
+            self._reap_frame_dirs(root)
+            frame_dir = tempfile.mkdtemp(
+                prefix=f"tty-graphics-protocol-{T.RUNTIME_ID}-{self.wid}-",
+                dir=root)
+            os.chmod(frame_dir, 0o700)
+            frame_fd = self._open_frame_dir(frame_dir)
+            fcntl.flock(frame_fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            self._frame_dir = frame_dir
+            self._frame_dir_fd = frame_fd
+            frame_fd = None
+        finally:
+            os.close(root_fd)                    # releases the root lock
+            if frame_fd is not None:
+                os.close(frame_fd)
+            if frame_dir is not None and self._frame_dir != frame_dir:
+                shutil.rmtree(frame_dir, ignore_errors=True)
+
+    def cleanup_shm(self):
+        frame_dir, frame_fd = self._frame_dir, self._frame_dir_fd
+        self._frame_dir = None
+        self._frame_dir_fd = None
+        try:
+            if frame_dir:
+                shutil.rmtree(frame_dir, ignore_errors=True)
+        finally:
+            if frame_fd is not None:
+                try:
+                    os.close(frame_fd)           # releases the lifetime lock
+                except OSError:
+                    pass
+
+    # ── input normalization ─────────────────────────────────────────────────
+    def _norm_key(self, raw):
+        evt = raw.get("evt", 1)       # 1 press, 2 repeat, 3 release
+        key = raw["key"]
+        # the Alt key reports its own press AND release (so the switcher can
+        # commit on Alt-up); other bare modifiers stay filtered out
+        if len(key) == 1 and ord(key) in (57443, 57449):   # L/R Alt
+            return W.Ev(kind="key", key="Alt", press=(evt != 3),
+                        alt=(evt != 3))
+        # the Super (Win) key surfaces both edges too: a bare tap toggles the
+        # Start menu on release, so Super+<key> combos can pass untouched
+        if len(key) == 1 and ord(key) in (57444, 57450):   # L/R Super
+            return W.Ev(kind="key", key="Super", press=(evt != 3))
+        if evt == 3:
+            return None               # drop key releases (no double-typing)
+        mods = max(0, raw.get("mods", 1) - 1)
+        text = raw.get("text", "")
+        if len(key) == 1 and 57344 <= ord(key) <= 63743:
+            kp = _KEYPAD.get(ord(key))
+            if kp is None:
+                return None           # kitty functional keycodes (bare mods)
+            key, text = kp
+        return W.Ev(kind="key", key=key, text=text,
+                    shift=bool(mods & 1), alt=bool(mods & 2),
+                    ctrl=bool(mods & 4))
+
+    def _norm_mouse(self, raw):
+        b = raw["b"]
+        if b & 256:                   # SGR-pixel leave indicator
+            return None
+        if b & 128:                   # side buttons 8-11: no desktop meaning
+            return None
+        # padding-edge / inter-pane wheel reports carry coords outside the
+        # framebuffer (kitty measures from the content origin) — clamp so they
+        # route to the edge window instead of missing every window.
+        x = max(0, min(raw["x"], self.w - 1))
+        y = max(0, min(raw["y"], self.h - 1))
+        self.mouse_pos = (x, y)
+        mods = dict(shift=bool(b & 4), alt=bool(b & 8), ctrl=bool(b & 16))
+        if b & 64:                    # wheel: 0 up, 1 down, 2/3 horizontal
+            c3 = b & 3
+            if c3 >= 2:
+                return None           # horizontal wheel — not a vertical scroll
+            return W.Ev(kind="mouse", x=x, y=y,
+                        wheel=(-1 if c3 == 0 else 1), **mods)
+        if b & 32:                    # motion
+            return W.Ev(kind="mouse", x=x, y=y, move=True,
+                        btn=self._buttons, **mods)
+        btn = (b & 3) + 1
+        if raw["press"]:
+            t, lx, ly, lb, cc = self._last_click
+            cc = cc + 1 if (btn == lb and time.time() - t < 0.4
+                            and abs(x - lx) < 5 and abs(y - ly) < 5) else 1
+            self._last_click = (time.time(), x, y, btn, cc)
+            self._buttons |= 1 << (btn - 1)
+            return W.Ev(kind="mouse", x=x, y=y, btn=btn, press=True,
+                        clicks=cc, **mods)
+        self._buttons &= ~(1 << (btn - 1))
+        return W.Ev(kind="mouse", x=x, y=y, btn=btn, press=False, **mods)
+
+    # ── dispatch ────────────────────────────────────────────────────────────
+    def dispatch_mouse(self, ev):
+        self._last_input = time.time()
+        if self.bsod:
+            self._dismiss_bsod()
+            return
+        if ev.press or ev.wheel:
+            self._hover_since = self._last_input
+            self._hide_tooltip()
+            self._super_tap = False   # click/scroll while Super held: not a tap
+        self._dispatch_mouse(ev)
+        if (not ev.press and not ev.move and not ev.wheel
+                and ev.btn == self._owner_btn):
+            # the release of the CAPTURING button ends capture (even when a
+            # menu ate the event — otherwise the owner set by the menu-opening
+            # press leaks); another button's release must not abort the drag
+            self.mouse_owner = None
+
+    def _dispatch_mouse(self, ev):
+        if self.draw_cursor and (ev.move or ev.press):
+            self.dirty = True
+        if self.menus.active:
+            if self.menus.on_mouse(ev):
+                return
+        if self.mouse_owner is not None:
+            self.mouse_owner(ev)
+            return
+        modal = self.wm.modal_top()
+        # the taskbar is composited last (on top), so it must be hit-tested
+        # before windows or a window overlapping the bottom strip steals its
+        # Start-button/task-button clicks
+        if self.taskbar.hit(ev.x, ev.y):
+            self.taskbar.on_mouse(ev)
+            if ev.press:
+                self.mouse_owner = self.taskbar.on_mouse
+                self._owner_btn = ev.btn
+            return
+        win = self.wm.window_at(ev.x, ev.y)
+        if win is not None:
+            if modal and win is not modal:
+                if ev.press:
+                    self.wm.activate(modal)
+                return
+            if ev.press:
+                if self.wm.active is not win:
+                    self.wm.activate(win)
+                self.mouse_owner = self._route_window(win)
+                self._owner_btn = ev.btn
+            win.on_mouse(ev)
+            if self.wm.drag:
+                self.mouse_owner = self._route_drag
+            return
+        if modal:
+            if ev.press:
+                self.wm.activate(modal)
+            return
+        self.shell.on_mouse(ev)
+        if ev.press:
+            self.mouse_owner = self.shell.on_mouse
+            self._owner_btn = ev.btn
+
+    def _route_window(self, win):
+        def route(ev):
+            if self.wm.drag:
+                self._route_drag(ev)
+            else:
+                win.on_mouse(ev)
+        return route
+
+    def _route_drag(self, ev):
+        if ev.move:
+            self.wm.drag_motion(ev)
+        elif not ev.press and ev.btn == self._owner_btn:
+            self.wm.end_drag()
+
+    def dispatch_key(self, ev):
+        self._last_input = time.time()
+        self._hover_since = self._last_input
+        self._hide_tooltip()
+        if self.bsod:
+            self._dismiss_bsod()
+            return
+        # ── Super (Win) key: a bare tap toggles the Start menu ──────────────
+        # Armed on the press, fired on the release; any other key (or click)
+        # in between disarms it, so Super+<key> combos are never stolen.
+        # Handled ahead of the menu host so a tap also closes an open menu.
+        if ev.key == "Super":
+            if ev.press:
+                self._super_tap = self.switcher is None
+            else:
+                armed, self._super_tap = self._super_tap, False
+                if armed:
+                    if self.menus.active and self.taskbar.menu_open < 0:
+                        self.menus.close_all()   # tap replaces a context popup
+                    self.taskbar.open_start_menu()
+            return
+        self._super_tap = False
+        if self.menus.active:
+            self.menus.on_key(ev)
+            return
+        # ── Alt+Tab / Alt+Esc window switching ──────────────────────────────
+        if ev.key == "Alt":
+            if not ev.press:          # Alt released → commit the selection
+                self._end_switch(commit=True)
+            return
+        if ev.alt and ev.key == "Tab":
+            self._switch(-1 if ev.shift else 1)
+            return
+        if ev.alt and ev.key == "Escape":     # Alt+Esc: cycle, no overlay
+            self._cycle(-1 if ev.shift else 1)
+            return
+        if self.switcher is not None:         # any other key ends the switcher
+            self._end_switch(commit=True)
+            return
+        if ev.ctrl and ev.alt and ev.key == "q":
+            self.quit()
+            return
+        if ev.ctrl and ev.key == "Escape":
+            self.taskbar.open_start_menu()
+            return
+        modal = self.wm.modal_top()
+        if modal and self.wm.active is not modal:
+            # keyboard is modal too: never let typing (or Alt+F4) reach a
+            # window activated behind an open modal dialog
+            self.wm.activate(modal)
+            return
+        if ev.alt and ev.key == "F4":
+            if self.wm.active:
+                self.wm.active.request_close()
+            return
+        if self.wm.active and self.wm.active.on_key(ev):
+            return
+        if not self.wm.active or self.wm.modal_top() is None:
+            self.shell.on_key(ev)
+
+    def dispatch_paste(self, text):
+        if self.bsod:
+            return
+        if self.menus.active:
+            return
+        win = self.wm.active
+        if win and isinstance(win.focus, (W.TextField, W.TextArea)):
+            win.focus.insert(text)
+            if isinstance(win.focus, W.TextArea):
+                win.focus._reveal()
+            win.invalidate()
+
+    # ── resize ──────────────────────────────────────────────────────────────
+    def do_resize(self):
+        self.term.refresh_size()
+        self.w = int(self.term.cols * self.term.cell_w)
+        self.h = int(self.term.rows * self.term.cell_h)
+        self.fb = Image.new("RGB", (self.w, self.h), T.DESKTOP)
+        self.menus.close_all()        # popups clamp to the old size — drop them
+        self.shell.on_resize()
+        for win in self.wm.windows:
+            if win.maximized:
+                win.x = win.y = 0
+                win.w, win.h = self.w, self.h - T.TASKBAR_H
+                win.surface = None
+                win.on_resize()
+                if win._restore:      # keep the un-maximize rect on-screen too
+                    rx, ry, rw, rh = win._restore
+                    rw, rh = min(rw, self.w), min(rh, self.h - T.TASKBAR_H)
+                    rx = max(0, min(rx, self.w - 60))
+                    ry = max(0, min(ry, self.h - T.TASKBAR_H - 20))
+                    win._restore = (rx, ry, rw, rh)
+            else:
+                win.x = max(0, min(win.x, self.w - 60))
+                win.y = max(0, min(win.y, self.h - T.TASKBAR_H - 20))
+            win.dirty = True
+        self.dirty = True
+
+    def _first_run_help(self):
+        """First launch: open the Help book so a new user (e.g. a fresh
+        Plebian-OS boot into the pixel desktop) gets oriented. A marker in
+        the persisted desktop state makes it pop exactly once."""
+        if not self.shell.full_experience_enabled() \
+                or self.shell.state.get("help_shown"):
+            return
+        self.shell.state["help_shown"] = True
+        self.shell._save_state()
+        try:
+            import apps
+            apps.open(self, "winhelp", "welcome")
+        except Exception:
+            pass
+
+    def _refresh_password_nag(self):
+        """Set self.password_nag from the login password's actual state. The
+        taskbar shows a persistent tray icon while this is True; it clears the
+        moment the password is no longer the shipped default 'plebian'."""
+        try:
+            import security
+            self.password_nag = bool(self.term) and security.is_default_password()
+        except Exception:
+            self.password_nag = False
+        self.dirty = True
+
+    def _first_run_password_nag(self):
+        """Pop the change-password bubble once per session while the account
+        still has the default password. The tray icon (armed by
+        _refresh_password_nag) persists every session until it is changed, so
+        dismissing the bubble does not silence the reminder for good."""
+        if not self.password_nag or getattr(self, "_pw_balloon_shown", False):
+            return
+        self._pw_balloon_shown = True
+        try:
+            self.taskbar.show_password_balloon()
+        except Exception:
+            pass
+
+    # ── main loop ───────────────────────────────────────────────────────────
+    def run(self):
+        # Startup screens run after the terminal enters raw/alternate-screen
+        # mode but before _run's main-loop finally block. SIGTERM, SIGHUP, or
+        # any startup failure must still restore the terminal as well as remove
+        # frame files. DeskTerm.restore is idempotent, so normal shutdown may
+        # safely pass through this outer guard after the inner one.
+        try:
+            self._run()
+        except KeyboardInterrupt:
+            pass
+        finally:
+            self._restore_and_cleanup(self.term)
+
+    def _restore_and_cleanup(self, term):
+        # A dead Kitty/X connection can make restore raise.  Cleanup must not
+        # depend on the terminal still being writable.
+        try:
+            term.restore()
+        finally:
+            self.cleanup_shm()
+
+    def _run(self):
+        term = self.term
+        resized = [False]
+        signal.signal(signal.SIGWINCH, lambda *a: resized.__setitem__(0, True))
+        for s in (signal.SIGTERM, signal.SIGHUP):
+            signal.signal(s, lambda *a: sys.exit(0))
+        os.set_blocking(term.fd, False)
+        term.enter()
+        # one clipboard across tabs/panes/windows: bridge the host X CLIPBOARD
+        # (where the terminal and its tabs live) into the hub. Best-effort — with
+        # no reachable host X (remote/nested share) OSC 52 stays the fallback.
+        if os.environ.get("KILIX_HOST_CLIP", "1") != "0" and \
+                os.environ.get("DISPLAY"):
+            try:
+                import clipboard as clip_mod
+                self.clip_host = clip_mod.SelectionBridge(
+                    self, os.environ["DISPLAY"])
+            except Exception:
+                self.clip_host = None
+        try:
+            import sounds
+            sounds.warm()             # off-thread cache fill so no cue blocks the loop
+        except Exception:
+            pass
+        self.play_sound("startup")
+        self._show_system_screen("startup",
+                                 self._system_screen_seconds("startup"))
+        self._refresh_password_nag()      # arm the tray icon before first paint
+        if self.shell.full_experience_enabled():
+            try:
+                import nostalgia
+                self.hardware_signature = nostalgia.block_device_signature()
+            except Exception:
+                self.hardware_signature = ()
+        self._first_run_help()
+        self._first_run_password_nag()    # …and pop the change-password bubble
+        last_blink = time.time()
+        self._last_blit = 0.0
+        start = time.time()
+        try:
+            self.render()
+            while self.running:
+                rlist = [term.fd] + list(self.fd_hooks)
+                r, _, _ = select.select(rlist, [], [], 0.25)
+                for fd in r:
+                    if fd == term.fd:
+                        continue
+                    cb = self.fd_hooks.get(fd)
+                    if cb:
+                        cb()
+                if term.fd in r:
+                    for raw in term.read_input():
+                        self._last_input = time.time()
+                        if self.saving:
+                            self._wake_saver()   # any input exits; swallow it
+                            continue
+                        if raw["kind"] == "key":
+                            ev = self._norm_key(raw)
+                            if ev:
+                                self.dispatch_key(ev)
+                        elif raw["kind"] == "mouse":
+                            ev = self._norm_mouse(raw)
+                            if ev:
+                                self.dispatch_mouse(ev)
+                        elif raw["kind"] == "paste":
+                            self.dispatch_paste(raw["text"])
+                if resized[0]:
+                    resized[0] = False
+                    self.do_resize()
+                now = time.time()
+                self.taskbar.tick(now)
+                self._hardware_tick(now)
+                self._tick_animation(now)
+                for hook in list(self.tick_hooks):
+                    hook(now)
+                if now - last_blink >= 0.53:
+                    last_blink = now
+                    self.wm.blink()
+                # idle screensaver: while engaged, step and blit each pass
+                # (this doubles as the keepalive) and skip the desktop render
+                self.maybe_start_saver(now)
+                if self.saving:
+                    self.blit(self.saver.step(now - self._saver_last))
+                    self._saver_last = now
+                    continue
+                # hover-dwell tooltip
+                if self.switcher is None and not self.menus.active:
+                    if self.mouse_pos != self._hover_pos:
+                        self._hover_pos = self.mouse_pos
+                        self._hover_since = now
+                        self._hide_tooltip()
+                    elif self._tooltip is None and now - self._hover_since >= 0.7:
+                        txt = self._tooltip_query(*self.mouse_pos)
+                        if txt:
+                            self._tooltip = txt
+                            self._tooltip_pos = self.mouse_pos
+                            self.dirty = True
+                # keepalive re-blits: kitty drops graphics sent while the
+                # window is still settling (tab bar / pane title bar appear
+                # right after startup and clear placements), and rendering is
+                # otherwise damage-driven — so repeat the frame aggressively
+                # for the first seconds and slowly forever after
+                age = now - self._last_blit
+                if age >= 0.5 and now - start < 5 or age >= 10:
+                    self.blit(force_full=True)   # heal dropped placements
+                self.render()
+        except KeyboardInterrupt:
+            pass
+        finally:
+            try:
+                self.shutdown()       # shutdown cue on the way out
+            except Exception:
+                pass
+            self._restore_and_cleanup(term)
+
+
+# ── screenshot mode (offscreen render, used by the self-test) ───────────────
+
+def _scene(desk, name):
+    import apps
+    if name in ("startup", "shutdown"):
+        desk.fb = desk._system_screen(name)
+        desk.dirty = False
+        return
+    if name == "bsod":
+        desk.show_bsod()
+        return
+    if name in ("filemgr", "all"):
+        apps.open(desk, "filemgr", KILIX_HOME)
+    if name in ("notepad", "all"):
+        apps.open(desk, "notepad", None)
+        np = desk.wm.windows[-1]
+        np.ta.set_text(f"{T.PRODUCT_NAME} — notepad self-test\n\n"
+                       "The quick brown fox "
+                       "jumps over the lazy dog.\n0123456789\n")
+        np.x, np.y = 90, 60
+    if name in ("settings", "all"):
+        apps.open(desk, "settings", None)
+    if name == "dialog":
+        desk.shell.shutdown_dialog()
+    if name == "launcher":
+        desk.shell.create_launcher_dialog()
+    if name == "menu":
+        desk.shell._context(None, W.Ev(kind="mouse", x=300, y=200))
+    if name == "start":
+        desk.taskbar.open_start_menu()
+        # walk into Programs so the submenu shows too
+        m = desk.menus.stack[0]
+        m.hot = 0
+        for it, (x0, y0, x1, y1) in m.item_rects():
+            if it.label == "Programs":
+                desk.menus.open(it.submenu, x1 - 2, y0 - 2)
+                break
+
+
+def _version():
+    try:
+        with open(os.path.join(os.path.dirname(__file__), "VERSION")) as fh:
+            return fh.read().strip()
+    except OSError:
+        return "unknown"
+
+
+def main():
+    ap = argparse.ArgumentParser(prog="kilix desktop")
+    ap.add_argument("--version", action="version",
+                    version="kilix-95 " + _version())
+    ap.add_argument("--cursor", dest="cursor", action="store_true",
+                    default=True, help=argparse.SUPPRESS)   # legacy (now default)
+    ap.add_argument("--no-cursor", dest="cursor", action="store_false",
+                    help="don't draw the desktop's own mouse pointer")
+    ap.add_argument("--dir", help="desktop folder override")
+    ap.add_argument("--screenshot", metavar="PNG",
+                    help="render offscreen to PNG and exit (no terminal)")
+    ap.add_argument("--scene", default="desktop",
+                    choices=["desktop", "start", "filemgr", "notepad",
+                             "settings", "dialog", "launcher", "menu",
+                             "startup", "shutdown", "bsod", "all"])
+    ap.add_argument("--size", default="1024x768",
+                    help="screenshot size WxH")
+    a = ap.parse_args()
+    # argparse exits above for --version/--help. Those informational paths must
+    # work on a freshly installed system before a Kilix session has built its
+    # native state library; every path that creates a desktop still fails here
+    # before any UI setup if the pinned host library is unavailable.
+    kilix_state.default_library()
+    if a.dir:
+        os.environ["KILIX_DESKTOP_DIR"] = a.dir
+    if a.screenshot:
+        w, h = (int(v) for v in a.size.lower().split("x"))
+        desk = Desk(term=None, size=(w, h))
+        _scene(desk, a.scene)
+        desk.render()
+        desk.fb.save(a.screenshot)
+        if os.environ.get("KILIX_PROVIDER_SCREENSHOT") != "1":
+            print(f"wrote {a.screenshot} ({w}x{h}, scene={a.scene})")
+        return
+    desk = Desk(term=DeskTerm(), draw_cursor=a.cursor)
+    desk.run()
+
+
+if __name__ == "__main__":
+    main()

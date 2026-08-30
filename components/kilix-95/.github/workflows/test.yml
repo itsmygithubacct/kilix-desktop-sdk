@@ -1,0 +1,69 @@
+name: test
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      # The exact host this provider is tested against. Kilix owns the SDK, so a
+      # stale pin silently tests an old pairing and hides host/provider breaks
+      # (see the advisory `pairing` job below, which watches for exactly that).
+      # Advance this to the coordinated Kilix release commit during every
+      # release — RELEASING.md step 1 in the Plebian-OS repository.
+      KILIX_COMMIT: 866a366b468a47597183aadc98a85a11a3f072d2
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - name: Install test dependencies
+        run: sudo apt-get update && sudo apt-get install -y build-essential python3-pil python3-xlib
+      - name: Run tests
+        env:
+          KILIX_HOME: ${{ github.workspace }}/../kilix
+        run: |
+          git init "$KILIX_HOME"
+          git -C "$KILIX_HOME" remote add origin https://github.com/itsmygithubacct/kilix
+          git -C "$KILIX_HOME" fetch --depth 1 origin "$KILIX_COMMIT"
+          git -C "$KILIX_HOME" checkout --detach FETCH_HEAD
+          git -C "$KILIX_HOME" submodule update --init \
+            third_party/kilix-content \
+            third_party/kilix-state \
+            third_party/kitty-frame-presenter
+          python3 tests/run.py
+
+  # Advisory: the same suite against the current Kilix branch head instead of the
+  # pin. This is the only place a host change that breaks this provider — an SDK
+  # bump, a new required setting, a moved launch helper — becomes visible before
+  # release day. It is deliberately non-blocking: Kilix's tip is not this
+  # repository's contract, so a red result here is a signal to advance
+  # KILIX_COMMIT (and adapt the provider), not a reason to fail this branch.
+  pairing:
+    name: pairing (current kilix, advisory)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    continue-on-error: true
+    env:
+      KILIX_REF: main
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - name: Install test dependencies
+        run: sudo apt-get update && sudo apt-get install -y build-essential python3-pil python3-xlib
+      - name: Run tests against current Kilix
+        env:
+          KILIX_HOME: ${{ github.workspace }}/../kilix
+        run: |
+          git init "$KILIX_HOME"
+          git -C "$KILIX_HOME" remote add origin https://github.com/itsmygithubacct/kilix
+          git -C "$KILIX_HOME" fetch --depth 1 origin "$KILIX_REF"
+          git -C "$KILIX_HOME" checkout --detach FETCH_HEAD
+          echo "kilix tip under test: $(git -C "$KILIX_HOME" rev-parse HEAD)"
+          git -C "$KILIX_HOME" submodule update --init \
+            third_party/kilix-content \
+            third_party/kilix-state \
+            third_party/kitty-frame-presenter
+          python3 tests/run.py

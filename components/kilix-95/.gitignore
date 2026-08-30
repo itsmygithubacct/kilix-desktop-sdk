@@ -1,0 +1,14 @@
+__pycache__/
+*.py[cod]
+
+# User-supplied fonts/assets stay local.
+assets/*
+!assets/screens/
+assets/screens/*
+!assets/screens/startup.png
+!assets/screens/shutdown.png
+!assets/wallpapers/
+assets/wallpapers/*
+!assets/wallpapers/kilix-xp-kittens-fire.png
+!assets/sounds/
+!assets/sounds/**

@@ -1,0 +1,696 @@
+"""kilix desktop — kilix Settings (the control panel).
+
+Edits the writable per-user Kilix configuration (normally under
+``~/.local/gpu_terminal/kilix``; ``$KITTY_CONFIG_DIRECTORY`` overrides it). The
+tracked Kilix ``config/`` tree contains defaults and is never rewritten. The
+form tabs cover common terminal, chrome, and game-availability knobs; the last
+tab is the raw file in a text editor. Shared preferences use the stack-wide
+``~/.local/gpu_terminal/settings.conf`` source of truth. Apply writes the file and
+live-reloads the running kilix via `kitten @ action load_config_file`,
+falling back to SIGUSR1 at $KITTY_PID. Only the managed lines are rewritten
+(last occurrence wins, matching kitty's own semantics); everything else in
+the file — comments included — is preserved byte for byte.
+"""
+import os
+import re
+import signal
+import subprocess
+import tempfile
+
+import shell as _shell
+import theme as T
+import widgets as W
+import wm
+from kilix_sdk import settings as shared_settings
+
+MARKER = "# ── kilix desktop settings ──"
+FONT_SIZE_DEFAULT = 11.0
+FONT_SIZE_STEP = 2.0
+FONT_SIZE_MIN = 4.0
+FONT_SIZE_MAX = 110.0
+
+# (key, label, kind, extra) — kind: text | choice | bool
+APPEARANCE = [
+    ("font_family", "Font family", "text", None),
+    ("font_size", "Font size", "text", None),
+    ("foreground", "Text color", "color", None),
+    ("background", "Background color", "color", None),
+    ("background_opacity", "Background opacity", "text", None),
+    ("cursor_shape", "Cursor shape", "choice",
+     ["block", "beam", "underline"]),
+    ("tab_bar_style", "Tab bar style", "choice",
+     ["fade", "separator", "powerline", "slant", "hidden"]),
+]
+BEHAVIOR = [
+    ("scrollback_lines", "Scrollback lines", "text", None),
+    ("enable_audio_bell", "Audio bell", "bool", "no"),
+    ("copy_on_select", "Copy on select", "bool", "no"),
+    ("confirm_os_window_close", "Confirm window close (panes)", "text", None),
+    ("mouse_hide_wait", "Hide mouse after (s)", "text", None),
+    ("cursor_blink_interval", "Cursor blink interval", "text", None),
+]
+TOP_BAR = [
+    ("KILIX_CHROME_TEMPERATURE", "Thermal status", "bool", "0"),
+    ("KILIX_CHROME_VOLUME", "Volume", "bool", "1"),
+    ("KILIX_CHROME_NETWORK", "Network / Wi-Fi", "bool", "1"),
+    ("KILIX_CHROME_CALENDAR", "Calendar", "bool", "1"),
+    ("KILIX_CHROME_CLOCK", "Date and time", "bool", "1"),
+    ("KILIX_CHROME_CLOCK_FORMAT", "Clock format", "text", None),
+    ("KILIX_CHROME_BATTERY", "Battery", "bool", "1"),
+    # Declared by the shared SDK, so the provider has to offer it: the contract
+    # test asserts every shared chrome key is reachable from this app.
+    ("KILIX_CHROME_WINDOWS", "Native window taskbar (Pleb)", "bool", "1"),
+]
+PANE_BUTTONS = [
+    (
+        shared_settings.PANE_CPU_MODE_KEY,
+        "Pane CPU load",
+        "choice",
+        list(shared_settings.PANE_CPU_MODE_CHOICES),
+    ),
+    (
+        shared_settings.PANE_MEMORY_MODE_KEY,
+        "Pane memory chip",
+        "choice",
+        list(shared_settings.PANE_MEMORY_MODE_CHOICES),
+    ),
+    ("KILIX_CHROME_BUTTON_SYNCHRONIZE_INPUT", "Synchronize keyboard input", "bool", "1"),
+    ("KILIX_CHROME_BUTTON_FONT_INCREASE", "Increase text size", "bool", "1"),
+    ("KILIX_CHROME_BUTTON_FONT_DECREASE", "Decrease text size", "bool", "1"),
+    ("KILIX_CHROME_BUTTON_SPLIT_LEFT", "Split pane left", "bool", "1"),
+    ("KILIX_CHROME_BUTTON_SPLIT_UP", "Split pane up", "bool", "1"),
+    ("KILIX_CHROME_BUTTON_SPLIT_DOWN", "Split pane down", "bool", "1"),
+    ("KILIX_CHROME_BUTTON_SPLIT_RIGHT", "Split pane right", "bool", "1"),
+    ("KILIX_CHROME_BUTTON_MAXIMIZE", "Maximize / restore pane", "bool", "1"),
+    ("KILIX_CHROME_BUTTON_CLOSE", "Close pane", "bool", "1"),
+]
+SESSION_LOG = [
+    ("KILIX_TRANSCRIPT", "Record pane session logs", "bool", "1"),
+    (
+        shared_settings.TRANSCRIPT_GRAPHICS_KEY,
+        "Graphics in logs",
+        "choice",
+        list(shared_settings.TRANSCRIPT_GRAPHICS_CHOICES),
+    ),
+    (
+        shared_settings.TRANSCRIPT_LIMIT_KEY,
+        "Log size per pane",
+        "choice",
+        list(shared_settings.TRANSCRIPT_LIMIT_CHOICES),
+    ),
+    (
+        shared_settings.TRANSCRIPT_TOTAL_KEY,
+        "Recent logs (zstd -3)",
+        "choice",
+        list(shared_settings.TRANSCRIPT_TOTAL_CHOICES),
+    ),
+    (
+        shared_settings.TRANSCRIPT_ARCHIVE_KEY,
+        "Older logs (zstd -9)",
+        "choice",
+        list(shared_settings.TRANSCRIPT_ARCHIVE_CHOICES),
+    ),
+]
+# Read-aloud first, then dictation, matching the order the shared file writes
+# them in. The two device names sit with the reading half only because they
+# are the one audio path both widgets contend for, not because they belong
+# to reading.
+VOICE = [
+    ("KILIX_CHROME_SPEAK", "Read pane aloud", "bool", "1"),
+    (
+        shared_settings.VOICE_TTS_ENGINE_KEY,
+        "Speech engine",
+        "choice",
+        list(shared_settings.VOICE_TTS_ENGINE_CHOICES),
+    ),
+    (shared_settings.VOICE_TTS_VOICE_KEY, "Voice", "text", None),
+    (
+        shared_settings.VOICE_TTS_RATE_KEY,
+        "Speech rate (wpm)",
+        "choice",
+        list(shared_settings.VOICE_TTS_RATE_CHOICES),
+    ),
+    (
+        shared_settings.VOICE_TTS_EXTENT_KEY,
+        "Read extent",
+        "choice",
+        list(shared_settings.VOICE_TTS_EXTENT_CHOICES),
+    ),
+    (
+        shared_settings.VOICE_TTS_MAX_CHARS_KEY,
+        "Maximum characters",
+        "choice",
+        list(shared_settings.VOICE_TTS_MAX_CHARS_CHOICES),
+    ),
+    (shared_settings.VOICE_DEVICE_OUT_KEY, "Output device", "text", None),
+    (shared_settings.VOICE_DEVICE_IN_KEY, "Input device", "text", None),
+    ("KILIX_CHROME_DICTATE", "Dictate to pane", "bool", "1"),
+    (
+        shared_settings.VOICE_STT_ENGINE_KEY,
+        "Recognition engine",
+        "choice",
+        list(shared_settings.VOICE_STT_ENGINE_CHOICES),
+    ),
+    (
+        shared_settings.VOICE_STT_MODEL_KEY,
+        "Recognition model",
+        "choice",
+        list(shared_settings.VOICE_STT_MODEL_CHOICES),
+    ),
+    (
+        shared_settings.VOICE_STT_SUBMIT_KEY,
+        "Submit dictation",
+        "choice",
+        list(shared_settings.VOICE_STT_SUBMIT_CHOICES),
+    ),
+    (
+        shared_settings.VOICE_STT_MAX_SECONDS_KEY,
+        "Maximum seconds",
+        "choice",
+        list(shared_settings.VOICE_STT_MAX_SECONDS_CHOICES),
+    ),
+    (
+        shared_settings.VOICE_STT_SILENCE_MS_KEY,
+        "Trailing silence (ms)",
+        "choice",
+        list(shared_settings.VOICE_STT_SILENCE_MS_CHOICES),
+    ),
+    (shared_settings.VOICE_PUNCTUATION_KEY, "Spoken punctuation", "bool", "1"),
+    (
+        shared_settings.VOICE_HISTORY_KEY,
+        "Dictation history",
+        "choice",
+        list(shared_settings.VOICE_HISTORY_CHOICES),
+    ),
+]
+GAMES = [
+    (spec.key, spec.label, "bool", "1")
+    for spec in shared_settings.GAME_TOGGLES
+]
+# Whether a coding agent resumed from kilix-rollout-resume starts with its own
+# approval prompts turned off. It lives here rather than in that tool because
+# it decides whether an agent asks before it acts, which the user should be
+# able to find and audit next to every other stack-wide preference.
+CODING = [
+    (
+        shared_settings.CODING_YOLO_KEY,
+        "Skip coding-agent approval prompts",
+        "choice",
+        list(shared_settings.CODING_YOLO_CHOICES),
+    ),
+]
+TOOLS = CODING
+FORM_PAGES = [
+    APPEARANCE, BEHAVIOR, TOP_BAR, PANE_BUTTONS, SESSION_LOG, VOICE, GAMES,
+    TOOLS,
+]
+
+
+def config_path():
+    try:
+        from kilix_sdk.paths import config_dir
+        d = config_dir()
+    except ImportError:
+        d = os.environ.get("KITTY_CONFIG_DIRECTORY") or os.path.join(
+            os.environ.get("KILIX_STORAGE_HOME", os.path.expanduser(
+                "~/.local/gpu_terminal/kilix")), "config")
+    return os.path.join(d, "kitty.conf")
+
+
+def _is_true(s):
+    return s.lower() in ("yes", "y", "true", "1")
+
+
+def get_key(text, key):
+    pat = re.compile(rf"^\s*{re.escape(key)}\s+(.*?)\s*$", re.M)
+    hits = pat.findall(text)
+    return hits[-1] if hits else None
+
+
+def set_key(text, key, value):
+    line = f"{key:<30} {value}".rstrip()
+    pat = re.compile(rf"^\s*{re.escape(key)}\s+.*$", re.M)
+    hits = list(pat.finditer(text))
+    if hits:
+        last = hits[-1]
+        return text[:last.start()] + line + text[last.end():]
+    if MARKER not in text:
+        text = text.rstrip("\n") + f"\n\n{MARKER}\n"
+    return text.rstrip("\n") + "\n" + line + "\n"
+
+
+def _fmt_font_size(value):
+    value = max(FONT_SIZE_MIN, min(FONT_SIZE_MAX, float(value)))
+    if value == int(value):
+        return str(int(value))
+    return f"{value:.2f}".rstrip("0").rstrip(".")
+
+
+class _Swatch(W.Widget):
+    """Live color preview next to a #rrggbb text field."""
+
+    def __init__(self, x, y, field):
+        super().__init__(x, y, 21, 21)
+        self.field = field
+
+    def draw(self, d, img):
+        col = T.FACE
+        m = re.fullmatch(r"#?([0-9a-fA-F]{6})", self.field.text.strip())
+        if m:
+            v = int(m.group(1), 16)
+            col = ((v >> 16) & 255, (v >> 8) & 255, v & 255)
+        T.sunken(d, self.x, self.y, self.x + self.w - 1,
+                 self.y + self.h - 1, fill=col)
+
+
+class SettingsWin(wm.Window):
+    def __init__(self, desk):
+        # Sized for the tab strip, which neither wraps nor scrolls: a header
+        # past the right edge is unreachable, not merely clipped. Still well
+        # inside a 640x480 desktop.
+        super().__init__(desk, "kilix Settings", 620, 420, icon="settings")
+        self.min_w, self.min_h = 540, 320
+        self.path = config_path()
+        self.shared_path = shared_settings.settings_path()
+        self.shared_values = shared_settings.load(self.shared_path)
+        self.shared_changes = {}
+        self.shared_keys = set(shared_settings.MANAGED_KEYS)
+        try:
+            with open(self.path, encoding="utf-8", errors="replace") as f:
+                self.buffer = f.read()
+        except OSError:
+            defaults = os.path.join(_shell.KILIX_HOME, "config", "kitty.conf")
+            self.buffer = (
+                f"# Kilix user overrides. Tracked defaults are loaded first.\n"
+                "include .kilix-defaults.conf\n"
+                if os.path.isfile(defaults) else ""
+            )
+        cw, ch = self.client_size()
+        self.raw_tab = len(FORM_PAGES)
+        self.tabs = self.add(W.TabBar(6, 6, cw - 12,
+                                      ["Appearance", "Behavior", "Top bar",
+                                       "Pane buttons", "Session logs", "Voice",
+                                       "Games", "Tools", "kitty.conf"],
+                                      cb=self._switch_tab))
+        self.fields = {}              # key -> (kind, widget)
+        self.panels = [[] for _ in range(self.raw_tab + 1)]
+        opts = list(T.flavor_options())
+        self._flavor_keys = [key for key, label in opts]
+        self._flavor_labels = [label for key, label in opts]
+        self.flavor_dd = None
+        for tab_i, spec in enumerate(FORM_PAGES):
+            y = 44
+            if tab_i == 0:
+                lw = self.add(W.Label(18, y + 4, "Desktop flavor:"))
+                self.panels[tab_i].append(lw)
+                self.flavor_dd = self.add(W.Dropdown(
+                    200, y, 180, self._flavor_labels,
+                    cb=self._pick_flavor))
+                self.panels[tab_i].append(self.flavor_dd)
+                y += 30
+            for item_i, (key, label, kind, extra) in enumerate(spec):
+                control_w = 180
+                # The catalog keeps growing, so rows per column have to give
+                # before the column count does: a third column does not fit a
+                # 640x480 desktop, and the dialog has the height for eight.
+                if spec is GAMES:
+                    column, game_row = divmod(item_i, 8)
+                    label_x = 18 + column * 270
+                    control_x = 178 + column * 270
+                    y = 44 + game_row * 30
+                elif spec is VOICE:
+                    # Sixteen settings need two columns too, split reading from
+                    # dictation. Narrower controls than elsewhere so both
+                    # columns fit; the longest value ('vibevoice-asr-bitnet')
+                    # still renders in full, and a dropdown ellipsizes rather
+                    # than overflowing anyway.
+                    column, voice_row = divmod(item_i, 8)
+                    label_x = 18 + column * 300
+                    control_x = 152 + column * 300
+                    control_w = 145
+                    y = 44 + voice_row * 30
+                elif spec is TOOLS:
+                    # This tab already owns the tmux manager. Keep the coding
+                    # policy below that complete block instead of laying the
+                    # generic first form row over its title and controls.
+                    label_x, control_x = 18, 310
+                    control_w = 100
+                    y = 244 + item_i * 30
+                else:
+                    label_x, control_x = 18, 200
+                lw = self.add(W.Label(label_x, y + 4, label + ":"))
+                self.panels[tab_i].append(lw)
+                if kind == "choice":
+                    wd = self.add(W.Dropdown(control_x, y, control_w, extra))
+                elif kind == "bool":
+                    wd = self.add(W.Checkbox(control_x, y + 3, "enabled"))
+                    wd.default_val = extra
+                else:
+                    field_w = 80 if key == "font_size" else control_w
+                    wd = self.add(W.TextField(control_x, y, field_w))
+                    if key == "font_size":
+                        for bx, bw, txt, cb in (
+                            (288, 28, "-", lambda: self._font_size_adjust(-FONT_SIZE_STEP)),
+                            (322, 28, "+", lambda: self._font_size_adjust(FONT_SIZE_STEP)),
+                            (356, 54, "Reset", self._font_size_reset),
+                        ):
+                            btn = self.add(W.Button(bx, y, bw, 21, txt, cb=cb))
+                            self.panels[tab_i].append(btn)
+                    if kind == "color":
+                        sw = self.add(_Swatch(388, y, wd))
+                        self.panels[tab_i].append(sw)
+                        wd.on_change = lambda *_: self.invalidate()
+                self.fields[key] = (kind, wd)
+                self.panels[tab_i].append(wd)
+                if spec is not GAMES and spec is not VOICE:
+                    y += 30
+        game_note = self.add(W.Label(
+            18, 280, "The Games menu updates the next time Start opens.",
+            font=T.SMALL, color=T.SHADOW))
+        self.panels[FORM_PAGES.index(GAMES)].append(game_note)
+        tools_tab = FORM_PAGES.index(TOOLS)
+        self.coding_title = self.add(W.Label(
+            18, 216, "Coding agents", font=T.BOLD))
+        self.panels[tools_tab].append(self.coding_title)
+        self.coding_notes = []
+        for offset, text in enumerate((
+            "Applies to sessions resumed with kilix-rollout-resume.",
+            "'on' starts Claude Code with --dangerously-skip-permissions and",
+            "Codex and Kimi Code with --yolo, so the agent runs commands",
+            "without asking. Leave it off unless this machine is disposable.",
+        )):
+            note = self.add(W.Label(18, 280 + offset * 18, text,
+                                    font=T.SMALL, color=T.SHADOW))
+            self.panels[tools_tab].append(note)
+            self.coding_notes.append(note)
+        for offset, text in enumerate((
+            "Each pane's output is recorded under the Kilix state directory,",
+            "readable only by you. Typed input appears only where the pane",
+            "echoes it, so hidden password prompts are not recorded.",
+            "'elide' replaces image data with a marker; 'keep' records it raw.",
+        )):
+            note = self.add(W.Label(
+                18, 140 + offset * 18, text,
+                font=T.SMALL, color=T.SHADOW))
+            self.panels[FORM_PAGES.index(SESSION_LOG)].append(note)
+        # A microphone that appears in the tab bar by default has to say what
+        # it does before it is trusted, and this tab is where a suspicious
+        # user looks first.
+        voice_tab = FORM_PAGES.index(VOICE)
+        self.voice_model_button = self.add(W.Button(
+            18, 280, 142, 24, "Install + use model",
+            cb=self._install_voice_model))
+        self.voice_model_status = self.add(W.Label(
+            170, 284, "Uses Kilix's verified lazy installer.",
+            font=T.SMALL, color=T.SHADOW))
+        self.panels[voice_tab].extend([
+            self.voice_model_button, self.voice_model_status,
+        ])
+        for offset, text in enumerate((
+            "The microphone opens only when its page-strip button is clicked;",
+            "clicking again closes it, and nothing is captured beforehand.",
+            "Recognition stays on this machine, and dictation never presses Enter.",
+        )):
+            note = self.add(W.Label(
+                18, 312 + offset * 18, text,
+                font=T.SMALL, color=T.SHADOW))
+            self.panels[voice_tab].append(note)
+        tools_title = self.add(W.Label(
+            18, 48, "Tmux Manager", font=T.BOLD))
+        tools_description = self.add(W.Label(
+            18, 78,
+            "The manager uses tmux-cli for sessions, panes, preview, and attach.",
+            font=T.SMALL, color=T.SHADOW))
+        alias = desk.shell.tb_alias_command()
+        alias_text = (
+            f"`tb` command available: {alias}"
+            if alias else "`tb` command alias is not installed.")
+        self.tb_alias_status = self.add(W.Label(
+            18, 112, alias_text, font=T.SMALL, color=T.SHADOW))
+        self.tb_alias_button = self.add(W.Button(
+            18, 142, 132, 24, "Install / repair tb",
+            cb=self._install_tb_alias))
+        self.tools_note = self.add(W.Label(
+            18, 180,
+            "Installation opens in a new tab and uses Kilix's pinned source closure.",
+            font=T.SMALL, color=T.SHADOW))
+        self.panels[tools_tab].extend([
+            tools_title, tools_description, self.tb_alias_status,
+            self.tb_alias_button, self.tools_note,
+        ])
+        self.full_experience = self.add(W.Checkbox(
+            18, 232, "Activate full experience",
+            checked=desk.shell.full_experience_enabled()))
+        self.panels[1].append(self.full_experience)
+        experience_note = self.add(W.Label(
+            38, 260,
+            "Shows Briefcase, modem, classic hardware, and other extras.",
+            font=T.SMALL, color=T.SHADOW))
+        self.panels[1].append(experience_note)
+        note_y = 44 + 30 * max(len(APPEARANCE) + 1, len(BEHAVIOR)) + 6
+        note = self.add(W.Label(
+            18, note_y, "Applied live to this kilix — no restart needed.",
+            font=T.SMALL, color=T.SHADOW))
+        self.panels[0].append(note)
+        self.ta = self.add(W.TextArea(6, self.tabs.y + W.TabBar.H + 2,
+                                      cw - 12, ch - 84, self.buffer))
+        self.panels[self.raw_tab].append(self.ta)
+        self.b_ok = self.add(W.Button(cw - 244, ch - 33, 72, 23, "OK",
+                                      default=True,
+                                      cb=lambda: self._apply(close=True)))
+        self.b_cancel = self.add(W.Button(cw - 164, ch - 33, 72, 23,
+                                          "Cancel", cb=self.close))
+        self.b_apply = self.add(W.Button(cw - 84, ch - 33, 72, 23, "Apply",
+                                         cb=self._apply))
+        self.b_sounds = self.add(W.Button(
+            10, ch - 33, 84, 23, "Sounds…", icon="soundcp",
+            cb=lambda: self.desk.shell.open_app("soundcp")))
+        self.status = self.add(W.Label(102, ch - 28, "", font=T.SMALL,
+                                       color=T.SHADOW))
+        self._cur_tab = 0
+        self._populate()
+        self._switch_tab(0)
+
+    def on_resize(self):
+        cw, ch = self.client_size()
+        self.tabs.w = cw - 12
+        self.ta.w, self.ta.h = cw - 12, ch - 84
+        for b, dx in ((self.b_ok, 244), (self.b_cancel, 164),
+                      (self.b_apply, 84)):
+            b.x, b.y = cw - dx, ch - 33
+        self.b_sounds.y = ch - 33
+        self.status.y = ch - 28
+
+    def draw_client(self, d, img):
+        if self.tabs.active != self.raw_tab:
+            cw, ch = self.client_size()
+            T.raised(d, 6, self.tabs.y + W.TabBar.H - 2, cw - 7, ch - 44)
+            # redraw widgets over the panel face happens in the widget pass;
+            # the panel is drawn first because draw_client precedes widgets
+
+    def _switch_tab(self, i):
+        if self._cur_tab == self.raw_tab:
+            self.buffer = self.ta.text()   # keep raw edits made on the conf tab
+        else:
+            self._form_to_buffer()
+        if i != self.raw_tab:
+            self._populate()
+        else:
+            self._form_to_buffer()
+            self.ta.set_text(self.buffer)
+        self._cur_tab = i
+        for tab_i, panel in enumerate(self.panels):
+            for wdg in panel:
+                wdg.visible = tab_i == i
+        vis = [w for w in self.panels[i] if w.focusable and w.visible]
+        self.set_focus(vis[0] if vis else None)
+        self.invalidate()
+
+    # form <-> buffer -----------------------------------------------------
+    def _sync_flavor_widget(self):
+        if self.flavor_dd is None:
+            return
+        cur = T.flavor_name()
+        if cur in self._flavor_keys:
+            self.flavor_dd.index = self._flavor_keys.index(cur)
+
+    def _pick_flavor(self, label):
+        if self.flavor_dd is None:
+            return
+        try:
+            key = self._flavor_keys[self.flavor_dd.index]
+        except IndexError:
+            return
+        old = T.flavor_name()
+        self.desk.shell.set_flavor(key)
+        self._sync_flavor_widget()
+        if old != T.flavor_name():
+            self.status.set("Desktop flavor saved.")
+        else:
+            self.status.set("Desktop flavor already active.")
+        self.invalidate()
+
+    def _install_tb_alias(self):
+        if self.desk.shell.install_tb_alias():
+            self.tb_alias_status.set(
+                "Installer opened in a new tab; `tb` will be available "
+                "when it finishes.")
+        else:
+            self.tb_alias_status.set("Could not open the `tb` installer.")
+        self.invalidate()
+
+    def _install_voice_model(self):
+        model = self.fields[shared_settings.VOICE_STT_MODEL_KEY][1].value
+        try:
+            engine = shared_settings.stt_engine_for_model(model)
+        except ValueError as error:
+            self.voice_model_status.set(str(error))
+            self.invalidate()
+            return False
+        engine_widget = self.fields[shared_settings.VOICE_STT_ENGINE_KEY][1]
+        engine_widget.index = engine_widget.options.index(engine)
+        target = self.desk.shell.kilix_stt_target()
+        if target is None:
+            self.voice_model_status.set("Kilix dictation installer not found.")
+            self.invalidate()
+            return False
+        opened = self.desk.shell._tab(
+            [*target, "--install", model, "--default", model],
+            f"Install speech model · {model}", os.path.expanduser("~"))
+        self.voice_model_status.set(
+            "Installer will use it after verification." if opened
+            else "Could not open the model installer.")
+        self.invalidate()
+        return bool(opened)
+
+    def _populate(self):
+        self._sync_flavor_widget()
+        for key, (kind, wd) in self.fields.items():
+            val = (self.shared_values.get(key) if key in self.shared_keys
+                   else get_key(self.buffer, key))
+            if kind == "bool":
+                wd.checked = _is_true(val if val is not None
+                                      else wd.default_val)
+            elif kind == "choice":
+                if val is not None and val not in wd.options:
+                    wd.options.append(val)   # keep a valid non-listed value
+                if val in wd.options:
+                    wd.index = wd.options.index(val)
+            else:
+                wd.set(val if val is not None else "")
+
+    def _form_to_buffer(self):
+        # only rewrite a key when its value actually changed, so keys absent
+        # from the file stay absent and untouched values keep their formatting
+        for key, (kind, wd) in self.fields.items():
+            is_shared = key in self.shared_keys
+            cur = (self.shared_values.get(key) if is_shared
+                   else get_key(self.buffer, key))
+            if kind == "bool":
+                v = "yes" if wd.checked else "no"
+                if _is_true(v) == _is_true(cur if cur is not None
+                                           else wd.default_val):
+                    continue
+            elif kind == "choice":
+                v = wd.value
+                if v == (cur if cur is not None else wd.options[0]):
+                    continue
+            else:
+                v = wd.text.strip()
+                if not v or v == (cur or ""):
+                    continue
+            if is_shared:
+                self.shared_values[key] = v
+                self.shared_changes[key] = v
+            else:
+                self.buffer = set_key(self.buffer, key, v)
+
+    # font size controls ---------------------------------------------------
+    def _font_size_field(self):
+        return self.fields["font_size"][1]
+
+    def _font_size_current(self):
+        raw = self._font_size_field().text.strip()
+        try:
+            return float(raw) if raw else FONT_SIZE_DEFAULT
+        except ValueError:
+            return FONT_SIZE_DEFAULT
+
+    def _font_size_apply_value(self, value):
+        self._font_size_field().set(_fmt_font_size(value))
+        self._apply()
+
+    def _font_size_adjust(self, delta):
+        self._font_size_apply_value(self._font_size_current() + delta)
+
+    def _font_size_reset(self):
+        self._font_size_apply_value(FONT_SIZE_DEFAULT)
+
+    # apply ----------------------------------------------------------------
+    def _apply(self, close=False):
+        if self.tabs.active == self.raw_tab:
+            self.buffer = self.ta.text()
+        else:
+            self._form_to_buffer()
+        shared_changed = bool(self.shared_changes)
+        tmp = None
+        try:
+            directory = os.path.dirname(self.path)
+            os.makedirs(directory, exist_ok=True)
+            fd, tmp = tempfile.mkstemp(prefix=".kitty.conf.", dir=directory)
+            os.fchmod(fd, 0o600)
+            with os.fdopen(fd, "w", encoding="utf-8") as f:
+                f.write(self.buffer)
+                f.flush()
+                os.fsync(f.fileno())
+            os.replace(tmp, self.path)
+            tmp = None
+        except OSError as e:
+            wm.msgbox(self.desk, "kilix Settings", f"Cannot write config:\n{e}",
+                      icon="error")
+            return
+        finally:
+            if tmp is not None:
+                try:
+                    os.unlink(tmp)
+                except OSError:
+                    pass
+        if self.shared_changes:
+            try:
+                shared_settings.update(self.shared_changes, self.shared_path)
+                self.shared_changes.clear()
+            except (OSError, KeyError) as e:
+                wm.msgbox(self.desk, "kilix Settings",
+                          f"Cannot write shared settings:\n{e}", icon="error")
+                return
+        changed = self.desk.shell.set_full_experience(
+            self.full_experience.checked)
+        msg = self._reload_live()
+        if changed:
+            state = "activated" if self.full_experience.checked else "disabled"
+            msg = f"Saved — full experience {state}."
+        elif shared_changed:
+            msg = "Saved — shared chrome/game settings updated."
+        self.status.set(msg)
+        self.invalidate()
+        if close:
+            self.close()
+
+    def _reload_live(self):
+        kitten = self.desk.shell._kitten()
+        if kitten and os.environ.get("KITTY_LISTEN_ON"):
+            try:
+                r = subprocess.run([kitten, "@", "action", "load_config_file"],
+                                   capture_output=True, timeout=5)
+                if r.returncode == 0:
+                    return "Saved — kilix config reloaded live."
+            except (OSError, subprocess.TimeoutExpired):
+                pass
+        pid = os.environ.get("KITTY_PID", "")
+        if pid.isdigit():
+            try:
+                os.kill(int(pid), signal.SIGUSR1)
+                return "Saved — reload signaled (SIGUSR1)."
+            except (OSError, ProcessLookupError):
+                pass
+        return "Saved. Reload kilix config with Ctrl+Shift+F5."
