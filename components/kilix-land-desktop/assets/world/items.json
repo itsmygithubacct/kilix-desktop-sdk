@@ -1,0 +1,240 @@
+{
+  "items": 1,
+  "tastes": [
+    {
+      "cast": "legend",
+      "actor": 1,
+      "love": ["core:gift/postcard"],
+      "like": ["tool"],
+      "dislike": ["giftable"]
+    },
+    {
+      "cast": "legend",
+      "actor": 2,
+      "love": ["media"],
+      "like": ["light"],
+      "dislike": ["giftable"]
+    },
+    {
+      "cast": "legend",
+      "actor": 3,
+      "love": ["giftable"],
+      "like": ["drink"],
+      "dislike": ["core:media/record"]
+    },
+    {
+      "cast": "chumrunner",
+      "actor": 1,
+      "love": ["core:gear/lantern-pin"],
+      "like": ["tool"],
+      "dislike": ["decor"]
+    },
+    {
+      "cast": "chumrunner",
+      "actor": 2,
+      "love": ["core:tool/toolbox", "core:drink/coffee"],
+      "like": ["tool"],
+      "dislike": ["media"]
+    },
+    {
+      "cast": "chumrunner",
+      "actor": 3,
+      "love": ["core:media/record"],
+      "like": ["core:gift/postcard"],
+      "dislike": ["placeable"]
+    },
+    {
+      "cast": "fantasy",
+      "actor": 1,
+      "love": ["core:decor/houseplant"],
+      "like": ["core:gift/postcard"],
+      "dislike": ["drink"]
+    },
+    {
+      "cast": "fantasy",
+      "actor": 2,
+      "love": ["core:gear/lantern-pin"],
+      "like": ["light"],
+      "dislike": ["decor"]
+    },
+    {
+      "cast": "fantasy",
+      "actor": 3,
+      "love": ["core:gift/postcard"],
+      "like": ["wearable"],
+      "dislike": ["media"]
+    },
+    {
+      "cast": "pleb-bound",
+      "actor": 1,
+      "love": ["media"],
+      "like": ["core:gift/postcard"],
+      "dislike": ["drink"]
+    },
+    {
+      "cast": "pleb-bound",
+      "actor": 2,
+      "love": ["core:tool/toolbox", "core:drink/coffee"],
+      "like": ["tool"],
+      "dislike": ["wearable"]
+    },
+    {
+      "cast": "pleb-bound",
+      "actor": 3,
+      "love": ["core:gear/lantern-pin"],
+      "like": ["decor"],
+      "dislike": ["media"]
+    }
+  ],
+  "definitions": [
+    {
+      "id": "core:media/record",
+      "name": "House Record",
+      "description": "Side two is a masterpiece. The stereo has room for this.",
+      "family": "portable",
+      "behavior": "hold",
+      "sprite": 1,
+      "max_stack": 1,
+      "tags": [
+        "media",
+        "giftable"
+      ]
+    },
+    {
+      "id": "core:drink/coffee",
+      "name": "Coffee",
+      "description": "A warm cup for a long terminal session.",
+      "family": "consumable",
+      "behavior": "drink",
+      "sprite": 2,
+      "max_stack": 8,
+      "tags": [
+        "drink",
+        "giftable",
+        "discardable"
+      ],
+      "effect_ticks": 3600
+    },
+    {
+      "id": "core:tool/toolbox",
+      "name": "Toolbox",
+      "description": "Every hinge in this house answers to it.",
+      "family": "tool",
+      "behavior": "use-tool",
+      "sprite": 3,
+      "max_stack": 1,
+      "tags": [
+        "tool"
+      ]
+    },
+    {
+      "id": "core:decor/houseplant",
+      "name": "Houseplant",
+      "description": "Can be set down on any clear patch of floor.",
+      "family": "placeable",
+      "behavior": "place",
+      "sprite": 4,
+      "max_stack": 4,
+      "tags": [
+        "decor",
+        "placeable",
+        "giftable",
+        "discardable"
+      ]
+    },
+    {
+      "id": "core:gift/postcard",
+      "name": "Postcard",
+      "description": "Addressed to the house itself. Someone should have it.",
+      "family": "portable",
+      "behavior": "hold",
+      "sprite": 5,
+      "max_stack": 4,
+      "tags": [
+        "giftable",
+        "discardable"
+      ]
+    },
+    {
+      "id": "core:gear/lantern-pin",
+      "name": "Lantern Pin",
+      "description": "A little glow to keep on your collar.",
+      "family": "wearable",
+      "behavior": "equip",
+      "sprite": 6,
+      "max_stack": 1,
+      "tags": [
+        "wearable",
+        "light",
+        "giftable"
+      ]
+    },
+    {
+      "id": "core:drink/tea-leaves",
+      "name": "Tea Leaves",
+      "description": "A fragrant bundle ready for the kitchen kettle.",
+      "family": "portable",
+      "behavior": "hold",
+      "sprite": 4,
+      "max_stack": 4,
+      "tags": [
+        "receiver-input",
+        "discardable"
+      ]
+    },
+    {
+      "id": "core:drink/fresh-tea",
+      "name": "Fresh Tea",
+      "description": "A freshly brewed cup with a calming warmth.",
+      "family": "consumable",
+      "behavior": "drink",
+      "sprite": 2,
+      "max_stack": 4,
+      "tags": [
+        "drink",
+        "giftable"
+      ],
+      "effect_ticks": 2400
+    },
+    {
+      "id": "core:tool/laptop",
+      "name": "Laptop",
+      "description": "A portable kilix terminal. Set it up on a desk, then open a session profile.",
+      "family": "placeable",
+      "behavior": "place",
+      "sprite": 7,
+      "max_stack": 1,
+      "tags": [
+        "placeable",
+        "terminal"
+      ]
+    }
+  ],
+  "receivers": [
+    {
+      "id": "stereo-record",
+      "accept_any_tag": [
+        "media"
+      ],
+      "consume": false,
+      "processing_ticks": 0,
+      "result": "activate-fixture"
+    },
+    {
+      "id": "trash-chute",
+      "accept_any_tag": [
+        "discardable"
+      ],
+      "consume": true,
+      "result": "none"
+    },
+    {
+      "id": "kettle-brew",
+      "accept_item": "core:drink/tea-leaves",
+      "consume": true,
+      "processing_ticks": 1800,
+      "result": "none",
+      "output": "core:drink/fresh-tea"
+    }
+  ]
+}

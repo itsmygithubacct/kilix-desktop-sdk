@@ -1,0 +1,894 @@
+{
+  "world": 2,
+  "start": "bedroom",
+  "rooms": [
+    {
+      "id": "bedroom",
+      "name": "Bedroom",
+      "plate": "bedroom",
+      "walk": {
+        "x": 0,
+        "y": 180,
+        "w": 462,
+        "h": 90
+      },
+      "obstacles": [
+        {
+          "x": 0,
+          "y": 180,
+          "w": 414,
+          "h": 24
+        },
+        {
+          "x": 444,
+          "y": 192,
+          "w": 12,
+          "h": 54
+        },
+        {
+          "x": 0,
+          "y": 204,
+          "w": 210,
+          "h": 18
+        },
+        {
+          "x": 294,
+          "y": 204,
+          "w": 120,
+          "h": 12
+        },
+        {
+          "x": 402,
+          "y": 216,
+          "w": 12,
+          "h": 6
+        },
+        {
+          "x": 0,
+          "y": 222,
+          "w": 186,
+          "h": 6
+        },
+        {
+          "x": 192,
+          "y": 222,
+          "w": 12,
+          "h": 6
+        },
+        {
+          "x": 408,
+          "y": 222,
+          "w": 6,
+          "h": 6
+        },
+        {
+          "x": 0,
+          "y": 228,
+          "w": 48,
+          "h": 6
+        },
+        {
+          "x": 72,
+          "y": 228,
+          "w": 18,
+          "h": 6
+        },
+        {
+          "x": 0,
+          "y": 234,
+          "w": 42,
+          "h": 6
+        },
+        {
+          "x": 0,
+          "y": 240,
+          "w": 36,
+          "h": 6
+        },
+        {
+          "x": 0,
+          "y": 246,
+          "w": 24,
+          "h": 6
+        },
+        {
+          "x": 0,
+          "y": 252,
+          "w": 18,
+          "h": 6
+        }
+      ],
+      "doors": [
+        {
+          "rect": {
+            "x": 450,
+            "y": 180,
+            "w": 12,
+            "h": 90
+          },
+          "to": "living",
+          "spawn": {
+            "x": 28,
+            "y": 252
+          }
+        }
+      ],
+      "objects": [
+        {
+          "id": "bed",
+          "prompt": "Turn in for the day",
+          "rect": {
+            "x": 44,
+            "y": 168,
+            "w": 76,
+            "h": 48
+          },
+          "target": "bed"
+        },
+        {
+          "id": "wardrobe",
+          "prompt": "Change your look",
+          "rect": {
+            "x": 330,
+            "y": 162,
+            "w": 52,
+            "h": 54
+          },
+          "target": "wardrobe"
+        }
+      ],
+      "npcs": [],
+      "walkbehinds": [
+        {
+          "id": 1,
+          "baseline": 228
+        }
+      ],
+      "item_spawns": [
+        {
+          "id": "bedroom-postcard",
+          "item": "core:gift/postcard",
+          "quantity": 1,
+          "x": 240,
+          "y": 235
+        },
+        {
+          "id": "bedroom-pin",
+          "item": "core:gear/lantern-pin",
+          "quantity": 1,
+          "x": 350,
+          "y": 232
+        }
+      ]
+    },
+    {
+      "id": "living",
+      "name": "Living Room",
+      "plate": "living",
+      "walk": {
+        "x": 0,
+        "y": 180,
+        "w": 480,
+        "h": 90
+      },
+      "obstacles": [
+        {
+          "x": 0,
+          "y": 180,
+          "w": 36,
+          "h": 12
+        },
+        {
+          "x": 66,
+          "y": 180,
+          "w": 126,
+          "h": 6
+        },
+        {
+          "x": 294,
+          "y": 180,
+          "w": 66,
+          "h": 6
+        },
+        {
+          "x": 378,
+          "y": 180,
+          "w": 30,
+          "h": 6
+        },
+        {
+          "x": 444,
+          "y": 180,
+          "w": 36,
+          "h": 42
+        },
+        {
+          "x": 66,
+          "y": 186,
+          "w": 24,
+          "h": 6
+        },
+        {
+          "x": 384,
+          "y": 186,
+          "w": 24,
+          "h": 6
+        },
+        {
+          "x": 0,
+          "y": 192,
+          "w": 24,
+          "h": 36
+        },
+        {
+          "x": 216,
+          "y": 192,
+          "w": 48,
+          "h": 24
+        },
+        {
+          "x": 438,
+          "y": 192,
+          "w": 6,
+          "h": 24
+        },
+        {
+          "x": 216,
+          "y": 216,
+          "w": 6,
+          "h": 6
+        },
+        {
+          "x": 258,
+          "y": 216,
+          "w": 6,
+          "h": 6
+        },
+        {
+          "x": 456,
+          "y": 222,
+          "w": 24,
+          "h": 6
+        },
+        {
+          "x": 0,
+          "y": 228,
+          "w": 18,
+          "h": 12
+        },
+        {
+          "x": 462,
+          "y": 228,
+          "w": 18,
+          "h": 12
+        }
+      ],
+      "doors": [
+        {
+          "rect": {
+            "x": 0,
+            "y": 180,
+            "w": 12,
+            "h": 90
+          },
+          "to": "bedroom",
+          "spawn": {
+            "x": 434,
+            "y": 258
+          }
+        },
+        {
+          "rect": {
+            "x": 468,
+            "y": 180,
+            "w": 12,
+            "h": 90
+          },
+          "to": "study",
+          "spawn": {
+            "x": 34,
+            "y": 252
+          }
+        },
+        {
+          "rect": {
+            "x": 0,
+            "y": 180,
+            "w": 480,
+            "h": 12
+          },
+          "to": "kitchen",
+          "spawn": {
+            "x": 240,
+            "y": 242
+          }
+        },
+        {
+          "rect": {
+            "x": 0,
+            "y": 258,
+            "w": 480,
+            "h": 12
+          },
+          "to": "yard",
+          "spawn": {
+            "x": 222,
+            "y": 208
+          }
+        }
+      ],
+      "objects": [
+        {
+          "id": "tv",
+          "prompt": "Switch on the TV",
+          "rect": {
+            "x": 148,
+            "y": 148,
+            "w": 62,
+            "h": 44
+          },
+          "target": "games"
+        },
+        {
+          "id": "stereo",
+          "prompt": "Put a record on",
+          "rect": {
+            "x": 300,
+            "y": 154,
+            "w": 44,
+            "h": 38
+          },
+          "target": "music",
+          "receiver": "stereo-record"
+        },
+        {
+          "id": "phone",
+          "prompt": "Pick up the phone",
+          "rect": {
+            "x": 454,
+            "y": 158,
+            "w": 22,
+            "h": 34
+          },
+          "target": "voice"
+        }
+      ],
+      "npcs": [
+        {
+          "actor": 1,
+          "x": 120,
+          "y": 200
+        },
+        {
+          "actor": 2,
+          "x": 320,
+          "y": 232
+        },
+        {
+          "actor": 3,
+          "x": 408,
+          "y": 204
+        }
+      ],
+      "walkbehinds": [
+        {
+          "id": 1,
+          "baseline": 216
+        }
+      ],
+      "item_spawns": [
+        {
+          "id": "starter-record",
+          "item": "core:media/record",
+          "quantity": 1,
+          "x": 272,
+          "y": 224
+        }
+      ]
+    },
+    {
+      "id": "study",
+      "name": "Study",
+      "plate": "study",
+      "walk": {
+        "x": 6,
+        "y": 180,
+        "w": 474,
+        "h": 90
+      },
+      "obstacles": [
+        {
+          "x": 6,
+          "y": 180,
+          "w": 36,
+          "h": 54
+        },
+        {
+          "x": 78,
+          "y": 180,
+          "w": 402,
+          "h": 12
+        },
+        {
+          "x": 78,
+          "y": 192,
+          "w": 90,
+          "h": 6
+        },
+        {
+          "x": 420,
+          "y": 192,
+          "w": 60,
+          "h": 6
+        },
+        {
+          "x": 84,
+          "y": 198,
+          "w": 12,
+          "h": 6
+        },
+        {
+          "x": 84,
+          "y": 204,
+          "w": 6,
+          "h": 6
+        },
+        {
+          "x": 6,
+          "y": 234,
+          "w": 30,
+          "h": 6
+        },
+        {
+          "x": 6,
+          "y": 240,
+          "w": 12,
+          "h": 6
+        },
+        {
+          "x": 6,
+          "y": 246,
+          "w": 6,
+          "h": 6
+        }
+      ],
+      "doors": [
+        {
+          "rect": {
+            "x": 6,
+            "y": 180,
+            "w": 12,
+            "h": 90
+          },
+          "to": "living",
+          "spawn": {
+            "x": 452,
+            "y": 252
+          }
+        }
+      ],
+      "objects": [
+        {
+          "id": "monitor",
+          "prompt": "Read the screen",
+          "rect": {
+            "x": 326,
+            "y": 122,
+            "w": 34,
+            "h": 20
+          },
+          "target": "browser"
+        },
+        {
+          "id": "computer",
+          "prompt": "Use the computer",
+          "rect": {
+            "x": 322,
+            "y": 148,
+            "w": 70,
+            "h": 46
+          },
+          "target": "terminal"
+        },
+        {
+          "id": "dev-rig",
+          "prompt": "Wake the coding agents",
+          "rect": {
+            "x": 404,
+            "y": 154,
+            "w": 42,
+            "h": 40
+          },
+          "target": "coding-agents"
+        },
+        {
+          "id": "filing-cabinet",
+          "prompt": "Open the filing cabinet",
+          "rect": {
+            "x": 78,
+            "y": 152,
+            "w": 30,
+            "h": 46
+          },
+          "target": "files"
+        },
+        {
+          "id": "bookshelf",
+          "prompt": "Browse the bookshelf",
+          "rect": {
+            "x": 110,
+            "y": 138,
+            "w": 72,
+            "h": 58
+          },
+          "target": "manuals"
+        },
+        {
+          "id": "model-shelf",
+          "prompt": "Study the model shelf",
+          "rect": {
+            "x": 226,
+            "y": 144,
+            "w": 52,
+            "h": 48
+          },
+          "target": "models"
+        }
+      ],
+      "npcs": [],
+      "item_spawns": [
+        {
+          "id": "study-houseplant",
+          "item": "core:decor/houseplant",
+          "quantity": 1,
+          "x": 150,
+          "y": 230
+        },
+        {
+          "id": "study-laptop",
+          "item": "core:tool/laptop",
+          "quantity": 1,
+          "x": 300,
+          "y": 232
+        }
+      ],
+      "walkbehinds": [
+        {
+          "id": 1,
+          "baseline": 198
+        }
+      ]
+    },
+    {
+      "id": "kitchen",
+      "name": "Kitchen",
+      "plate": "kitchen",
+      "walk": {
+        "x": 0,
+        "y": 180,
+        "w": 480,
+        "h": 90
+      },
+      "obstacles": [
+        {
+          "x": 0,
+          "y": 180,
+          "w": 126,
+          "h": 6
+        },
+        {
+          "x": 360,
+          "y": 180,
+          "w": 96,
+          "h": 6
+        },
+        {
+          "x": 0,
+          "y": 186,
+          "w": 114,
+          "h": 6
+        },
+        {
+          "x": 372,
+          "y": 186,
+          "w": 84,
+          "h": 6
+        },
+        {
+          "x": 0,
+          "y": 192,
+          "w": 108,
+          "h": 6
+        },
+        {
+          "x": 378,
+          "y": 192,
+          "w": 78,
+          "h": 6
+        },
+        {
+          "x": 0,
+          "y": 198,
+          "w": 78,
+          "h": 6
+        },
+        {
+          "x": 384,
+          "y": 198,
+          "w": 72,
+          "h": 6
+        },
+        {
+          "x": 0,
+          "y": 204,
+          "w": 30,
+          "h": 6
+        },
+        {
+          "x": 42,
+          "y": 204,
+          "w": 30,
+          "h": 6
+        },
+        {
+          "x": 432,
+          "y": 204,
+          "w": 24,
+          "h": 6
+        },
+        {
+          "x": 0,
+          "y": 210,
+          "w": 24,
+          "h": 6
+        },
+        {
+          "x": 0,
+          "y": 216,
+          "w": 12,
+          "h": 6
+        }
+      ],
+      "doors": [
+        {
+          "rect": {
+            "x": 0,
+            "y": 258,
+            "w": 480,
+            "h": 12
+          },
+          "to": "living",
+          "spawn": {
+            "x": 208,
+            "y": 208
+          }
+        }
+      ],
+      "objects": [
+        {
+          "id": "notice-board",
+          "prompt": "Check the notice board",
+          "rect": {
+            "x": 200,
+            "y": 138,
+            "w": 62,
+            "h": 42
+          },
+          "target": "status-board"
+        },
+        {
+          "id": "trash-can",
+          "prompt": "Take out the trash",
+          "rect": {
+            "x": 56,
+            "y": 168,
+            "w": 30,
+            "h": 36
+          },
+          "target": "trash",
+          "receiver": "trash-chute"
+        },
+        {
+          "id": "kettle",
+          "prompt": "Put the kettle on",
+          "rect": {
+            "x": 390,
+            "y": 150,
+            "w": 34,
+            "h": 48
+          },
+          "target": "kettle",
+          "receiver": "kettle-brew"
+        }
+      ],
+      "npcs": [],
+      "walkbehinds": [
+        {
+          "id": 1,
+          "baseline": 177
+        }
+      ],
+      "item_spawns": [
+        {
+          "id": "kitchen-coffee",
+          "item": "core:drink/coffee",
+          "quantity": 2,
+          "x": 150,
+          "y": 234
+        },
+        {
+          "id": "kitchen-tea-leaves",
+          "item": "core:drink/tea-leaves",
+          "quantity": 2,
+          "x": 330,
+          "y": 234
+        }
+      ]
+    },
+    {
+      "id": "yard",
+      "name": "Yard",
+      "plate": "yard",
+      "outdoor": true,
+      "walk": {
+        "x": 0,
+        "y": 180,
+        "w": 444,
+        "h": 90
+      },
+      "obstacles": [
+        {
+          "x": 0,
+          "y": 180,
+          "w": 6,
+          "h": 12
+        },
+        {
+          "x": 0,
+          "y": 228,
+          "w": 24,
+          "h": 42
+        },
+        {
+          "x": 6,
+          "y": 180,
+          "w": 42,
+          "h": 6
+        },
+        {
+          "x": 24,
+          "y": 252,
+          "w": 138,
+          "h": 18
+        },
+        {
+          "x": 42,
+          "y": 246,
+          "w": 48,
+          "h": 6
+        },
+        {
+          "x": 60,
+          "y": 240,
+          "w": 30,
+          "h": 6
+        },
+        {
+          "x": 162,
+          "y": 264,
+          "w": 36,
+          "h": 6
+        },
+        {
+          "x": 330,
+          "y": 252,
+          "w": 114,
+          "h": 18
+        },
+        {
+          "x": 336,
+          "y": 180,
+          "w": 108,
+          "h": 6
+        },
+        {
+          "x": 372,
+          "y": 186,
+          "w": 72,
+          "h": 6
+        },
+        {
+          "x": 408,
+          "y": 240,
+          "w": 36,
+          "h": 12
+        }
+      ],
+      "doors": [
+        {
+          "rect": {
+            "x": 0,
+            "y": 180,
+            "w": 444,
+            "h": 12
+          },
+          "to": "living",
+          "spawn": {
+            "x": 240,
+            "y": 252
+          }
+        }
+      ],
+      "objects": [
+        {
+          "id": "mailbox",
+          "prompt": "Check the mailbox",
+          "rect": {
+            "x": 56,
+            "y": 156,
+            "w": 26,
+            "h": 48
+          },
+          "target": "mailbox"
+        },
+        {
+          "id": "fuse-box",
+          "prompt": "Check the fuse box",
+          "rect": {
+            "x": 300,
+            "y": 92,
+            "w": 40,
+            "h": 98
+          },
+          "target": "settings"
+        },
+        {
+          "id": "shed",
+          "prompt": "Open the shed",
+          "rect": {
+            "x": 344,
+            "y": 136,
+            "w": 84,
+            "h": 62
+          },
+          "target": "maintenance"
+        },
+        {
+          "id": "gate",
+          "prompt": "Try the gate",
+          "rect": {
+            "x": 444,
+            "y": 180,
+            "w": 16,
+            "h": 72
+          },
+          "target": "gate-locked"
+        }
+      ],
+      "npcs": [],
+      "walkbehinds": [
+        {
+          "id": 1,
+          "baseline": 189
+        },
+        {
+          "id": 2,
+          "baseline": 192
+        },
+        {
+          "id": 3,
+          "baseline": 204
+        }
+      ],
+      "item_spawns": [
+        {
+          "id": "shed-toolbox",
+          "item": "core:tool/toolbox",
+          "quantity": 1,
+          "x": 386,
+          "y": 214
+        }
+      ]
+    }
+  ]
+}
