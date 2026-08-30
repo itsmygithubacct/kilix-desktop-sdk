@@ -1,0 +1,23 @@
+{
+  "schema": "kilix-cap-render-fixtures-v1",
+  "release": "3.0.0",
+  "width": 1440,
+  "height": 960,
+  "sha256": {
+    "base-balcony.ppm": "36e98bdcde140932cba064f8d89b77e6d29c50d66fe3a6a66ff82a1b039779ff",
+    "base-cleaning-room.ppm": "1569284ca9cc68baf4aefd72c973a17c7bcf2b3e52ded8ba7e53bd3616f9c2aa",
+    "base-desk.ppm": "8ffc16c2e6ffa5575cd5ff94e0ff93da0298adfc0121e748daa345c0a1b65e4b",
+    "base-game-room.ppm": "17085f6a919ce135e793997b2d1c855a5c2d0a0339fdf48abdc06a2f381719e1",
+    "base-hallway.ppm": "10bf7caafd6b479652a9fb002e70c1e41719cf6349ce99f0f61d186b8267fc37",
+    "base-library.ppm": "8d06aed8bf2d16ce6d9d4532b429c61b5153effafe39cd9645c644e1f22a6d19",
+    "base-server-room.ppm": "f99ae7cb8e94fc0e924257b4f9f76ce926c36b976498c540d75d9954ef9b03a3",
+    "base-storeroom.ppm": "ce3c51819eb10862578cce0818ae0c0bad8e1a4dd76f99c43382cd7a0713937d",
+    "state-cleaning-hover.ppm": "631e32b94aa51fe591ddaf897a41cae95bfb9918505edd44fbb8cc146956f0c2",
+    "state-desk-hover.ppm": "b51fd5eb95575cf9f8dbf60126462bbd3b92061edc33210f8ad414b1a546123d",
+    "state-desk-web-boot.ppm": "3d3b4adac582d8b9cb5150ed9152bf17b7bae58f9734549244b823fff2d3bf17",
+    "state-desk-web-zoom.ppm": "f00959e5fdc9f5edb37e294f89fce49a1e8c4b27af6852903542f328a112169a",
+    "state-game-hover.ppm": "54f69df64653d138e3db2db9e27a75dae91ac3be8e543de03e9e8b97972a5008",
+    "state-server-hover.ppm": "927c74d2dbef6f3e2548caacd2eb3d83127f1d1d61a6d2ed0089f9393086d26c",
+    "state-store-moved.ppm": "93bb62f5a270cb180a95ef87be13323a317921e301c658a37fc5cc5e37fd78b2"
+  }
+}

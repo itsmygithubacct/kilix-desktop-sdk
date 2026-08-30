@@ -1,0 +1,10 @@
+/bin/
+/obj/
+/bin-san/
+/obj-san/
+/a-*.d
+*.ppm
+*.core
+core
+__pycache__/
+*.pyc

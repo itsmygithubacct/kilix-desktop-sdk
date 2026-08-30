@@ -1,0 +1,619 @@
+{
+  "schema": "kilix-cap-visual-provenance-v5",
+  "status": "release-approved",
+  "generated_on": "2026-07-23",
+  "requested_generator": "Gemini image generation",
+  "actual_generator": {
+    "provider": "OpenAI built-in image generation tool",
+    "model_identifier": "not exposed by the tool",
+    "reason": "Gemini image generation was unavailable: the workspace had no Gemini CLI, SDK, credential, Vertex endpoint, or Gemini image-generation tool. The available OpenAI built-in image generation tool was used instead."
+  },
+  "public_snapshot_normalization": {
+    "operation": "lossless PNG IDAT recompression",
+    "decoded_pixels": "The decoded 8-bit RGB pixels are byte-identical to the provider-generated source in every normalized file.",
+    "c2pa_policy": "Recompression changes bytes covered by the provider credential's hard binding. The now-invalid caBX chunk is therefore not copied into the normalized file; its complete serialized-chunk hash remains recorded below rather than presenting an invalid credential as current.",
+    "files": [
+      {
+        "path": "assets/art/hallway-room-doors-source.png",
+        "source_file_sha256": "b8ae5c4392b07e688c571ece801f77d2f7b14d566ba609d3e6ab3032cfd7f317",
+        "committed_file_sha256": "b00fee6583a21ded2e4cf9c19cdc8ccfdb3873bd0d57b7a29a1a65c4c8e8fddb",
+        "decoded_rgb_sha256": "70323efa4494a4491bb747494e5e086dff27617ef8b1fcf0b61a3c160387c491",
+        "source_c2pa_chunk_sha256": "fba281c8119ca2c5960ac56cdcdf1a57e75978e76214a4143870398e8b99e568",
+        "zlib_level": 9,
+        "zlib_strategy": "default"
+      },
+      {
+        "path": "assets/art/hallway-room.png",
+        "source_file_sha256": "58f7981226cbfc31389a0099ff7e5a2e74c8853570f2bdcbc4731d01dc9cf108",
+        "committed_file_sha256": "472fc48f619389d05cd1f1adc8bf63d4c02d38e9285209ff095c16695ccdf35f",
+        "decoded_rgb_sha256": "939d4ce9b117ea51214c5f46ebeb3016cf850647e635b7ecc23698a2122ade24",
+        "source_c2pa_chunk_sha256": "aa53d96b54507f1c2c30800f9c4b73bb1e85adbb485e55f2711a4935603f5ed1",
+        "zlib_level": 9,
+        "zlib_strategy": "filtered"
+      },
+      {
+        "path": "assets/art/server-room-door-source.png",
+        "source_file_sha256": "89b3a4de1292f964ede1f519d29a1ef682d507cf64c258b277fef0c3d6332c35",
+        "committed_file_sha256": "bd7237c5649556849ba8651910383caac7fdcb3b8e7a9661490459ceeb8cb553",
+        "decoded_rgb_sha256": "20b37a3e95ffe452833838d9616f384310564b64109417d7f098947254a5cfb7",
+        "source_c2pa_chunk_sha256": "c99847bb9da71c422062f66b184e2431652b9c356c263c6c8a01b3d451a4e741",
+        "zlib_level": 9,
+        "zlib_strategy": "default"
+      }
+    ]
+  },
+  "generations": [
+    {
+      "id": "desk-items-base",
+      "tool": "OpenAI built-in image generation tool",
+      "mode": "text-to-image",
+      "output_sha256": "a4850c6de2cf5a313776c5c89ccb486ca69d8205844edf60a3b884a29073d53a",
+      "output_width": 1717,
+      "output_height": 916,
+      "committed": false,
+      "prompt": "Use case: stylized-concept\nAsset type: full-color interactive room background for a desktop application, designed to downscale cleanly to a 480x256 pixel content area\nPrimary request: an inviting actual home-office room centered on a substantial walnut workdesk, with recognizable physical desk items that can serve as interactive program launchers\nScene/backdrop: a complete cozy office interior with warm plaster walls, a window with soft daylight, shelves, a broad wooden desk, and visible floor depth\nSubject: arrange an analog clock, paired inbox/outbox paper trays, an envelope, a blank name card, notebook, desk calendar, card file, compact file drawers, telephone, paper stack, calculator, and a blank computer monitor naturally around the desk; keep each object visually distinct and separated\nStyle/medium: polished stylized realism, painterly 3D environment art with believable wood, paper, metal, glass, and fabric textures; rich full color; readable when reduced to low resolution\nComposition/framing: very wide 15:8 landscape frame, straight-on with a slightly elevated view; full desk visible across the lower two-thirds and room visible above; moderate perspective; central monitor; doorway visible at the far right; clear open breathing room around each prop for UI labels and hit overlays\nLighting/mood: warm daylight mixed with a gentle amber desk lamp; welcoming, productive, lived-in but tidy\nColor palette: walnut brown, cream, muted teal, moss green, rust orange, golden amber, and deep navy accents\nConstraints: environment artwork only; no people; no text; no letters; no numbers; no labels; no logos; no trademarks; no watermarks; no UI chrome; no floating buttons; no cropped desk; no extreme perspective; avoid clutter and avoid duplicate props"
+    },
+    {
+      "id": "desk-calendar-edit",
+      "tool": "OpenAI built-in image generation tool",
+      "mode": "image-edit",
+      "input_sha256": "a4850c6de2cf5a313776c5c89ccb486ca69d8205844edf60a3b884a29073d53a",
+      "output_path": "assets/art/workdesk-items-source.png",
+      "output_sha256": "454608c9f37d37aa8ffd98e9d8e59a0c5a1b3316cc8a2023b596fd1b0c7929ba",
+      "prompt": "Use case: precise-object-edit\nAsset: existing wide full-color home-office and walnut workdesk source image\nPrimary edit: replace only the small tabletop globe immediately to the right of the central monitor with a freestanding cream-and-brass desk calendar. Give it a clear physical flip-calendar silhouette and blank cream pages, with no readable text and no readable numbers.\nPreservation constraints: preserve the camera, framing, perspective, room, window, walls, shelves, lighting, colors, desk, central monitor, wooden card file, drawers, telephone, paper, calculator, doorway, and every other prop as closely and exactly as possible. Do not add or remove anything else. No people, logos, branding, captions, overlay text, or watermark.\nOutput: a polished realistic editorial illustration in full color, same wide aspect ratio and composition as the reference."
+    },
+    {
+      "id": "desk-clean-background",
+      "tool": "OpenAI built-in image generation tool",
+      "mode": "image-edit",
+      "input_path": "assets/art/workdesk-items-source.png",
+      "input_sha256": "454608c9f37d37aa8ffd98e9d8e59a0c5a1b3316cc8a2023b596fd1b0c7929ba",
+      "output_path": "assets/art/workdesk-room.png",
+      "output_sha256": "c852d9a56f3d6d0e35ebd7b78e090580443836805023cbc28fd06e1427d01e48",
+      "prompt": "Use case: precise-object-edit\nAsset type: clean environment backdrop for a layered interactive desktop application\nInput image: edit target, the existing full-color realistic home office and walnut workdesk\nPrimary request: remove all interactive objects that sit on the foreground desktop or immediately behind it so the application can render those objects later as separate overlays.\nRemove exactly: the analog clock, both stacked paper trays, envelope, notebook, blank name card, central computer monitor and its stand, freestanding desk calendar, green card file, compact wooden file drawers, black telephone and cord, paper stack, and calculator.\nScene/backdrop: preserve the actual room, walnut desk and drawers, green leather blotter, window, chair, shelves, paintings, plants, doorway, coat rack, and brass desk lamp. Reconstruct the newly exposed desk surface, blotter, credenza, and wall naturally with matching wood grain, perspective, lighting, and shadows.\nStyle/medium: polished realistic editorial interior illustration, rich full color\nComposition/framing: preserve the exact camera, wide aspect ratio, framing, perspective, furniture geometry, doorway placement, and lighting of the input\nConstraints: change only the listed removable objects and the surfaces directly revealed beneath them; leave the rest of the image as unchanged as possible; the foreground desk must read as a clean empty staging surface for separately rendered objects; no new props, no text, no labels, no people, no logos, no watermark"
+    },
+    {
+      "id": "hallway-grand-gallery",
+      "tool": "OpenAI built-in image generation tool",
+      "mode": "text-to-image",
+      "output_path": "assets/art/hallway-room.png",
+      "output_sha256": "58f7981226cbfc31389a0099ff7e5a2e74c8853570f2bdcbc4731d01dc9cf108",
+      "output_width": 1717,
+      "output_height": 916,
+      "prompt": "Use case: stylized-concept\nAsset type: object-free Grand Gallery hallway background for a layered 480x256 room-metaphor terminal application\nPrimary request: create an elegant mansion corridor that feels deep and navigable, with side-door choices encountered along the way and a luminous glass balcony entrance at the far end\nScene/backdrop: refined grand residential gallery with warm cream plaster, dark walnut paneling and trim, polished herringbone floor, restrained framed landscapes, brass wall sconces, a runner rug, tall windows casting warm late-afternoon light, and convincing one-point perspective\nArchitecture: six empty walnut-trimmed door recesses arranged as three diminishing pairs along the left and right walls; leave each side recess empty and dark so separate door leaves can be composited later. At the exact center rear, include a closed elegant glazed double door visibly leading to a sunlit balcony. The central balcony door is baked into the scene; side doors are empty recesses.\nStyle/medium: polished realistic editorial interior illustration, painterly 3D realism, rich full color, consistent with a cozy walnut-and-teal classic home office\nComposition/framing: very wide 15:8 landscape, centered one-point perspective down the corridor, no foreground furniture; all six side recesses visibly separated and the centered balcony door clearly readable after downscaling to 480x256\nLighting/mood: warm, stately, inviting, quietly cinematic\nColor palette: walnut brown, warm cream, muted teal, oxblood runner, golden amber, deep navy shadows\nConstraints: environment background only; no people; no text, letters, numbers, plaques, signs, logos, watermark, UI chrome, floating controls, or furniture blocking any doorway; no side door leaves inside the six recesses\nAvoid: flat row of identical front-facing doors, hotel corridor, modern office, fisheye lens, extreme perspective, clutter, darkness that hides the door openings"
+    },
+    {
+      "id": "storeroom-clean-background",
+      "tool": "OpenAI built-in image generation tool",
+      "mode": "text-to-image",
+      "output_path": "assets/art/storeroom-room.png",
+      "output_sha256": "f3dc390859f58dfb9bc0c1c7576de7d7898df396df67ae141febc9395334030c",
+      "prompt": "Use case: stylized-concept\nAsset type: object-free Storeroom environment backdrop for a layered interactive desktop application, designed to downscale cleanly to a 480x256 content area\nPrimary request: a believable warm storage room with two large empty wooden shelf bays where separately rendered movable objects can be placed\nScene/backdrop: tidy residential-office storeroom with warm plaster walls, walnut trim, wood floor, a narrow empty doorway recess at the far left, and two broad low open wooden shelf or cubby bays across the center and right; shelf surfaces must be empty and unobstructed\nStyle/medium: polished realistic editorial interior illustration, rich full color, consistent with a cozy walnut-and-teal home office\nComposition/framing: very wide 15:8 landscape, straight-on and nearly orthographic; reserve a narrow left area for a separately rendered exit door; place two clearly separated empty shelf bays with broad horizontal surfaces, the left bay centered around the middle-left and the right bay centered around the middle-right; clear floor below\nLighting/mood: warm diffuse daylight and gentle amber practical light, calm and organized\nColor palette: walnut brown, warm cream, muted teal, golden amber, deep navy accents\nConstraints: background environment only for later sprite compositing; shelves completely empty; no boxes, crates, canisters, loose items, signs, text, labels, people, logos, watermark, UI chrome, buttons, or highlighted regions"
+    },
+    {
+      "id": "server-room",
+      "tool": "OpenAI built-in image generation tool",
+      "mode": "text-to-image",
+      "output_path": "assets/art/server-room.png",
+      "output_sha256": "014faa34d7b78979f5bc6cc5c8b404d6da0a0b844f2f20fd0e2d61cd223a6331",
+      "output_width": 1717,
+      "output_height": 916,
+      "prompt": "Use case: stylized-concept\nAsset type: immersive Server Room background for a layered 480x256 mansion-interface terminal application\nPrimary request: create a hidden technological operations room inside an old elegant mansion, where physical consoles can open system settings, administration tools, logs, alerts, mail, process views, and network views\nScene/backdrop: a warm walnut-paneled basement command room transformed into a sophisticated server room; exposed copper pipes and bundled cables trace the walls, patch panels glow softly, dark server racks stand along the right wall, and old-house architecture remains visible behind the technology\nSubject layout: leave a tall empty door recess at the far left for a separately composited walnut exit door. Across the center place one substantial operations desk with exactly two distinct widescreen CRT-style monitors side by side, both with blank near-black glass screens and clearly separated silhouettes. Behind and to the right, include three visually distinct clickable equipment zones: a brass-and-bakelite settings console, a tall server/service rack, and a network patch panel with colored cables. Keep each zone unobstructed.\nStyle/medium: polished realistic editorial interior illustration, painterly 3D realism, coherent with a classic walnut mansion; subtle retrofuturism, not sci-fi fantasy\nComposition/framing: very wide 15:8 landscape, straight-on slightly elevated view, all two monitor screens and three equipment zones readable after downscaling to 480x256; door recess occupies only the leftmost edge\nLighting/mood: moody but legible amber work lights, cool teal monitor glow, small green and orange status LEDs; vigilant, capable, matrix-like atmosphere\nColor palette: deep navy, charcoal, walnut brown, oxidized copper, muted teal, phosphor green, amber\nMaterials/textures: walnut, brass, bakelite, brushed steel, glass, braided wire, painted masonry\nConstraints: room background only; exactly two blank main monitor screens; no people; no readable text, letters, numbers, logos, brands, watermark, UI panels, floating controls, or labels; do not place any object in front of the door recess\nAvoid: generic data center aisle, white modern office, neon cyberpunk overload, illegible darkness, duplicated monitors, tiny clutter, text on screens"
+    },
+    {
+      "id": "library-room",
+      "tool": "OpenAI built-in image generation tool",
+      "mode": "text-to-image",
+      "output_path": "assets/art/library-room.png",
+      "output_sha256": "fbf9a474a9a8cabc570c7c59021e8e0759bfe3baa69e2ada1907723fd892f00f",
+      "output_width": 1717,
+      "output_height": 916,
+      "prompt": "Use case: stylized-concept\nAsset type: immersive Library room background for a layered 480x256 mansion-interface terminal application\nPrimary request: create a richly furnished mansion library whose physical books can directly open project documentation in real viewer applications\nScene/backdrop: elegant private library connected to a walnut home office; floor-to-ceiling dark walnut bookcases, rolling brass ladder, plaster ceiling, Persian rug, leather reading chair, tall window with filtered daylight, brass picture lights, and a broad central reading table\nSubject layout: leave a tall empty walnut-trimmed door recess at the far left for a separately composited exit door. On the central reading table place exactly five large, visibly separate, closed or slightly upright feature volumes in a neat row, with distinct cover colors and no readable lettering. Leave clear gaps between all five so each can be an independent click target. Keep the table and books unobstructed.\nStyle/medium: polished realistic editorial interior illustration, painterly 3D realism, consistent with a refined warm walnut mansion\nComposition/framing: very wide 15:8 landscape, straight-on slightly elevated view; all five feature books are large and individually readable after downscaling to 480x256; door recess remains only at left edge\nLighting/mood: contemplative, warm, inviting, stately but lived-in\nColor palette: walnut brown, oxblood, forest teal, midnight blue, parchment cream, aged gold\nMaterials/textures: leather, clothbound books, walnut, brass, paper, wool\nConstraints: room background only; exactly five distinct feature volumes on the reading table; no people; no readable text, letters, numbers, title labels, logos, brands, watermark, UI panels, or floating buttons; no clutter covering the books\nAvoid: flat card-interface books, modern public library, duplicate feature books, overly dark scene, illegible tiny volumes, text on spines or covers"
+    },
+    {
+      "id": "cleaning-room",
+      "tool": "OpenAI built-in image generation tool",
+      "mode": "text-to-image",
+      "output_path": "assets/art/cleaning-room.png",
+      "output_sha256": "6d5959430e14e3e6669b86661dff3febc7e019940abb97a0987f4340fbf3eb03",
+      "output_width": 1717,
+      "output_height": 916,
+      "prompt": "Use case: stylized-concept\nAsset type: immersive Cleaning Room background for a layered 480x256 mansion-interface terminal application\nPrimary request: create an elegant old-mansion utility and housekeeping room where distinct physical stations can launch safe cleanup tools for temporary files, user caches, package cache, journals, and trash\nScene/backdrop: a beautiful but practical scullery/utility room in the same walnut mansion; glazed cream subway tile, dark walnut cabinetry, brass plumbing, stone floor, copper pipes, neatly coiled hoses, brooms and brushes, a deep ceramic utility sink, and warm window light\nSubject layout: leave a tall empty walnut-trimmed door recess at the far left for a separately composited exit door. Arrange four unmistakably separate interactive stations from center to right: a deep porcelain wash basin with brass taps, a stout lidded copper waste bin, a bank of three orderly wooden cache drawers, and a compact brass-and-bakelite maintenance terminal with a blank dark screen. Keep every station unobstructed and separated by visible space.\nStyle/medium: polished realistic editorial interior illustration, painterly 3D realism, coherent with a refined classic mansion; whimsical physical metaphors without becoming cartoonish\nComposition/framing: very wide 15:8 landscape, straight-on slightly elevated view; stations sized and separated to remain readable after downscaling to 480x256; door recess only at left edge\nLighting/mood: clean, warm, reassuring, industrious; sunbeams and soft amber utility lamps\nColor palette: warm cream, walnut brown, aged copper, forest teal, muted blue, amber\nMaterials/textures: glazed ceramic, walnut, copper, brass, cotton, stone, dark glass\nConstraints: room background only; no people; no readable text, letters, numbers, labels, logos, brands, watermark, UI panels, floating buttons, hazardous spills, or clutter blocking stations; screen must be blank\nAvoid: commercial laundromat, industrial janitor closet, modern white appliance showroom, dirty or grim environment, duplicate sinks, tiny clutter, text on containers"
+    },
+    {
+      "id": "balcony-room",
+      "tool": "OpenAI built-in image generation tool",
+      "mode": "text-to-image",
+      "output_path": "assets/art/balcony-room.png",
+      "output_sha256": "2c91f429eb94bcc4a65c4befdfe7a4775a2190b5d5112b7df61ded749a61158c",
+      "output_width": 1717,
+      "output_height": 916,
+      "prompt": "Use case: stylized-concept\nAsset type: immersive Balcony room background for a layered 480x256 mansion-interface terminal application\nPrimary request: create the destination beyond the grand gallery's rear glass doors: an elegant mansion balcony that provides a visual reward and a believable end to the house navigation\nScene/backdrop: broad stone balustrade balcony overlooking layered forested hills and a distant valley at golden hour; the mansion's warm cream facade and walnut-framed glazed double doors are visible at the far left edge, with climbing ivy, stone planters, and subtle brass lanterns\nSubject layout: keep the return doorway clearly visible and unobstructed at the far left. Place one handsome vintage brass telescope on a tripod near the right third, isolated with clear space so it can be a direct app-launch target. Place a small weather instrument cabinet with a blank dark glass face near center-right, also isolated. Leave the center open for the view.\nStyle/medium: polished realistic editorial exterior illustration, painterly 3D realism, consistent with a refined walnut-and-cream classic mansion\nComposition/framing: very wide 15:8 landscape, eye-level, open panoramic view; doorway, telescope, and weather cabinet remain clearly readable after downscaling to 480x256\nLighting/mood: serene golden-hour sunlight, long soft shadows, welcoming air, a sense of arrival\nColor palette: warm limestone, walnut, aged brass, forest green, misty blue, peach-gold sky\nMaterials/textures: limestone, glass, brass, ivy, terracotta, wood\nConstraints: background only; no people; no readable text, letters, numbers, labels, logos, brands, watermark, UI chrome, floating controls, or objects blocking the doorway; telescope screen/eyepiece area contains no text\nAvoid: city rooftop, modern glass terrace, fantasy castle, crowded furniture, extreme sunset saturation, duplicated telescope, tiny unreadable objects"
+    },
+    {
+      "id": "game-room-clean-background",
+      "tool": "OpenAI built-in image generation tool",
+      "mode": "image-edit",
+      "reference_assets": [
+        {
+          "path": "assets/art/storeroom-room.png",
+          "sha256": "f3dc390859f58dfb9bc0c1c7576de7d7898df396df67ae141febc9395334030c",
+          "role": "architectural, walnut-material, shelf, doorway, camera, and lighting reference only"
+        },
+        {
+          "path": "assets/art/workdesk-room.png",
+          "sha256": "c852d9a56f3d6d0e35ebd7b78e090580443836805023cbc28fd06e1427d01e48",
+          "role": "cozy office style, furniture, palette, and lighting reference only"
+        }
+      ],
+      "output_path": "assets/art/game-room.png",
+      "output_sha256": "453230299da1e5a2f2743994e1dc3707b2e80d4b17f0f96e70ddacd8966386b9",
+      "output_width": 1717,
+      "output_height": 916,
+      "prompt": "Use case: stylized-concept\nAsset type: object-free Game Room environment plate for a layered interactive room-metaphor desktop application, designed to downscale cleanly to a 480x256 content area\nInput images: Image 1 is an architectural, walnut-material, shelf, doorway, camera, and lighting reference only; Image 2 is a cozy office style, furniture, palette, and lighting reference only. Generate a new room rather than editing either image.\nPrimary request: create a delightful late-1990s-inspired home game room whose separately rendered game-media sprites can appear and disappear as a live catalog changes\nScene/backdrop: warm residential-office game den with a narrow empty doorway recess at the far left aligned like Image 1; a broad walnut media cabinet across the rear wall containing three long, clearly empty horizontal shelves for upright CD jewel cases; a substantial clean walnut game table or desk across the lower foreground with open surface for loose 3.5-inch floppy disks; one smaller side bookcase with several clearly empty upright slots for game manuals; tasteful fixed decor may include a blank CRT monitor, joystick, desk lamp, upholstered chair, a few unlabeled decorative books, plants, and framed abstract art\nStyle/medium: polished realistic editorial interior illustration, painterly 3D environment art, consistent with the warm generated rooms in Images 1 and 2; rich full color and readable after downscaling\nComposition/framing: very wide 15:8 landscape, straight-on with a slightly elevated view; reserve the narrow far-left doorway for the existing separate door sprite; keep three long shelf surfaces unobstructed; keep multiple clear patches on the foreground tabletop; keep the side manual shelf visible; moderate perspective and clean silhouettes\nLighting/mood: warm daylight mixed with gentle amber practical lamps; nostalgic, welcoming, playful, tidy, lived-in\nColor palette: walnut brown, warm cream, muted teal, moss green, rust orange, golden amber, and deep navy\nMaterials/textures: believable wood grain, glass CRT, fabric, brass, paper, and plaster\nConstraints: background environment only; every catalog-linked CD case, game box, floppy disk, and game manual will be rendered later as a separate sprite, so do not bake any game media into the reserved shelves, tabletop patches, or manual slots; no people; no game titles; no readable text; no letters; no numbers; no labels; no logos; no trademarks; no watermarks; no UI chrome; no floating buttons; no highlighted regions; no cropped furniture; no extreme perspective\nAvoid: arcade cabinets, neon cyberpunk styling, modern RGB gaming rigs, branded consoles, clutter blocking the reserved dynamic-placement surfaces"
+    },
+    {
+      "id": "game-media-sprite-sheet",
+      "tool": "OpenAI built-in image generation tool",
+      "mode": "image-edit",
+      "reference_assets": [
+        {
+          "path": "assets/art/game-room.png",
+          "sha256": "453230299da1e5a2f2743994e1dc3707b2e80d4b17f0f96e70ddacd8966386b9",
+          "role": "exact walnut, lighting, camera-angle, and palette reference"
+        },
+        {
+          "path": "assets/art/workdesk-items-source.png",
+          "sha256": "454608c9f37d37aa8ffd98e9d8e59a0c5a1b3316cc8a2023b596fd1b0c7929ba",
+          "role": "object rendering and material reference only"
+        }
+      ],
+      "output_path": "assets/art/game-media-source.png",
+      "output_sha256": "82beddf2edfd1070e914e9eb291d1342bdb77c03a8732c7e0a3c7e440dbdbcea",
+      "output_width": 1536,
+      "output_height": 1024,
+      "prompt": "Use case: stylized-concept\nAsset type: isolated game-media sprite sheet for a layered 480x320 interactive room\nInput images: Image 1 is the new Game Room's exact walnut, lighting, camera-angle, and palette reference; Image 2 is an object rendering and material reference only. Do not reproduce either background.\nPrimary request: create exactly nine separate blank late-1990s game-media props arranged in a precise invisible 3-column by 3-row grid, for later cropping into individual interactive sprites\nGrid contents: top row, three distinct upright CD game-package variants suitable for a shelf\u2014one clear jewel case facing front, one thicker dark plastic game case at a restrained three-quarter angle, and one slim colorful cardboard PC game box leaning slightly; middle row, three distinct 3.5-inch floppy-disk variants suitable for lying on a desk\u2014one charcoal floppy seen from a gently elevated top view, one muted teal floppy rotated slightly, and a tidy stack of two rust-and-cream floppies; bottom row, three distinct compact game-manual/book variants suitable for a shelf\u2014one upright deep-navy cloth manual facing front, one moss-green manual leaning slightly, and one short stack of two rust-and-cream illustrated manuals\nStyle/medium: polished realistic editorial interior-object illustration matching the generated room; believable clear plastic, dark plastic, cardboard, paper, cloth, metal shutter, and adhesive label textures; clean silhouettes readable at small size\nComposition/framing: exact evenly spaced 3\u00d73 grid; one complete isolated prop centered inside each equal cell; generous clear green padding around every prop; no props touching, overlapping, crossing a cell boundary, or cropped; upright cases/manuals nearly front-on; floppies viewed from a gently elevated top angle\nLighting/mood: warm upper-right office light consistent across all nine objects, restrained highlights\nScene/backdrop: perfectly flat solid #00ff00 chroma-key background covering the entire image; the background must be one exact uniform color with no shadows, gradients, texture, reflections, floor plane, grid lines, dividers, or lighting variation\nConstraints: exactly nine separate props and no extras; all package faces and labels blank enough for runtime identification; no readable text; no letters; no numbers; no game art; no game titles; no logos; no trademarks; no watermark; no cast shadows; no contact shadows; no reflections on the green background; do not use #00ff00 anywhere inside a subject; crisp separated edges and generous padding\nAvoid: discs outside cases, optical discs, console cartridges, modern USB drives, controllers, dice, duplicate objects, melted geometry, green spill"
+    },
+    {
+      "id": "telephone-sprite",
+      "tool": "OpenAI built-in image generation tool",
+      "mode": "image-edit",
+      "reference_assets": [
+        {
+          "path": "assets/art/workdesk-items-source.png",
+          "sha256": "454608c9f37d37aa8ffd98e9d8e59a0c5a1b3316cc8a2023b596fd1b0c7929ba",
+          "role": "style, lighting, camera-angle, and material reference only"
+        }
+      ],
+      "output_path": "assets/art/telephone-sprite-source.png",
+      "output_sha256": "bf33aa914d636b9c7b2c5b0892c0d1bbc49c492ee0f1fc6dee1ab7360ddcd59f",
+      "output_width": 1536,
+      "output_height": 1024,
+      "prompt": "Use case: stylized-concept\nAsset type: isolated full-color interactive object sprite for a 480x320 room-metaphor desktop application\nInput images: Image 1 is a style, lighting, camera-angle, and material reference only; do not reproduce its flawed telephone or its background\nPrimary request: create one pristine, coherent vintage black bakelite rotary desk telephone as a standalone sprite\nSubject: a single complete telephone with a correctly shaped glossy black base, one centered circular rotary dial, a symmetrical handset resting naturally on both cradle supports, and one short tidy black cord emerging behind the base; no duplicate parts, no melted geometry, no calculator, no papers\nStyle/medium: polished realistic editorial interior-object illustration matching the warm realistic walnut-office rendering of Image 1\nComposition/framing: centered object, high three-quarter front view consistent with a telephone resting on the referenced desk, fully visible, generous clear padding, landscape footprint\nLighting/mood: warm upper-right office light, coherent highlights on black bakelite\nScene/backdrop: perfectly flat solid #00ff00 chroma-key background for local background removal; one uniform color with no floor plane, shadows, gradients, texture, reflections, or lighting variation\nConstraints: exactly one telephone; crisp silhouette; no cast shadow; no contact shadow; do not use #00ff00 anywhere in the subject; no text, labels, logos, watermark, extra objects, detached parts, or cropped edges\nAvoid: malformed handset, duplicated dial, tangled cord, overlapping props, green reflections, perspective distortion"
+    },
+    {
+      "id": "study-door-edit",
+      "tool": "OpenAI built-in image generation tool",
+      "mode": "image-edit",
+      "input_path": "assets/art/workdesk-room.png",
+      "input_sha256": "c852d9a56f3d6d0e35ebd7b78e090580443836805023cbc28fd06e1427d01e48",
+      "output_path": "assets/art/workdesk-room-door-source.png",
+      "output_sha256": "7c02576d53bde66f931c8984f9401058c3f3d510785bdd9cb9e1d8b0e843f2ad",
+      "output_width": 1717,
+      "output_height": 916,
+      "prompt": "Edit this exact mansion study background as a precise architectural object edit. Preserve the camera, crop, foreground desk, green blotter, cabinets, bookcase, plants, chair, window, paintings, lamp, coat stand, hallway light, floor, lighting, shadows, colors, and every non-door detail unchanged. At the far right, replace the visibly open doorway/door leaf with one fully CLOSED study door fitted exactly inside its existing carved frame. Design it specifically for this refined study and camera: warm walnut matching the desk and cabinetry, elegant restrained raised panels, aged brass lever, and correct window/lamp highlights and floor-contact shadow. It must feel like the original room's own door and keep the same doorway geometry, never like a generic front-facing sprite pasted over the scene. Do not add text, signs, labels, people, extra doors, or furniture. Output the complete edited room image at exactly the same framing and aspect ratio as the input."
+    },
+    {
+      "id": "hallway-doors-edit",
+      "tool": "OpenAI built-in image generation tool",
+      "mode": "image-edit",
+      "input_path": "assets/art/hallway-room.png",
+      "input_sha256": "58f7981226cbfc31389a0099ff7e5a2e74c8853570f2bdcbc4731d01dc9cf108",
+      "output_path": "assets/art/hallway-room-doors-source.png",
+      "output_sha256": "b8ae5c4392b07e688c571ece801f77d2f7b14d566ba609d3e6ab3032cfd7f317",
+      "output_width": 1717,
+      "output_height": 916,
+      "prompt": "Edit this exact Grand Gallery background as a precise architectural object edit. Keep the camera, crop, perspective, floor, rug, walls, trim, paintings, sconces, central glazed balcony entrance, sunlight, shadows, colors, and every non-door detail unchanged. Add six CLOSED room doors, one fitted exactly inside each of the six currently black open side doorway recesses: three along the left wall and three along the right wall. Each leaf must be constructed specifically for its own recess, follow the hallway's one-point perspective and local vanishing lines, match the existing dark carved wood casing and period mansion architecture, and receive the correct local warm sconce/daylight illumination and floor-contact shadow. Use elegant but subtly varied heritage woodwork so the near doors have readable inset panels and brass hardware while the distant doors simplify naturally with scale; mirrored sides should not look copy-pasted. Keep the central glazed balcony entrance exactly as it is. All six doors are fully closed and flush in their respective frames. Do not add text, signs, labels, people, furniture, extra openings, or standalone/front-facing sprites. Output the complete edited room image at exactly the same framing and aspect ratio as the input."
+    },
+    {
+      "id": "storeroom-door-edit",
+      "tool": "OpenAI built-in image generation tool",
+      "mode": "image-edit",
+      "input_path": "assets/art/storeroom-room.png",
+      "input_sha256": "f3dc390859f58dfb9bc0c1c7576de7d7898df396df67ae141febc9395334030c",
+      "output_path": "assets/art/storeroom-room-door-source.png",
+      "output_sha256": "1c769804e99dd2c05be0529ea59437c9c5734bb226d73b75604f263b202c3ccd",
+      "output_width": 1717,
+      "output_height": 916,
+      "prompt": "Edit this exact storeroom background as a precise architectural object edit. Keep the camera, crop, shelves, empty shelf surfaces, wood floor, wall paneling, lantern, sunlight, shadows, colors, and every non-door detail unchanged. In the single dark open doorway recess at the far left, add one fully CLOSED storeroom door fitted exactly inside the existing frame. Build the leaf specifically for this room and camera: sturdy understated dark oak with simple inset panels and aged brass hardware, matching the existing casing, perspective, warm lantern light, daylight, and floor-contact shadow. It should feel like a service door in the same elegant old mansion, not a generic front-facing sprite pasted on top. Do not add text, signs, labels, people, objects on the shelves, extra doors, or furniture. Output the complete edited room image at exactly the same framing and aspect ratio as the input."
+    },
+    {
+      "id": "server-room-door-edit",
+      "tool": "OpenAI built-in image generation tool",
+      "mode": "image-edit",
+      "input_path": "assets/art/server-room.png",
+      "input_sha256": "014faa34d7b78979f5bc6cc5c8b404d6da0a0b844f2f20fd0e2d61cd223a6331",
+      "output_path": "assets/art/server-room-door-source.png",
+      "output_sha256": "89b3a4de1292f964ede1f519d29a1ef682d507cf64c258b277fef0c3d6332c35",
+      "output_width": 1717,
+      "output_height": 916,
+      "prompt": "Edit this exact mansion server-room background as a precise architectural object edit. Preserve the camera, crop, desk, two CRT monitors, keyboard, brass lamp, gauges, server racks, copper pipes, exposed wiring, rug, lighting, shadows, colors, and every non-door detail unchanged. In the single dark open doorway recess at the far left, add one fully CLOSED server-room access door fitted exactly inside its existing frame. Design it for this particular room and perspective: very dark oak and blackened metal, restrained inset panels, a small brass handle, subtle industrial reinforcement that harmonizes with the copper-pipe machine room while still belonging to the mansion. Match the local amber light and floor shadow; make it architectural and integrated, never a generic front-facing sprite. Do not cover or alter any monitor, rack, pipe, cable, lamp, desk, or control. Do not add text, signs, labels, people, extra doors, or new equipment. Output the complete edited room image at exactly the same framing and aspect ratio as the input."
+    },
+    {
+      "id": "game-room-door-edit",
+      "tool": "OpenAI built-in image generation tool",
+      "mode": "image-edit",
+      "input_path": "assets/art/game-room.png",
+      "input_sha256": "453230299da1e5a2f2743994e1dc3707b2e80d4b17f0f96e70ddacd8966386b9",
+      "output_path": "assets/art/game-room-door-source.png",
+      "output_sha256": "736ee4e07a96fc75ebe91adc1f0025fe3942193f06ecce72324a7094f2ddd61e",
+      "output_width": 1717,
+      "output_height": 916,
+      "prompt": "Edit this exact mansion game-room background as a precise architectural object edit. Preserve the camera, crop, empty illuminated game shelves, small side shelving, desk, CRT, joystick, chair, lamps, window, plants, wall paneling, lighting, shadows, colors, and every non-door detail unchanged. In the single dark open doorway recess at the far left, add one fully CLOSED game-room door fitted exactly inside its existing frame. Design it specifically for this cozy room and perspective: warm medium-dark oak with tasteful 1990s-inspired geometric inset-panel detailing expressed as real wood joinery, aged brass handle, matching the existing mansion trim and local lamp light. It must look architectural, naturally illuminated, and integrated into the recess, never a pasted generic front-facing sprite. Do not add text, signs, labels, games, media, people, extra doors, or furniture. Output the complete edited room image at exactly the same framing and aspect ratio as the input."
+    },
+    {
+      "id": "library-door-edit",
+      "tool": "OpenAI built-in image generation tool",
+      "mode": "image-edit",
+      "input_path": "assets/art/library-room.png",
+      "input_sha256": "fbf9a474a9a8cabc570c7c59021e8e0759bfe3baa69e2ada1907723fd892f00f",
+      "output_path": "assets/art/library-room-door-source.png",
+      "output_sha256": "6f31a13f7f0fcde72c744d62299e09008b201c6101f5b114ceda6c368b2a30e1",
+      "output_width": 1717,
+      "output_height": 916,
+      "prompt": "Edit this exact mansion library background as a precise architectural object edit. Preserve the camera, crop, bookcases and every book, ladder, five display volumes, long table, chairs, window, fireplace, lamps, rug, lighting, shadows, colors, and every non-door detail unchanged. In the single dark open doorway recess at the far left, add one fully CLOSED library door fitted exactly inside its existing ornate frame. Design it specifically for this scholarly room and perspective: rich near-black mahogany with refined raised panels, restrained carved detail echoing the bookcase millwork, and aged brass hardware, correctly lit by the warm library lamps and window. It must feel built into the room, never like a generic front-facing sprite pasted over an opening. Do not add text, signs, labels, people, books, extra doors, or furniture. Output the complete edited room image at exactly the same framing and aspect ratio as the input."
+    },
+    {
+      "id": "cleaning-room-door-edit",
+      "tool": "OpenAI built-in image generation tool",
+      "mode": "image-edit",
+      "input_path": "assets/art/cleaning-room.png",
+      "input_sha256": "6d5959430e14e3e6669b86661dff3febc7e019940abb97a0987f4340fbf3eb03",
+      "output_path": "assets/art/cleaning-room-door-source.png",
+      "output_sha256": "d4853ea5251c1d3e9edbde9ad10fb23c550574da09331800cccd1b5a2378cacc",
+      "output_width": 1717,
+      "output_height": 916,
+      "prompt": "Edit this exact mansion cleaning-room background as a precise architectural object edit. Preserve the camera, crop, porcelain utility sink, brass taps, hoses, brushes, hanging cloth, copper plumbing, copper bin, drawers, housekeeping terminal, cabinets, tile walls and floor, lamps, window light, shadows, colors, and every non-door detail unchanged. In the single dark doorway recess at the far left, add one fully CLOSED cleaning-room service door fitted exactly inside its existing frame. Design it specifically for this room and perspective: durable dark painted wood with subtle vertical/recessed service panels, moisture-worn lower edge, aged brass handle and kick plate, matching the room's dark casing, copper/brass accents, and mixed warm lamp/window light. It must look built into the opening, never like a generic front-facing sprite pasted on top. Do not add text, signs, labels, people, cleaning supplies, extra doors, or furniture. Output the complete edited room image at exactly the same framing and aspect ratio as the input."
+    }
+  ],
+  "assets": [
+    {
+      "path": "assets/art/workdesk-items-source.png",
+      "role": "preserved high-resolution generated Desk composite used as the source for the separated item overlay",
+      "format": "PNG",
+      "width": 1717,
+      "height": 916,
+      "sha256": "454608c9f37d37aa8ffd98e9d8e59a0c5a1b3316cc8a2023b596fd1b0c7929ba"
+    },
+    {
+      "path": "assets/art/telephone-sprite-source.png",
+      "role": "preserved generated chroma-key telephone output before local alpha extraction",
+      "format": "PNG",
+      "width": 1536,
+      "height": 1024,
+      "sha256": "bf33aa914d636b9c7b2c5b0892c0d1bbc49c492ee0f1fc6dee1ab7360ddcd59f"
+    },
+    {
+      "path": "assets/art/telephone-sprite.png",
+      "role": "locally chroma-keyed RGBA telephone sprite used while preparing the Desk layer",
+      "format": "PNG",
+      "width": 1536,
+      "height": 1024,
+      "sha256": "c40b8e527730c96dba01bfc678ad84be5dc5a774dc2c9a35342ac9008c918e56"
+    },
+    {
+      "path": "assets/art/workdesk-room.png",
+      "role": "preserved high-resolution Study input source before its room-native door edit",
+      "format": "PNG",
+      "width": 1717,
+      "height": 916,
+      "sha256": "c852d9a56f3d6d0e35ebd7b78e090580443836805023cbc28fd06e1427d01e48"
+    },
+    {
+      "path": "assets/art/workdesk-room-door-source.png",
+      "role": "preserved high-resolution Study edition with a closed walnut door fitted to its original doorway",
+      "format": "PNG",
+      "width": 1717,
+      "height": 916,
+      "sha256": "7c02576d53bde66f931c8984f9401058c3f3d510785bdd9cb9e1d8b0e843f2ad"
+    },
+    {
+      "path": "assets/art/runtime/workdesk-room.png",
+      "role": "opaque runtime Study plate prepared from its room-native door edition",
+      "format": "PNG",
+      "width": 1440,
+      "height": 768,
+      "sha256": "b32c708cac3fb773804a199bf78712673c02cff9a2161cdde3d0ceaa121750c2"
+    },
+    {
+      "path": "assets/art/runtime/workdesk-items.png",
+      "role": "black-backed runtime RGB Desk object overlay",
+      "format": "PNG",
+      "width": 1440,
+      "height": 768,
+      "sha256": "b8edde362c340ec9f60249d679de6a39761bf45a62ed4d9d691372f0b3a5896f"
+    },
+    {
+      "path": "assets/art/runtime/workdesk-items-mask.png",
+      "role": "RGB-encoded grayscale anti-aliased coverage mask for compositing the Desk object overlay",
+      "format": "PNG",
+      "width": 1440,
+      "height": 768,
+      "sha256": "4a2b72159dcf0f6a8c8d3398a329a3d1738f36626b6207ddc655d6186caed3c5"
+    },
+    {
+      "path": "assets/art/runtime/workdesk-items-hit.png",
+      "role": "RGB-encoded semantic hit-ID map: zero is background and values 1 through 13 identify only physical Desk props",
+      "format": "PNG",
+      "width": 1440,
+      "height": 768,
+      "sha256": "59932a36e0bfd44736f9863e5a1fa2b9f43ecd1ebe05e939ceee15771fb88d8b"
+    },
+    {
+      "path": "assets/art/hallway-room.png",
+      "role": "losslessly normalized high-resolution Grand Gallery input source with six empty side recesses and a central balcony entrance",
+      "format": "PNG",
+      "width": 1717,
+      "height": 916,
+      "sha256": "472fc48f619389d05cd1f1adc8bf63d4c02d38e9285209ff095c16695ccdf35f"
+    },
+    {
+      "path": "assets/art/hallway-room-doors-source.png",
+      "role": "losslessly normalized high-resolution Grand Gallery edition with six individually perspective-fitted room doors",
+      "format": "PNG",
+      "width": 1717,
+      "height": 916,
+      "sha256": "b00fee6583a21ded2e4cf9c19cdc8ccfdb3873bd0d57b7a29a1a65c4c8e8fddb"
+    },
+    {
+      "path": "assets/art/runtime/hallway-room.png",
+      "role": "opaque runtime Grand Gallery plate prepared from its six-door edition",
+      "format": "PNG",
+      "width": 1440,
+      "height": 768,
+      "sha256": "73b2abfa789e89f95449eaf381c0589609f3659af9a932481a3d8efda4ebc8ba"
+    },
+    {
+      "path": "assets/art/storeroom-room.png",
+      "role": "preserved high-resolution Storeroom input source before its room-native door edit",
+      "format": "PNG",
+      "width": 1717,
+      "height": 916,
+      "sha256": "f3dc390859f58dfb9bc0c1c7576de7d7898df396df67ae141febc9395334030c"
+    },
+    {
+      "path": "assets/art/storeroom-room-door-source.png",
+      "role": "preserved high-resolution Storeroom edition with a fitted dark-oak service door",
+      "format": "PNG",
+      "width": 1717,
+      "height": 916,
+      "sha256": "1c769804e99dd2c05be0529ea59437c9c5734bb226d73b75604f263b202c3ccd"
+    },
+    {
+      "path": "assets/art/runtime/storeroom-room.png",
+      "role": "opaque runtime Storeroom plate prepared from its room-native door edition beneath movable objects",
+      "format": "PNG",
+      "width": 1440,
+      "height": 768,
+      "sha256": "6a6ea94a9376e45cbf4ea0c1f4f03cb4835043ddebeb11db98ae83bf2dda8f98"
+    },
+    {
+      "path": "assets/art/server-room.png",
+      "role": "preserved high-resolution Server Room input source before its room-native door edit",
+      "format": "PNG",
+      "width": 1717,
+      "height": 916,
+      "sha256": "014faa34d7b78979f5bc6cc5c8b404d6da0a0b844f2f20fd0e2d61cd223a6331"
+    },
+    {
+      "path": "assets/art/server-room-door-source.png",
+      "role": "losslessly normalized high-resolution Server Room edition with a dark oak and blackened-metal access door",
+      "format": "PNG",
+      "width": 1717,
+      "height": 916,
+      "sha256": "bd7237c5649556849ba8651910383caac7fdcb3b8e7a9661490459ceeb8cb553"
+    },
+    {
+      "path": "assets/art/runtime/server-room.png",
+      "role": "opaque runtime Server Room plate prepared from its room-native door edition",
+      "format": "PNG",
+      "width": 1440,
+      "height": 768,
+      "sha256": "2aa9f44d50a35ef9fdd9eb39d50e13e0868823a546ebd801865072bac03b6217"
+    },
+    {
+      "path": "assets/art/game-room.png",
+      "role": "preserved high-resolution Game Room input source before its room-native door edit",
+      "format": "PNG",
+      "width": 1717,
+      "height": 916,
+      "sha256": "453230299da1e5a2f2743994e1dc3707b2e80d4b17f0f96e70ddacd8966386b9"
+    },
+    {
+      "path": "assets/art/game-room-door-source.png",
+      "role": "preserved high-resolution Game Room edition with a fitted geometric-panel oak door",
+      "format": "PNG",
+      "width": 1717,
+      "height": 916,
+      "sha256": "736ee4e07a96fc75ebe91adc1f0025fe3942193f06ecce72324a7094f2ddd61e"
+    },
+    {
+      "path": "assets/art/runtime/game-room.png",
+      "role": "opaque runtime Game Room door edition beneath the live Kilix 95 media catalog",
+      "format": "PNG",
+      "width": 1440,
+      "height": 768,
+      "sha256": "046020359d92b16a3f6f24ef30adedddb0f29c45b758b0236ae00b3bc6347b9c"
+    },
+    {
+      "path": "assets/art/library-room.png",
+      "role": "preserved high-resolution Library input source before its room-native door edit",
+      "format": "PNG",
+      "width": 1717,
+      "height": 916,
+      "sha256": "fbf9a474a9a8cabc570c7c59021e8e0759bfe3baa69e2ada1907723fd892f00f"
+    },
+    {
+      "path": "assets/art/library-room-door-source.png",
+      "role": "preserved high-resolution Library edition with an ornate fitted mahogany door",
+      "format": "PNG",
+      "width": 1717,
+      "height": 916,
+      "sha256": "6f31a13f7f0fcde72c744d62299e09008b201c6101f5b114ceda6c368b2a30e1"
+    },
+    {
+      "path": "assets/art/runtime/library-room.png",
+      "role": "opaque runtime Library plate prepared from its room-native door edition",
+      "format": "PNG",
+      "width": 1440,
+      "height": 768,
+      "sha256": "29d2948d17c44ef54f2cd226f3a2a7052aff96334f30e4c15946ee766307e30e"
+    },
+    {
+      "path": "assets/art/cleaning-room.png",
+      "role": "preserved high-resolution Cleaning Room input source before its room-native door edit",
+      "format": "PNG",
+      "width": 1717,
+      "height": 916,
+      "sha256": "6d5959430e14e3e6669b86661dff3febc7e019940abb97a0987f4340fbf3eb03"
+    },
+    {
+      "path": "assets/art/cleaning-room-door-source.png",
+      "role": "preserved high-resolution Cleaning Room edition with a dark service door and brass kick plate",
+      "format": "PNG",
+      "width": 1717,
+      "height": 916,
+      "sha256": "d4853ea5251c1d3e9edbde9ad10fb23c550574da09331800cccd1b5a2378cacc"
+    },
+    {
+      "path": "assets/art/runtime/cleaning-room.png",
+      "role": "opaque runtime Cleaning Room plate prepared from its room-native door edition",
+      "format": "PNG",
+      "width": 1440,
+      "height": 768,
+      "sha256": "e6d6c0ee791e51b6b9b25c77b2c4770daac83af981995f140c24abd95d0e1223"
+    },
+    {
+      "path": "assets/art/balcony-room.png",
+      "role": "preserved high-resolution generated Balcony source with weather and stargazing instruments",
+      "format": "PNG",
+      "width": 1717,
+      "height": 916,
+      "sha256": "2c91f429eb94bcc4a65c4befdfe7a4775a2190b5d5112b7df61ded749a61158c"
+    },
+    {
+      "path": "assets/art/runtime/balcony-room.png",
+      "role": "opaque runtime Balcony background plate",
+      "format": "PNG",
+      "width": 1440,
+      "height": 768,
+      "sha256": "f38ecfc365ab9ca1c2c5a3eddb3563b7ff703f1e969afe1b337a62b34031f309"
+    },
+    {
+      "path": "assets/art/game-media-source.png",
+      "role": "preserved generated 3x3 chroma-key sheet of CD cases, 3.5-inch floppies, and game manuals",
+      "format": "PNG",
+      "width": 1536,
+      "height": 1024,
+      "sha256": "82beddf2edfd1070e914e9eb291d1342bdb77c03a8732c7e0a3c7e440dbdbcea"
+    },
+    {
+      "path": "assets/art/game-media.png",
+      "role": "locally chroma-keyed RGBA game-media sheet used to prepare the runtime atlas",
+      "format": "PNG",
+      "width": 1536,
+      "height": 1024,
+      "sha256": "fbd86c88353225d798be2e3173f37df8b49ad95125a4d64101500d116d28f482"
+    },
+    {
+      "path": "assets/art/runtime/game-media.png",
+      "role": "black-backed 3x3 runtime RGB atlas with nine 48x56 game-media variants",
+      "format": "PNG",
+      "width": 432,
+      "height": 504,
+      "sha256": "834188eb64d3d36f892d6569bea500091140dd626ab60b965ca0a2b63664a700"
+    },
+    {
+      "path": "assets/art/runtime/game-media-mask.png",
+      "role": "RGB-encoded grayscale anti-aliased alpha for all nine game-media variants",
+      "format": "PNG",
+      "width": 432,
+      "height": 504,
+      "sha256": "852cb6ab4b0530c63613b29cbc9241ec0b0dfc92061b5dfd9471cf5c0068e2af"
+    }
+  ],
+  "semantic_hit_ids": {
+    "1": "Clock",
+    "2": "In box",
+    "3": "Out box",
+    "4": "New-message postcard",
+    "5": "Own name card",
+    "6": "Notepad",
+    "7": "Datebook",
+    "8": "Name card file",
+    "9": "File cabinet",
+    "10": "Telephone",
+    "11": "Stationery drawer",
+    "12": "Desk accessories drawer",
+    "13": "Web access monitor"
+  },
+  "runtime_composition": {
+    "backgrounds": "Study, Grand Gallery, Storeroom, Server Room, Game Room, Library, Cleaning Room, and Balcony each begin with a separate opaque 480x256 room plate. Seven plates come from room-specific image edits that fit their doors directly into the source architecture; the Balcony entrance was already native to its source.",
+    "desk_objects": "The Desk composites the corrected furnished-source props plus the pristine generated telephone from workdesk-items.ppm through workdesk-items-mask.ppm. Pointer selection uses workdesk-items-hit.ppm, not rectangular hotspots.",
+    "doors_and_store_objects": "Each Study, Grand Gallery, Storeroom, Server Room, Game Room, Library, and Cleaning Room door is baked into an image edit of that exact room source, preserving its own perspective, trim, material, illumination, and contact shadows. The Gallery's six side doors are individually fitted along the shared vanishing point, while its central glazed Balcony entrance and the Balcony's return entrance remain native background architecture. Project-authored doorway rectangles provide interaction without drawing a generic leaf over the scene. Storeroom movable objects remain separately rendered shape-masked project-code objects.",
+    "baked_appliances": "Server consoles, Cleaning Room stations, Library books, and Balcony instruments are depicted in their room plates and receive project-authored physical hotspots. They do not receive generated labels, badges, or runtime object drawings.",
+    "game_media": "The live Kilix 95 list is assigned across nine generated CD/floppy/manual variants from game-media.ppm through game-media-mask.ppm. Each present title receives one object, exact alpha picking, and the exact original 16x16 palette icon exported from Kilix 95 icons.py; catalog additions and removals rebuild only this layer.",
+    "interaction_presentation": "Clickable room objects launch their application or focused utility directly; they do not open intermediary textual lists. Objects have no floating label badge, text plaque, selection plate, bounding box, or hover highlight. Names and transient launch status appear only in the existing name bar."
+  },
+  "preparation": {
+    "pillow_version": "9.4.0",
+    "room_tool": "tools/prepare_visual.py",
+    "room_operations": [
+      "use each room-native door edition as the source for Study, Grand Gallery, Storeroom, Server Room, Game Room, Library, and Cleaning Room; use the original Balcony source whose glazed entrance was already integrated",
+      "convert each selected room source to RGB",
+      "center-fit to 480x256 with Lanczos resampling",
+      "retain full RGB without palette reduction",
+      "write opaque binary P6"
+    ],
+    "item_tool": "tools/prepare_workdesk_items.py",
+    "item_operations": [
+      "prepare the preserved Desk composite at 480x256 using full-RGB Lanczos resampling",
+      "tighten physical-object silhouettes at 4x resolution on one coverage layer per prop, then union and downsample them with Lanczos to make an anti-aliased visual coverage mask",
+      "crop and premultiplied-alpha resize the generated telephone, then composite it at the Desk's corrected phone location while excluding all malformed source-phone remnants",
+      "trace the calculator's complete silhouette and hit region, including its raised display housing, while stopping source-phone cleanup above it",
+      "copy source pixels only where coverage is nonzero into a black-backed RGB overlay",
+      "encode zero for background and IconId values 1 through 13 for semantic object-only hit testing, crediting each pixel to the front-most prop whose own silhouette covers it within that prop's declared bounds",
+      "write the overlay, coverage mask, and semantic ID map as binary P6"
+    ],
+    "chroma_tool": "imagegen skill scripts/remove_chroma_key.py",
+    "chroma_operations": [
+      "remove the uniform chroma backdrop from telephone-sprite-source.png and game-media-source.png",
+      "preserve antialiased subject coverage as RGBA alpha"
+    ],
+    "game_media_tool": "tools/prepare_game_media.py",
+    "game_media_operations": [
+      "divide the preserved transparent source into an exact 3x3 grid",
+      "crop each cell to its alpha bounds and resize premultiplied color with Lanczos into a padded 48x56 canonical cell",
+      "assemble a black-backed 144x168 RGB atlas and matching RGB-encoded grayscale alpha mask"
+    ],
+    "reproducibility": "All thirteen runtime P6 files were regenerated with the recorded tools and compared byte-for-byte with the committed files."
+  },
+  "review": {
+    "artifacts_checked": [
+      "the Study door edition contains a closed walnut door integrated into the right-hand frame while preserving the cleared walnut work surface for the 13 interactive props",
+      "the Desk RGB overlay reconstructs 13 recognizable full-color props over the clean background",
+      "the malformed furnished-source telephone is absent and the replacement handset, dial, base, and short cord form one clean coherent sprite",
+      "the visual coverage mask is grayscale and anti-aliased, while the semantic map contains exactly background zero plus IDs 1 through 13",
+      "the Grand Gallery has six distinct, perspective-correct side doors integrated into its architecture plus a centered glazed entrance that visibly continues to the Balcony",
+      "the Storeroom contains two empty shelf bays, a room-native left service door, and clear placement space for movable objects",
+      "the Server Room presents two distinct monitor targets, settings, storage, network, and software-administration consoles amid visible racks, wiring, copper conduit, and matrix-green light",
+      "the Cleaning Room presents separate physical stations for temporary files, trash, package cache, and combined housekeeping",
+      "the Game Room preserves empty media shelves, desk patches, and manual slots beneath a catalog-driven layer",
+      "the Library presents five distinct books as direct documentation targets, and the Balcony presents separate weather and stargazing instruments",
+      "the nine game-media sprites contain three CD cases, three 3.5-inch floppy variants, and three manuals with transparent corners and anti-aliased silhouettes",
+      "the current thirteen Kilix 95 offerings distribute cleanly across the shelf, side rack, and foreground desk with their original pixel icons and no text plaques, while compact and empty catalog fixtures retract without residue",
+      "room art contains no people, branding, UI chrome, highlighted regions, or watermark; incidental clock and calculator numerals remain within the separated Desk props"
+    ],
+    "network_runtime": "The build and application never contact an image service, regenerate art, or download these committed assets."
+  }
+}

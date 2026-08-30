@@ -1,0 +1,808 @@
+{
+  "schema": "kilix-cap-audio-provenance-v1",
+  "authored_date": "2026-07-21",
+  "format": {
+    "container": "RIFF/WAVE",
+    "encoding": "signed 16-bit little-endian PCM",
+    "channels": 1,
+    "sample_rate_hz": 44100
+  },
+  "asset_count": 12,
+  "recipe_tool": {
+    "file": "tools/regenerate_audio.py",
+    "sha256": "be60f2ec56bb4e269c31bfd719f4e6885d758f6c41686b8e8d633c11207e84ef"
+  },
+  "generation_runtime": {
+    "python": "3.11.2",
+    "numpy": "1.24.2",
+    "scipy": "1.10.1"
+  },
+  "generator_snapshots": {
+    "computer_sounds_generator": {
+      "revision": "unversioned local snapshot; identified by file hashes",
+      "files": [
+        {
+          "file": "computer_sounds_generator/__init__.py",
+          "sha256": "d6aad97477e46215d488e7456e7f2485dfba10e389e2b852576771e1f6c6cae5"
+        },
+        {
+          "file": "computer_sounds_generator/__main__.py",
+          "sha256": "bc97455bcd2fc52368cc913442a33ec069c5abd85a312dbe23f46941e13c7285"
+        },
+        {
+          "file": "computer_sounds_generator/cli.py",
+          "sha256": "ac14fbeb59ef3ef5bd5cdfbba28af92dcdd14f1159f77e9ba342519f9c3b6142"
+        },
+        {
+          "file": "computer_sounds_generator/cues.py",
+          "sha256": "e4152835055c5dfa45d7f615def3e8dcd97ded0a7956bbc897e93971e87345be"
+        },
+        {
+          "file": "computer_sounds_generator/engine.py",
+          "sha256": "e5417abfa94b13469212a7a8d77bc15484a316d0b2dcd8afbf046ce4685922fa"
+        },
+        {
+          "file": "combat_generators/lib/dsp.py",
+          "sha256": "f7f137df0a5f749e4a91123dd78532c1915f723a5ca44627897cb085ec25f53a"
+        },
+        {
+          "file": "environment_ambience_generator/loopdsp.py",
+          "sha256": "a4602d99bf0f1440c1522f160f509ed392495fc8631c7ef973123b150ce3e07e"
+        },
+        {
+          "file": "aircraft_spacecraft_generator/engine.py",
+          "sha256": "adba2924648d64950a9ac0c27f7be8b55ca1abd420038632c55653375c7e9e07"
+        },
+        {
+          "file": "computer_sounds_generator/sources/provenance.json",
+          "sha256": "fa596a8ed3368af27d31668e4ad8d80a05c248755615128cc9a36c2b63fcafc1"
+        }
+      ]
+    },
+    "door_sound_generator": {
+      "revision": "unversioned local snapshot; identified by file hashes",
+      "files": [
+        {
+          "file": "door_sound_generator/__init__.py",
+          "sha256": "d10e95de1caa28a278e4343c14da311c3c271202817c2f80dcd08d55d214dd72"
+        },
+        {
+          "file": "door_sound_generator/__main__.py",
+          "sha256": "2ef13ce978e3d7d949634d1020464fc8cafdd9b7fc7b4bc64a0bef5f78adbc07"
+        },
+        {
+          "file": "door_sound_generator/cli.py",
+          "sha256": "d73e0f34a9d287d03f8e0a5403600fe9d333c043d79eac26e9c0421a5772d75d"
+        },
+        {
+          "file": "door_sound_generator/cues.py",
+          "sha256": "831ac29cbe0e66218eb9b7d776ca1a6b27d9c719c9d08d2e427b245ea98ced31"
+        },
+        {
+          "file": "door_sound_generator/engine.py",
+          "sha256": "7f6a92a3cc627944efdb421b5641575a63f8345de65c47e4892bacf1706d4fe8"
+        },
+        {
+          "file": "door_sound_generator/sources/provenance.json",
+          "sha256": "d3765ac255588676a8d1ebb3bd1f1bdd72132b26e40d9236b4fb9ec60843174d"
+        }
+      ]
+    },
+    "magic_sound_generator": {
+      "revision": "unversioned local snapshot; identified by file hashes",
+      "files": [
+        {
+          "file": "magic_sound_generator/__init__.py",
+          "sha256": "70ac461d3464f675db50c3ee05dfbf1c268f220c65921a6b6b58514f7b6146b8"
+        },
+        {
+          "file": "magic_sound_generator/__main__.py",
+          "sha256": "816b56fc23a1888e8253c4933c844e4795321e832815b8987c46ee0d470af264"
+        },
+        {
+          "file": "magic_sound_generator/cli.py",
+          "sha256": "e3bf61bcef079749a66a14572e1ac540402f78c1d2a89c59cecc7f8944a30e55"
+        },
+        {
+          "file": "magic_sound_generator/cues.py",
+          "sha256": "3d5abab63293f673015cc2ae93ab590e69090002a5344ff9e696683c47dbff9e"
+        },
+        {
+          "file": "magic_sound_generator/engine.py",
+          "sha256": "eafdfd3ddab2b832bc2cdfdfb2abefb8b93137ad237c526531d66de5d8bc199d"
+        },
+        {
+          "file": "combat_generators/lib/dsp.py",
+          "sha256": "f7f137df0a5f749e4a91123dd78532c1915f723a5ca44627897cb085ec25f53a"
+        },
+        {
+          "file": "environment_ambience_generator/loopdsp.py",
+          "sha256": "a4602d99bf0f1440c1522f160f509ed392495fc8631c7ef973123b150ce3e07e"
+        }
+      ]
+    },
+    "powerup_generator": {
+      "revision": "unversioned local snapshot; identified by file hashes",
+      "files": [
+        {
+          "file": "powerup_generator/__init__.py",
+          "sha256": "a985634bf3b9249b91b57ca86fc49d626bfafb65cd48b9260da271733049af3e"
+        },
+        {
+          "file": "powerup_generator/__main__.py",
+          "sha256": "37dc483f7a7dbbb52e2327a8eddd2fc9aa7e4535c45b89801094cf4d2059a760"
+        },
+        {
+          "file": "powerup_generator/cli.py",
+          "sha256": "239a57bac4b1e6971ed0d1970782fe19a4f30a0433b4c7fcb61dd03ad660390b"
+        },
+        {
+          "file": "powerup_generator/cues.py",
+          "sha256": "5ffd38e9addadedf025e4ac7ec4848f50b72bddc36f41bd465c86dcbdcc15950"
+        },
+        {
+          "file": "powerup_generator/engine.py",
+          "sha256": "d6bdaced6f6263126f0310b52fcb281aaeef5e9a57c1608bca58be94193c18b4"
+        },
+        {
+          "file": "powerup_generator/gestures.py",
+          "sha256": "d71d5177ae8724d4eafa40631903dbe1b76ff06599afe1071bf1f446ba4a3647"
+        },
+        {
+          "file": "powerup_generator/styles.py",
+          "sha256": "7ddd4903d4ce88f8457a9c450e1dddb4f7fc1910b7f2fcbb4a806a95b12aa7d5"
+        }
+      ]
+    },
+    "ui_game_state_generator": {
+      "revision": "unversioned local snapshot; identified by file hashes",
+      "files": [
+        {
+          "file": "ui_game_state_generator/__init__.py",
+          "sha256": "da7b2f189df78d00b24dd1bc066887e1f72deb75d12cd132aebb2b7397ad84d1"
+        },
+        {
+          "file": "ui_game_state_generator/__main__.py",
+          "sha256": "b6b6cd423b4dbe3ea4336bf61e9561bd4937cc2ef08f98923049a6e3f2cdea18"
+        },
+        {
+          "file": "ui_game_state_generator/cli.py",
+          "sha256": "debd18af53f31c229cbbae75f7c6cabb97fc64522ad4c591b421d237e6a904bb"
+        },
+        {
+          "file": "ui_game_state_generator/cues.py",
+          "sha256": "240f29f76e0554125de1ff56852c7e16bf67ee8de74f01170410161e3e2e556b"
+        },
+        {
+          "file": "powerup_generator/engine.py",
+          "sha256": "d6bdaced6f6263126f0310b52fcb281aaeef5e9a57c1608bca58be94193c18b4"
+        },
+        {
+          "file": "powerup_generator/gestures.py",
+          "sha256": "d71d5177ae8724d4eafa40631903dbe1b76ff06599afe1071bf1f446ba4a3647"
+        },
+        {
+          "file": "powerup_generator/styles.py",
+          "sha256": "7ddd4903d4ce88f8457a9c450e1dddb4f7fc1910b7f2fcbb4a806a95b12aa7d5"
+        }
+      ]
+    }
+  },
+  "licensing": {
+    "output_license": "MIT; see repository LICENSE",
+    "procedural_outputs": "Project-authored deterministic synthesis; no sampled audio.",
+    "recorded_outputs": "Transformations of the CC0 1.0/public-domain sources listed per artifact.",
+    "generator_code": "Development input only; generator code is not distributed with kilix-cap.",
+    "generator_license_status": "The local generator tree has no project-level license file; only rendered outputs are included here."
+  },
+  "originality": {
+    "commercial_product_bytes_used": false,
+    "extracted_or_transcribed_audio_used": false,
+    "statement": "No audio, recording, executable, ROM, or artwork from the historical product was used as a generation input."
+  },
+  "audition": {
+    "status": "release-approved",
+    "reviewed_date": "2026-07-21",
+    "review_basis": "Cue semantics, generator mastering levels, runtime gains, strict PCM format, deterministic hashes, and complete in-application offline mixing were reviewed for the 1.0 bank, retained unchanged through 3.0.0.",
+    "note": "Future subjective retuning is optional polish, not a release blocker; it must preserve this provenance and validation contract."
+  },
+  "artifacts": [
+    {
+      "cue": "touch",
+      "file": "assets/sfx/touch.wav",
+      "generator": "ui_game_state_generator",
+      "generator_cue": "menu_move",
+      "command": [
+        "python3",
+        "-m",
+        "ui_game_state_generator",
+        "render",
+        "menu_move",
+        "--style",
+        "acoustic",
+        "--seed",
+        "2026072101",
+        "--out",
+        "<staging>/touch"
+      ],
+      "options": {
+        "style": "acoustic",
+        "step": 0,
+        "count": 1
+      },
+      "base_seed": 2026072101,
+      "effective_seed": 2026072101,
+      "format": {
+        "container": "RIFF/WAVE",
+        "encoding": "signed 16-bit little-endian PCM",
+        "channels": 1,
+        "sample_rate_hz": 44100
+      },
+      "frame_count": 1764,
+      "duration_seconds": 0.04,
+      "peak_dbfs": -19.999,
+      "rms_dbfs": -29.634,
+      "dc_offset": 1.903e-05,
+      "sha256": "b77b086e178abcf8699016408537ac39ccaf0baf85f80956a52d1cb8aab48898",
+      "runtime_gain": 0.75,
+      "trigger": "accepted pointer-down on a touchable object",
+      "source_audio": "none; deterministic procedural synthesis",
+      "sources": []
+    },
+    {
+      "cue": "error",
+      "file": "assets/sfx/error.wav",
+      "generator": "ui_game_state_generator",
+      "generator_cue": "menu_invalid",
+      "command": [
+        "python3",
+        "-m",
+        "ui_game_state_generator",
+        "render",
+        "menu_invalid",
+        "--style",
+        "acoustic",
+        "--seed",
+        "2026072102",
+        "--out",
+        "<staging>/error"
+      ],
+      "options": {
+        "style": "acoustic",
+        "step": 0,
+        "count": 1
+      },
+      "base_seed": 2026072102,
+      "effective_seed": 2026072102,
+      "format": {
+        "container": "RIFF/WAVE",
+        "encoding": "signed 16-bit little-endian PCM",
+        "channels": 1,
+        "sample_rate_hz": 44100
+      },
+      "frame_count": 7729,
+      "duration_seconds": 0.175261,
+      "peak_dbfs": -13.0,
+      "rms_dbfs": -24.308,
+      "dc_offset": -0.00026104,
+      "sha256": "e9d3e276398dc3d4eb21e03dbca7013ea8b2ddf3937085804ea753a324a5e7d9",
+      "runtime_gain": 0.55,
+      "trigger": "first drag-threshold crossing on a non-movable object",
+      "source_audio": "none; deterministic procedural synthesis",
+      "sources": []
+    },
+    {
+      "cue": "keyboard",
+      "file": "assets/sfx/keyboard.wav",
+      "generator": "computer_sounds_generator",
+      "generator_cue": "key",
+      "command": [
+        "python3",
+        "-m",
+        "computer_sounds_generator",
+        "render",
+        "key",
+        "--size",
+        "laptop",
+        "--region",
+        "ntsc",
+        "--intensity",
+        "0.35",
+        "--count",
+        "1",
+        "--seed",
+        "2026072103",
+        "--stem",
+        "keyboard",
+        "--out",
+        "<staging>/keyboard"
+      ],
+      "options": {
+        "size": "laptop",
+        "region": "ntsc",
+        "intensity": 0.35,
+        "count": 1,
+        "stem": "keyboard"
+      },
+      "base_seed": 2026072103,
+      "effective_seed": 2026072103,
+      "format": {
+        "container": "RIFF/WAVE",
+        "encoding": "signed 16-bit little-endian PCM",
+        "channels": 1,
+        "sample_rate_hz": 44100
+      },
+      "frame_count": 8060,
+      "duration_seconds": 0.182766,
+      "peak_dbfs": -8.0,
+      "rms_dbfs": -32.621,
+      "dc_offset": -1.144e-05,
+      "sha256": "1356298b976ef46e9df68612afe4d0eb666bf8b479a2fa8cd13303e7b4b55811",
+      "runtime_gain": 0.18,
+      "trigger": "keyboard pointer-down or physical key acceptance",
+      "source_audio": "CC0 1.0 recording",
+      "sources": [
+        {
+          "file": "key_cc0.wav",
+          "sha256": "e9de4698b3487ba9e84308b76e03aab1824530c51ad758bd1b1c0468c3681c6b",
+          "collection": "Enter Key Press Mechanical Keyboard",
+          "author": "alpinemesh",
+          "license": "CC0 1.0",
+          "source_page": "https://freesound.org/s/627647/",
+          "derived_from_bundled_file": null,
+          "upstream_file": "627647__alpinemesh__enter-key-press-mechanical-keyboard.wav",
+          "upstream_sha256": "6bd2ee414d9c1a53c508fdb3fb76422acc73fd06d0a55ea1a52c52290ad1c708"
+        }
+      ]
+    },
+    {
+      "cue": "swallow",
+      "file": "assets/sfx/swallow.wav",
+      "generator": "magic_sound_generator",
+      "generator_cue": "teleport",
+      "command": [
+        "python3",
+        "-m",
+        "magic_sound_generator",
+        "render",
+        "teleport",
+        "--style",
+        "nature",
+        "--intensity",
+        "0.25",
+        "--seed",
+        "2026072104",
+        "--stem",
+        "swallow",
+        "--out",
+        "<staging>/swallow"
+      ],
+      "options": {
+        "style": "nature",
+        "intensity": 0.25,
+        "count": 1,
+        "stem": "swallow"
+      },
+      "base_seed": 2026072104,
+      "effective_seed": 2026072112,
+      "format": {
+        "container": "RIFF/WAVE",
+        "encoding": "signed 16-bit little-endian PCM",
+        "channels": 1,
+        "sample_rate_hz": 44100
+      },
+      "frame_count": 24255,
+      "duration_seconds": 0.55,
+      "peak_dbfs": -3.0,
+      "rms_dbfs": -8.458,
+      "dc_offset": -0.00019114,
+      "sha256": "de1785345d075c0b3e30a49473af2772638bac676050e2761eb3d0ba51c459c6",
+      "runtime_gain": 0.16,
+      "trigger": "successful drop into an action container",
+      "source_audio": "none; deterministic procedural synthesis",
+      "sources": []
+    },
+    {
+      "cue": "contain",
+      "file": "assets/sfx/contain.wav",
+      "generator": "ui_game_state_generator",
+      "generator_cue": "menu_accept",
+      "command": [
+        "python3",
+        "-m",
+        "ui_game_state_generator",
+        "render",
+        "menu_accept",
+        "--style",
+        "acoustic",
+        "--seed",
+        "2026072105",
+        "--out",
+        "<staging>/contain"
+      ],
+      "options": {
+        "style": "acoustic",
+        "step": 0,
+        "count": 1
+      },
+      "base_seed": 2026072105,
+      "effective_seed": 2026072105,
+      "format": {
+        "container": "RIFF/WAVE",
+        "encoding": "signed 16-bit little-endian PCM",
+        "channels": 1,
+        "sample_rate_hz": 44100
+      },
+      "frame_count": 8716,
+      "duration_seconds": 0.197642,
+      "peak_dbfs": -13.0,
+      "rms_dbfs": -20.532,
+      "dc_offset": -6.688e-05,
+      "sha256": "fdf5d29ebf532d67ac25bf670dfb5e470df147e677d70b08b5cc125b534cf3f1",
+      "runtime_gain": 0.55,
+      "trigger": "successful move into a different ordinary container",
+      "source_audio": "none; deterministic procedural synthesis",
+      "sources": []
+    },
+    {
+      "cue": "copy",
+      "file": "assets/sfx/copy.wav",
+      "generator": "magic_sound_generator",
+      "generator_cue": "cast",
+      "command": [
+        "python3",
+        "-m",
+        "magic_sound_generator",
+        "render",
+        "cast",
+        "--style",
+        "nature",
+        "--intensity",
+        "0.30",
+        "--seed",
+        "2026072106",
+        "--stem",
+        "copy",
+        "--out",
+        "<staging>/copy"
+      ],
+      "options": {
+        "style": "nature",
+        "intensity": 0.3,
+        "count": 1,
+        "stem": "copy"
+      },
+      "base_seed": 2026072106,
+      "effective_seed": 2026072110,
+      "format": {
+        "container": "RIFF/WAVE",
+        "encoding": "signed 16-bit little-endian PCM",
+        "channels": 1,
+        "sample_rate_hz": 44100
+      },
+      "frame_count": 26460,
+      "duration_seconds": 0.6,
+      "peak_dbfs": -4.0,
+      "rms_dbfs": -11.72,
+      "dc_offset": 0.00048322,
+      "sha256": "7b49321574d6ee5cf3e574db24e4aea3bdcc92b8759c53dd3415709f8d5814dd",
+      "runtime_gain": 0.18,
+      "trigger": "successful clone or Stamper/Magic-hat creation",
+      "source_audio": "none; deterministic procedural synthesis",
+      "sources": []
+    },
+    {
+      "cue": "door",
+      "file": "assets/sfx/door.wav",
+      "generator": "door_sound_generator",
+      "generator_cue": "open",
+      "command": [
+        "python3",
+        "-m",
+        "door_sound_generator",
+        "<staging>/door/door.wav",
+        "--action",
+        "open",
+        "--material",
+        "light_wood",
+        "--intensity",
+        "0.30",
+        "--age",
+        "0.10",
+        "--duration",
+        "0.36",
+        "--room",
+        "0.02",
+        "--seed",
+        "2026072107"
+      ],
+      "options": {
+        "action": "open",
+        "material": "light_wood",
+        "intensity": 0.3,
+        "age": 0.1,
+        "duration": 0.36,
+        "room": 0.02,
+        "stereo": false
+      },
+      "base_seed": 2026072107,
+      "effective_seed": 2026072107,
+      "format": {
+        "container": "RIFF/WAVE",
+        "encoding": "signed 16-bit little-endian PCM",
+        "channels": 1,
+        "sample_rate_hz": 44100
+      },
+      "frame_count": 15876,
+      "duration_seconds": 0.36,
+      "peak_dbfs": -3.926,
+      "rms_dbfs": -22.284,
+      "dc_offset": -8.27e-06,
+      "sha256": "91cd2c42314a6365f9de9738b8fa94b59edcbfb757a016cb95a3059388e99078",
+      "runtime_gain": 0.2,
+      "trigger": "accepted room-door transition",
+      "source_audio": "CC0 1.0/public-domain recordings",
+      "sources": [
+        {
+          "file": "iwan_door-04.wav",
+          "sha256": "771e42b0d4a046f91e06620c2fc0d63b2bf96a85c11dc7ebb3f547f94a49bd09",
+          "collection": "Door open, door close",
+          "author": "Iwan Gabovitch",
+          "license": "CC0 1.0",
+          "source_page": "https://opengameart.org/content/door-open-door-close",
+          "derived_from_bundled_file": null,
+          "upstream_file": "door.7z",
+          "upstream_sha256": "81e87d4f7ea2227076b25dc6e595378d3a35ae7e6a45817a051cfbcd17b13ea1"
+        },
+        {
+          "file": "iwan_door-05.wav",
+          "sha256": "74d4c9e7f6b7dcb5f65d48076b21e8d1ae07a3f5594e4ec01166e9da98c580e5",
+          "collection": "Door open, door close",
+          "author": "Iwan Gabovitch",
+          "license": "CC0 1.0",
+          "source_page": "https://opengameart.org/content/door-open-door-close",
+          "derived_from_bundled_file": null,
+          "upstream_file": "door.7z",
+          "upstream_sha256": "81e87d4f7ea2227076b25dc6e595378d3a35ae7e6a45817a051cfbcd17b13ea1"
+        }
+      ]
+    },
+    {
+      "cue": "switch",
+      "file": "assets/sfx/switch.wav",
+      "generator": "computer_sounds_generator",
+      "generator_cue": "switch",
+      "command": [
+        "python3",
+        "-m",
+        "computer_sounds_generator",
+        "render",
+        "switch",
+        "--size",
+        "laptop",
+        "--region",
+        "ntsc",
+        "--intensity",
+        "0.35",
+        "--count",
+        "1",
+        "--seed",
+        "2026072108",
+        "--stem",
+        "switch",
+        "--out",
+        "<staging>/switch"
+      ],
+      "options": {
+        "size": "laptop",
+        "region": "ntsc",
+        "intensity": 0.35,
+        "count": 1,
+        "stem": "switch"
+      },
+      "base_seed": 2026072108,
+      "effective_seed": 2026072108,
+      "format": {
+        "container": "RIFF/WAVE",
+        "encoding": "signed 16-bit little-endian PCM",
+        "channels": 1,
+        "sample_rate_hz": 44100
+      },
+      "frame_count": 13230,
+      "duration_seconds": 0.3,
+      "peak_dbfs": -7.001,
+      "rms_dbfs": -31.704,
+      "dc_offset": 3.86e-06,
+      "sha256": "194a385d3d1d1dfcc8f3a0fd7a157a2f2be9060520b48a1749cc9eb7a850af08",
+      "runtime_gain": 0.25,
+      "trigger": "successful switch-state change",
+      "source_audio": "CC0 1.0 recording",
+      "sources": [
+        {
+          "file": "switch_cc0.wav",
+          "sha256": "106ce2dd59976cc2c954eb06e69976dd8827e5c1aa129cc2a4466d915f1beca9",
+          "collection": "Various Sound Effects",
+          "author": "laleksic",
+          "license": "CC0 1.0",
+          "source_page": "https://opengameart.org/content/various-sound-effects",
+          "derived_from_bundled_file": "laleksic_lock.wav",
+          "upstream_file": "sounds_8.zip",
+          "upstream_sha256": "82c945e5f3c97e4d38dbf18fa27bcea78dbed73b4078c5bbafc04ad89b4096db"
+        }
+      ]
+    },
+    {
+      "cue": "dismiss",
+      "file": "assets/sfx/dismiss.wav",
+      "generator": "ui_game_state_generator",
+      "generator_cue": "menu_cancel",
+      "command": [
+        "python3",
+        "-m",
+        "ui_game_state_generator",
+        "render",
+        "menu_cancel",
+        "--style",
+        "acoustic",
+        "--seed",
+        "2026072109",
+        "--out",
+        "<staging>/dismiss"
+      ],
+      "options": {
+        "style": "acoustic",
+        "step": 0,
+        "count": 1
+      },
+      "base_seed": 2026072109,
+      "effective_seed": 2026072109,
+      "format": {
+        "container": "RIFF/WAVE",
+        "encoding": "signed 16-bit little-endian PCM",
+        "channels": 1,
+        "sample_rate_hz": 44100
+      },
+      "frame_count": 8899,
+      "duration_seconds": 0.201791,
+      "peak_dbfs": -14.0,
+      "rms_dbfs": -21.938,
+      "dc_offset": 7.46e-06,
+      "sha256": "40cbb92dded3efdc9f624506bfc0e134dab00d659a7ae2579c74b39a678eead4",
+      "runtime_gain": 0.55,
+      "trigger": "accepted panel/window close",
+      "source_audio": "none; deterministic procedural synthesis",
+      "sources": []
+    },
+    {
+      "cue": "magic",
+      "file": "assets/sfx/magic.wav",
+      "generator": "magic_sound_generator",
+      "generator_cue": "sparkle",
+      "command": [
+        "python3",
+        "-m",
+        "magic_sound_generator",
+        "render",
+        "sparkle",
+        "--style",
+        "holy",
+        "--intensity",
+        "0.25",
+        "--seed",
+        "2026072110",
+        "--stem",
+        "magic",
+        "--out",
+        "<staging>/magic"
+      ],
+      "options": {
+        "style": "holy",
+        "intensity": 0.25,
+        "count": 1,
+        "stem": "magic"
+      },
+      "base_seed": 2026072110,
+      "effective_seed": 2026072117,
+      "format": {
+        "container": "RIFF/WAVE",
+        "encoding": "signed 16-bit little-endian PCM",
+        "channels": 1,
+        "sample_rate_hz": 44100
+      },
+      "frame_count": 26460,
+      "duration_seconds": 0.6,
+      "peak_dbfs": -6.0,
+      "rms_dbfs": -20.932,
+      "dc_offset": -9.76e-06,
+      "sha256": "f895f29e8cb1060a43a66d904493ee22541a0d503bb01bae3c317887d69a73af",
+      "runtime_gain": 0.25,
+      "trigger": "message-arrival state commit",
+      "source_audio": "none; deterministic procedural synthesis",
+      "sources": []
+    },
+    {
+      "cue": "ring",
+      "file": "assets/sfx/ring.wav",
+      "generator": "ui_game_state_generator",
+      "generator_cue": "warning",
+      "command": [
+        "python3",
+        "-m",
+        "ui_game_state_generator",
+        "render",
+        "warning",
+        "--style",
+        "acoustic",
+        "--seed",
+        "2026072111",
+        "--out",
+        "<staging>/ring"
+      ],
+      "options": {
+        "style": "acoustic",
+        "step": 0,
+        "count": 1
+      },
+      "base_seed": 2026072111,
+      "effective_seed": 2026072111,
+      "format": {
+        "container": "RIFF/WAVE",
+        "encoding": "signed 16-bit little-endian PCM",
+        "channels": 1,
+        "sample_rate_hz": 44100
+      },
+      "frame_count": 24564,
+      "duration_seconds": 0.557007,
+      "peak_dbfs": -9.0,
+      "rms_dbfs": -18.214,
+      "dc_offset": 4.73e-05,
+      "sha256": "2e2f5d60fc00e9892d6106ac23b96c2bd5bf4e33796ffd60be9c4512b97a81ed",
+      "runtime_gain": 0.35,
+      "trigger": "telephone enters ringing state",
+      "source_audio": "none; deterministic procedural synthesis",
+      "sources": [],
+      "design_note": "Four-pulse alert abstraction; the local banks contain no telephone-ringer cue."
+    },
+    {
+      "cue": "no_mail",
+      "file": "assets/sfx/no_mail.wav",
+      "generator": "powerup_generator",
+      "generator_cue": "no_ammo",
+      "command": [
+        "python3",
+        "-m",
+        "powerup_generator",
+        "render",
+        "no_ammo",
+        "--style",
+        "acoustic",
+        "--seed",
+        "2026072112",
+        "--out",
+        "<staging>/no_mail"
+      ],
+      "options": {
+        "style": "acoustic",
+        "count": 1
+      },
+      "base_seed": 2026072112,
+      "effective_seed": 2026072112,
+      "format": {
+        "container": "RIFF/WAVE",
+        "encoding": "signed 16-bit little-endian PCM",
+        "channels": 1,
+        "sample_rate_hz": 44100
+      },
+      "frame_count": 3969,
+      "duration_seconds": 0.09,
+      "peak_dbfs": -13.0,
+      "rms_dbfs": -29.722,
+      "dc_offset": 1.491e-05,
+      "sha256": "df2204194697195ea1e5818e2093eecdfb5d922017742daedfc5503bd10ef720",
+      "runtime_gain": 0.5,
+      "trigger": "mailbox check resolves with zero waiting messages",
+      "source_audio": "none; deterministic procedural synthesis",
+      "sources": []
+    }
+  ]
+}

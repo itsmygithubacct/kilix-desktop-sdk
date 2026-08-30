@@ -1,0 +1,47 @@
+{
+  "schema": "kilix-cap-visual-provenance-laptop-lid-v1",
+  "generated_on": "2026-08-04",
+  "generator": {
+    "requested": "Gemini image generation",
+    "provider": "Gemini image generation",
+    "model_identifier": "gemini-3-pro-image"
+  },
+  "generation": {
+    "id": "laptop-lid-sprite-sheet",
+    "mode": "text-to-image",
+    "aspect_ratio": "1:1",
+    "prompt": "Use case: stylized-concept. Asset type: game prop sprite sheet. Primary request: create exactly two views of the same late-1990s portable laptop computer arranged side by side on one invisible 2-column by 1-row grid, evenly spaced with generous margins. The grid is imaginary only: absolutely no drawn lines, separators, frames, panels, or borders anywhere in the image, the two subjects simply float on the flat background. in the left cell the laptop fully CLOSED, its lid shut flat so only the plain dark warm-grey shell top, the hinge at the back, and a thin front seam are visible, resting flat like a slim slab; in the right cell the same laptop HALF-OPEN, the lid raised to about 45 degrees, the screen mostly dark with only a faint teal glow beginning at its lower edge, the cream keyboard keys partly visible beneath the tilted lid. Style/medium: polished painted late-1990s software-illustration charm matching a warm walnut-and-gold mansion interior, simplified readable shapes, crisp cel-shaded silhouettes, gentle top-left key light. Both cells show the laptop facing slightly left in a three-quarter view from slightly above, sharing one consistent scale and viewpoint, drawn as two frames of the same object mid-motion. Scene/backdrop: perfectly flat solid #00ff00 chroma-key background covering the entire image; do not use #00ff00 anywhere inside a subject. Composition: each laptop fully inside its own grid cell, centered in its cell, no overlap between cells, no crop. Constraints: the background must be one perfectly uniform #00ff00 with no shadows, gradients, texture, floor plane, or lighting variation; crisp hard outer edges for chroma-key removal; no cast shadow; no contact shadow; exactly two objects and nothing else; no divider lines between them; no people; no text, letters, numbers, plaques, logos, watermark, UI chrome, or border. Avoid: photorealism, existing product logos, extra objects, scenery."
+  },
+  "preparation": {
+    "chroma_tool": "imagegen skill scripts/remove_chroma_key.py",
+    "chroma_settings": "--auto-key border --soft-matte --transparent-threshold 18 --opaque-threshold 210 --despill --edge-contract 1",
+    "item_tool": "tools/prepare_laptop_lid.py",
+    "notes": "The generator wrote JPEG bytes under the .png source name (the known quirk); the keyed RGBA copy and both runtime P6 files were produced from it offline. Frame 0 is the closed lid, frame 1 the half-open lid; the fully open frame remains mansion-items cell 3, which this pair may only ship alongside."
+  },
+  "files": {
+    "assets/art/laptop-lid-source.png": {
+      "sha256": "4a7c213b37936e663ac3d8316eedd24cc16606e0569b253eab0b9f0670c02105",
+      "format": "JPEG-in-png-name",
+      "width": 1024,
+      "height": 1024
+    },
+    "assets/art/laptop-lid.png": {
+      "sha256": "6a05d1485d7f5dc3a0ac7aca8679d528f49fe4d8795c75f4726ac1d711bc0579",
+      "format": "PNG",
+      "width": 1024,
+      "height": 1024
+    },
+    "assets/art/runtime/laptop-lid.png": {
+      "sha256": "e42d4e825359f47161288413bf7764e42547289f88d1030d948db73510df1c0d",
+      "format": "PNG",
+      "width": 288,
+      "height": 168
+    },
+    "assets/art/runtime/laptop-lid-mask.png": {
+      "sha256": "095de57c26f6b8b88ff73efc49dae9b3c6b41d808e1c48a43a287e2ef154b6b8",
+      "format": "PNG",
+      "width": 288,
+      "height": 168
+    }
+  }
+}
