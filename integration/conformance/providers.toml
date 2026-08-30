@@ -1,0 +1,58 @@
+# The five conformance consumers of kilix.desktop contract v1.
+#
+# Four are components of this repository. The fifth, kilix-icewm, is a separate
+# repository under OD-10 SEPARATE_CONTRACT_CONSUMER and is bound here by
+# revision only — its history is deliberately not imported.
+#
+# entry_path is relative to the provider's own root. Absolute build-machine
+# paths are deliberately absent: they are not part of the binding and do not
+# belong in a public repository.
+
+schema = "f110.conformance-binding/v1"
+passes = 2
+invocations = 10
+ordered_checks = 90
+source_verifications = 30
+entry_verifications = 30
+command_set_sha256 = "c6d47509d58f88a457d639635fbf3996569c6dfeb4be37144dab830e32f421c8"
+
+[[provider]]
+id = "kilix-95"
+component = "components/kilix-95"
+entry_path = "main.py"
+source_commit = "daf4e3aa4f7be9708fd026110c2f7de180c0a1ec"
+source_tree = "f1f659e2e6c8beb41d5ddfb08a17ddce93ee4dca"
+entry_sha256 = "da69c4c170a0b097e545479eb9ad7d504957e1847e6ffd08322aa1e7e0ab15f6"
+
+[[provider]]
+id = "kilix-cap"
+component = "components/kilix-cap"
+entry_path = "bin/kilix-cap"
+source_commit = "7cc98eece67f9b6547d5fb0149d483117721a5cf"
+source_tree = "720cf436517157d35112b2aab2ce3e2e81c97efd"
+entry_sha256 = "4493e11b8817b5d9f6cc820e8580e5dd677927b72ab9381b60195b8dbbc7854d"
+
+[[provider]]
+id = "kilix-land-desktop"
+component = "components/kilix-land-desktop"
+entry_path = "kilix-land-desktop"
+source_commit = "c0594aeb955352b904f006fed4c9774e496a2d38"
+source_tree = "394ccac938a1738b30be56f742d0fabd0f3ea610"
+entry_sha256 = "aee55e67f65289630c4e17b1becb85d19abac8b2d43ef6f8288d4bb1086dec75"
+
+[[provider]]
+id = "kilix-tui"
+component = "components/kilix-tui-utils"
+entry_path = "kilix-tui/main.py"
+source_commit = "63187ee199aa16f71a460ef0e95ec876bee8b787"
+source_tree = "3387e4305ba7ad840602dfadd5caf04e3949259a"
+entry_sha256 = "d3da3a50337bce28eaa8419daf7af441249672dac2f8b97534099bfca38a1277"
+
+[[provider]]
+id = "kilix-icewm"
+component = "(separate repository — not a component here)"
+repo = "https://github.com/itsmygithubacct/kilix-icewm.git"
+entry_path = "bin/kilix-icewm"
+source_commit = "ea45b9abf13688154fdb4146cdfa4ffdef4399f1"
+source_tree = "c08eec603dfb400d35bd29272a4d7e4e1b42d9c3"
+entry_sha256 = "89bcbf1cdad30043b7d8a4b455fc0d78c746f600633915ad4fbaa0a5933f7a12"

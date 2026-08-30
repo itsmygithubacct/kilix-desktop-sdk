@@ -1,0 +1,121 @@
+# kilix-desktop-sdk root manifest.
+#
+# This records identity, not policy: what was imported, from where, at which
+# revision, under which licence, and what each component depends on. It is not
+# a release pin and does not select refs for any consumer.
+
+[sdk]
+name = "kilix-desktop-sdk"
+release = "0.2.1"
+status = "BUILT — AWAITING INDEPENDENT ACCEPTANCE"
+candidate_ref = "refs/heads/work/0.2.1-f110-monorepo-r1"
+imported_commits = 398
+components = 5
+conformance_consumers = 5   # 4 components + separate kilix-icewm
+
+[contract]
+component = "kilix-desktop-contract"
+version = "1.0.0-rc1"
+schema_identity = "kilix.desktop.*-v1"
+schemas = [
+  "kilix.desktop.action-v1",
+  "kilix.desktop.catalog-entry-v1",
+  "kilix.desktop.config-schema-v1",
+  "kilix.desktop.migration-v1",
+  "kilix.desktop.provider-check-v1",
+  "kilix.desktop.provider-config-v1",
+  "kilix.desktop.provider-description-v1",
+]
+side_contracts = [
+  "import-identities-v1",
+  "trusted-launcher-consumer-requirements-v1",
+  "vocabulary-v1",
+]
+frozen = false   # freeze is E1/P1 and is blocked; see integration/conformance/STATUS.md
+
+[[component]]
+name = "kilix-desktop-contract"
+path = "components/kilix-desktop-contract"
+version = "1.0.0-rc1"
+source_repo = "local (unpublished; no remote configured)"
+source_revision = "50e5e8686bf1d15cfcec9db9fb23fe57f700f1d2"
+imported_revision = "09c2f1dca431596ee71846db3629d62c282642c6"
+imported_commits = 19
+licence = "MIT"
+submodules = []
+depends_on = []
+
+[[component]]
+name = "kilix-95"
+path = "components/kilix-95"
+version = "0.2.0"
+source_repo = "https://github.com/itsmygithubacct/kilix-95.git"
+source_revision = "daf4e3aa4f7be9708fd026110c2f7de180c0a1ec"
+imported_revision = "0febf62021548cd9697f2abfed83dbc905d73dbc"
+imported_commits = 125
+licence = "MIT"
+submodules = []
+depends_on = ["kilix-desktop-contract"]
+
+[[component]]
+name = "kilix-cap"
+path = "components/kilix-cap"
+version = "3.0.0"   # from the source repository's latest tag; no VERSION file exists
+source_repo = "https://github.com/itsmygithubacct/kilix-cap.git"
+source_revision = "7cc98eece67f9b6547d5fb0149d483117721a5cf"
+imported_revision = "2e7b99ec76167818162423891f17a1a5c6d3f5d8"
+imported_commits = 30
+licence = "MIT for code; assets per components/kilix-cap/COPYING-ASSETS.md"
+submodules = [
+  { path = "third_party/kilix-game-sdk", url = "https://github.com/itsmygithubacct/kilix-game-sdk.git", gitlink = "833c00bd1d053705f1423f4024f2f37df0b83a68" },
+]
+depends_on = ["kilix-desktop-contract"]
+
+[[component]]
+name = "kilix-land-desktop"
+path = "components/kilix-land-desktop"
+version = "0.1.0"
+source_repo = "https://github.com/itsmygithubacct/kilix-land-desktop.git"
+source_revision = "c0594aeb955352b904f006fed4c9774e496a2d38"
+imported_revision = "298687c5e712e3636879a9e61f5fd31badda28ef"
+imported_commits = 145
+licence = "MIT for code; CC-BY-NC-SA-4.0 for assets/**"
+submodules = [
+  { path = "third_party/kilix-game-sdk", url = "https://github.com/itsmygithubacct/kilix-game-sdk.git", gitlink = "440a1d9730481546aa69c82ebcd701949aa7ad97" },
+  { path = "third_party/kilix-mask", url = "https://github.com/itsmygithubacct/kilix-mask.git", gitlink = "476bc1d62ad3cd37629906c97f9c2bb7404dd777" },
+]
+depends_on = ["kilix-desktop-contract"]
+
+[[component]]
+name = "kilix-tui-utils"
+path = "components/kilix-tui-utils"
+version = "0.3.1"
+source_repo = "https://github.com/itsmygithubacct/kilix-tui-utils.git"
+source_revision = "63187ee199aa16f71a460ef0e95ec876bee8b787"
+imported_revision = "43d7fe829c6cf19a907597ef01f83e635ca33ffc"
+imported_commits = 79
+licence = "MIT"
+submodules = []
+depends_on = ["kilix-desktop-contract"]
+
+# Import identity is frozen for the relocated Python packages: the repository
+# URL, parent and install path may change; the import names may not.
+[frozen_import_identity]
+packages = ["kilix_tui", "kilix_desk"]
+console_scripts_root = "components/kilix-tui-utils/tools"
+
+[[external_consumer]]
+name = "kilix-icewm"
+repo = "https://github.com/itsmygithubacct/kilix-icewm.git"
+relationship = "mandatory contract/conformance consumer, separate repository (OD-10 SEPARATE_CONTRACT_CONSUMER)"
+conformance_revision = "ea45b9abf13688154fdb4146cdfa4ffdef4399f1"
+published_head_at_import = "0b9f11b45fddc5370c37b00e9cd9e42ac5a5f6d7"
+history_imported = false
+
+[measured]
+# Packed size of each component's imported history, measured after gc --prune=now.
+kilix_desktop_contract_kib = 153.77
+kilix_95_mib = 8.07
+kilix_cap_mib = 76.86
+kilix_land_desktop_mib = 34.79
+kilix_tui_utils_kib = 606.64

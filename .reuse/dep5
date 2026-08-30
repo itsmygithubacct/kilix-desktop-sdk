@@ -1,0 +1,64 @@
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Upstream-Name: kilix-desktop-sdk
+Source: https://github.com/itsmygithubacct/kilix-desktop-sdk
+
+Comment: This repository is not uniformly licensed. The NonCommercial paths
+ below are reproduced here because their components were imported with history
+ preserved; they are declared per path so that no consumer has to infer the
+ boundary from a single root LICENSE file. Upstream submodules under
+ components/*/third_party/ are gitlinks, not vendored content, and carry their
+ own upstream licences.
+
+Files: *
+Copyright: itsmygithubacct
+License: MIT
+
+Files: components/kilix-desktop-contract/*
+Copyright: itsmygithubacct
+License: MIT
+
+Files: components/kilix-95/*
+Copyright: itsmygithubacct
+License: MIT
+
+Files: components/kilix-tui-utils/*
+Copyright: itsmygithubacct
+License: MIT
+
+Files: components/kilix-cap/*
+Copyright: itsmygithubacct
+License: MIT
+
+Files: components/kilix-cap/assets/*
+Copyright: itsmygithubacct and the sources recorded in COPYING-ASSETS.md
+License: see-components/kilix-cap/COPYING-ASSETS.md
+Comment: Cap's asset provenance, including its C2PA metadata and CC0 audio
+ inputs, is declared per asset in components/kilix-cap/COPYING-ASSETS.md and in
+ components/kilix-cap/docs/visual-provenance.json.
+
+Files: components/kilix-land-desktop/*
+Copyright: itsmygithubacct
+License: MIT
+
+Files: components/kilix-land-desktop/assets/*
+Copyright: itsmygithubacct
+License: CC-BY-NC-SA-4.0
+Comment: NonCommercial. Every clone of this repository acquires these files.
+ They are game-derived assets; components/kilix-land-desktop/assets/LICENSE is
+ the authoritative text and LICENSES/CC-BY-NC-SA-4.0.txt reproduces it.
+
+Files: components/kilix-cap/third_party/*
+Copyright: upstream
+License: upstream
+Comment: Gitlink only; not vendored. See components/kilix-cap/.gitmodules.
+
+Files: components/kilix-land-desktop/third_party/*
+Copyright: upstream
+License: upstream
+Comment: Gitlink only; not vendored. See components/kilix-land-desktop/.gitmodules.
+
+License: MIT
+ Reproduced in full at LICENSES/MIT.txt.
+
+License: CC-BY-NC-SA-4.0
+ Reproduced in full at LICENSES/CC-BY-NC-SA-4.0.txt.
