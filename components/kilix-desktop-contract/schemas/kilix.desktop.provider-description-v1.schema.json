@@ -1,0 +1,133 @@
+{
+  "$defs": {
+    "capability": {
+      "oneOf": [
+        {
+          "type": "boolean"
+        },
+        {
+          "additionalProperties": true,
+          "properties": {
+            "available": {
+              "const": false
+            },
+            "detail": {
+              "maxLength": 512,
+              "type": "string"
+            },
+            "reason": {
+              "enum": [
+                "dependency-missing",
+                "hardware-missing",
+                "host-unsupported",
+                "not-implemented",
+                "policy-disabled"
+              ]
+            }
+          },
+          "required": [
+            "available",
+            "reason"
+          ],
+          "type": "object"
+        }
+      ]
+    }
+  },
+  "$id": "https://schemas.kilix.org/desktop/provider-description/v1",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": true,
+  "properties": {
+    "capabilities": {
+      "additionalProperties": true,
+      "properties": {
+        "audio": {
+          "$ref": "#/$defs/capability"
+        },
+        "headless_screenshot": {
+          "$ref": "#/$defs/capability"
+        },
+        "keyboard": {
+          "$ref": "#/$defs/capability"
+        },
+        "launcher": {
+          "$ref": "#/$defs/capability"
+        },
+        "mouse": {
+          "$ref": "#/$defs/capability"
+        },
+        "reduced_motion": {
+          "$ref": "#/$defs/capability"
+        },
+        "settings": {
+          "$ref": "#/$defs/capability"
+        }
+      },
+      "required": [
+        "audio",
+        "headless_screenshot",
+        "keyboard",
+        "launcher",
+        "mouse",
+        "reduced_motion",
+        "settings"
+      ],
+      "type": "object"
+    },
+    "config_schema": {
+      "const": "kilix.desktop.config.provider.v1"
+    },
+    "contract_version": {
+      "const": 1
+    },
+    "display_modes": {
+      "items": {
+        "enum": [
+          "kitty-graphics",
+          "terminal-text",
+          "x11"
+        ]
+      },
+      "minItems": 1,
+      "type": "array",
+      "uniqueItems": true
+    },
+    "provider_id": {
+      "pattern": "^[a-z0-9]+(?:[._-][a-z0-9]+)*$",
+      "type": "string"
+    },
+    "provider_version": {
+      "pattern": "^(?:0|[1-9][0-9]*)\\.(?:0|[1-9][0-9]*)\\.(?:0|[1-9][0-9]*)(?:-[0-9A-Za-z.-]+)?(?:\\+[0-9A-Za-z.-]+)?$",
+      "type": "string"
+    },
+    "required_capabilities": {
+      "items": {
+        "enum": [
+          "audio",
+          "headless_screenshot",
+          "keyboard",
+          "launcher",
+          "mouse",
+          "reduced_motion",
+          "settings"
+        ]
+      },
+      "type": "array",
+      "uniqueItems": true
+    },
+    "schema_version": {
+      "const": 1
+    }
+  },
+  "required": [
+    "schema_version",
+    "provider_id",
+    "provider_version",
+    "contract_version",
+    "display_modes",
+    "capabilities",
+    "config_schema"
+  ],
+  "title": "Kilix desktop provider description v1",
+  "type": "object"
+}

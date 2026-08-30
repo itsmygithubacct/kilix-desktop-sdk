@@ -1,0 +1,21 @@
+{
+  "checks": [
+    {
+      "id": "assets",
+      "required": true,
+      "status": "pass",
+      "summary": "Required room assets are readable."
+    },
+    {
+      "id": "terminal",
+      "required": true,
+      "status": "pass",
+      "summary": "The terminal supports the selected display mode."
+    }
+  ],
+  "contract_version": 1,
+  "provider_id": "kilix-cap",
+  "schema_version": 1,
+  "status": "ready",
+  "summary": "Kilix Cap is ready."
+}

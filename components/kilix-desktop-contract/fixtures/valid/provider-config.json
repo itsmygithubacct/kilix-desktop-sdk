@@ -1,0 +1,11 @@
+{
+  "contract_version": 1,
+  "provider_id": "kilix-cap",
+  "revision": 4,
+  "schema_version": 1,
+  "values": {
+    "future-compatible-key": "preserved",
+    "reduced_motion": false,
+    "web_home": "https://example.invalid/"
+  }
+}

@@ -1,0 +1,33 @@
+{
+  "$id": "https://schemas.kilix.org/desktop/provider-config/v1",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": true,
+  "properties": {
+    "contract_version": {
+      "const": 1
+    },
+    "provider_id": {
+      "pattern": "^[a-z0-9]+(?:[._-][a-z0-9]+)*$",
+      "type": "string"
+    },
+    "revision": {
+      "minimum": 0,
+      "type": "integer"
+    },
+    "schema_version": {
+      "const": 1
+    },
+    "values": {
+      "type": "object"
+    }
+  },
+  "required": [
+    "schema_version",
+    "provider_id",
+    "contract_version",
+    "revision",
+    "values"
+  ],
+  "title": "Kilix provider configuration values v1",
+  "type": "object"
+}

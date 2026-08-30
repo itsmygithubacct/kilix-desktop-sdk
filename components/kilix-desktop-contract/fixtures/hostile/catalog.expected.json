@@ -1,0 +1,18 @@
+{
+  "actions": [
+    {
+      "payload": "kilix-calculator",
+      "schema_version": 1,
+      "verb": "app.open"
+    }
+  ],
+  "catalog_id": "kilix-calculator",
+  "categories": [
+    "Utility",
+    "SafeCategory"
+  ],
+  "comment": "A bounded comment with formatting.",
+  "kind": "application",
+  "name": "Calculator link",
+  "schema_version": 1
+}

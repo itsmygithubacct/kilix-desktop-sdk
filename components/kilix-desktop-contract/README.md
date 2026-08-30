@@ -1,0 +1,276 @@
+# kilix-desktop-contract
+
+Language-neutral protocol v1 for Kilix desktop providers.
+
+This tree is a **1.0.0 release candidate**. Its schemas, fixtures, vocabulary,
+helpers, and import-identity record are byte-bound by `SHA256SUMS`. The v1
+identity is not declared frozen until the F119 result-schema dependency is
+available and an independent contract review has closed all findings.
+
+## Provider interface
+
+Every provider executable implements:
+
+```text
+<provider> --version
+<provider> provider describe --json
+<provider> provider check --json
+<provider> provider launch [--session-id ID]
+<provider> provider screenshot OUTPUT [provider options]
+<provider> provider config schema --json
+<provider> provider config get [KEY] --json
+<provider> provider config set KEY VALUE
+<provider> provider migrate --from VERSION [--dry-run]
+```
+
+JSON stdout is exactly one UTF-8 JSON document followed by one newline.
+Diagnostics go to stderr. Non-interactive endpoints do not prompt. The host
+supervises every endpoint, owns timeouts, kills the complete provider process
+group on a deadline, and force-restores terminal modes after abnormal exit.
+`launch` runs in the foreground and handles `SIGTERM` with best-effort cleanup
+inside the shutdown grace period.
+
+`provider describe` and `provider check` emit documents validated by
+`kilix.desktop.provider-description/v1` and
+`kilix.desktop.provider-check/v1`. `provider config schema` emits a Draft
+2020-12 schema whose Kilix metadata conforms to the config-schema contract.
+`provider config get` emits `kilix.desktop.provider-config/v1`.
+`provider migrate` emits `kilix.desktop.migration/v1` for both dry runs and
+executed migrations.
+
+The closed action verbs, capability and display-mode vocabularies, deadline
+defaults, and exit statuses live in `contracts/vocabulary-v1.json`. Unknown
+compatible JSON fields are ignored. An unknown value in a closed vocabulary or
+an unknown mandatory capability fails closed. A host refuses contract versions
+newer than it supports; older versions require an explicit compatibility
+adapter.
+
+## Stable import and command identities
+
+`contracts/import-identities-v1.json` records names that survive repository and
+install-path relocation. In particular:
+
+- Python imports `kilix_tui` and `kilix_desk` do not change.
+- Every existing `tools/*` launcher keeps its installed command name.
+- The composed desktop and center command names also remain stable.
+
+The parent repository, source URL, and install prefix may change. These public
+identities may not.
+
+## Security boundaries
+
+Desktop catalog text is untrusted. `sanitize_catalog_text` removes ANSI
+CSI/OSC/DCS and related escape sequences, terminal controls, bidi formatting
+controls, and invalid Unicode; it normalizes whitespace and enforces both
+character and UTF-8 byte bounds before providers render the text.
+
+Actions split on the first colon. Verbs are closed. `url.open` accepts HTTPS
+URLs without credentials. `document.open` is data only: the host resolves it
+through document-handler policy, refuses executable types and paths outside
+permitted roots, and never executes the payload.
+
+The shared XDG store is authoritative only after a completed migration record.
+Before completion and after rollback, the legacy store remains authoritative.
+Providers fail closed if authority cannot be determined.
+
+## Shared persistence command
+
+The staged F120 prefix exports either the absolute
+`KILIX_DESKTOP_CONTRACT_COMMAND` or an absolute `KILIX_DESKTOP_SDK_PREFIX`
+whose command is `bin/kilix-desktop-contract`. Providers never search an
+ambient checkout for this helper. The command owns path selection, validation,
+the global lock, private modes, atomic writes and the migration record:
+
+```text
+kilix-desktop-contract storage authority
+kilix-desktop-contract storage path PROVIDER {config,state,data,cache,session,runtime}
+kilix-desktop-contract storage schema PROVIDER
+kilix-desktop-contract storage get PROVIDER [KEY]
+kilix-desktop-contract storage value PROVIDER KEY
+kilix-desktop-contract storage set PROVIDER KEY VALUE
+kilix-desktop-contract storage policy-path
+kilix-desktop-contract storage policy {get,value,set} ...
+kilix-desktop-contract storage shared-settings {get,update} ...
+kilix-desktop-contract storage migrate PROVIDER --from VERSION [--dry-run]
+kilix-desktop-contract storage rollback --from VERSION
+```
+
+The XDG policy is `$XDG_CONFIG_HOME/kilix/desktop.toml`; provider configuration
+is `$XDG_CONFIG_HOME/kilix/desktops/<id>.toml`; state is rooted at
+`$XDG_STATE_HOME/kilix/desktops/<id>/`, with corresponding XDG data and cache
+roots. `~/.local/gpu_terminal` and its explicit legacy overrides remain the
+sole authority until Land, TUI, Cap and Kilix 95 complete in that order. The
+Kilix 95 step re-synchronizes all earlier inert copies before atomically
+committing the authority flip. Rollback records legacy authority without
+deleting the retained XDG copy. IceWM consumes the same resolver and contract
+but is not a member of that four-provider migration order.
+
+## Validation
+
+Use the release-selected uv 0.12.5 binary:
+
+```sh
+uv run --locked --offline python validate_contract.py --self-test
+sha256sum -c SHA256SUMS
+```
+
+The self-test checks Draft 2020-12 schemas, canonical JSON, duplicate-key and
+size rejection, valid and invalid fixtures, action parsing, hostile catalog
+sanitization, the C11 header, import identities, and every byte listed in
+`SHA256SUMS`. Run it twice against an unchanged tree for the freeze gate.
+
+The same process-isolated non-interactive conformance runner is used for every
+provider. During the ordered adapter-only window, before shared persistence is
+available, invoke it with `--adapter-stage`; this requires migration to fail
+explicitly with exit 4. The final gate omits that flag and instead requires a
+valid dry-run migration record:
+
+```sh
+kilix-desktop-contract conformance \
+  --kilix-home /absolute/bound/kilix \
+  --contract-command /absolute/bound/kilix-desktop-contract-bridge \
+  --state-library /absolute/bound/libkilix-state.so \
+  --land-assets /absolute/bound/kilix-land-desktop \
+  --adapter-stage -- PROVIDER [ARG ...]
+kilix-desktop-contract conformance \
+  --kilix-home /absolute/bound/kilix \
+  --contract-command /absolute/bound/kilix-desktop-contract-bridge \
+  --state-library /absolute/bound/libkilix-state.so \
+  --land-assets /absolute/bound/kilix-land-desktop \
+  -- PROVIDER [ARG ...]
+```
+
+The four authority paths are mandatory inputs rather than ambient environment
+lookups. Provider children receive the closed 39-name F110 profile: caller
+variables (including Python, loader, plugin, source-path and provider override
+state) are not inherited. The release gate binds the four absolute inputs before
+this runner starts; these command-line flags do not establish that outer
+trusted-launcher authority by themselves.
+
+`contracts/trusted-launcher-consumer-requirements-v1.json` makes the owned side
+of that future interface machine-checkable. It fixes 2/2 top-level profile
+inputs, 2/2 E1 freeze legs, 6/6 E3 child-table rows, 3/3 required child kinds
+and 12/12 interface controls without copying the shared launcher
+implementation. In particular, the child table must support the 3/3 Python
+script, Python module and retained native-executable kinds that the 5/5
+provider plus 1/1 installed-command population requires. It also fixes the E3
+surface, provider, environment and terminal populations, records 9/9 E2 and
+18/18 E4 local-evidence leaves, and fixes the E4 installed-command
+migration/rollback sequence.
+
+These are construction inputs, not accepted launcher profiles. The published
+OD-14 correction remains under independent review and 0/10 protected return
+identities have been consumed, so the checker fails closed if the correction
+or the OD-13 component is promoted without an accepted return packet.
+
+The same requirements document also binds F119 R4's authority-independent
+result-channel preparation without treating it as a formal return. It retains
+18/18 candidate fields, 6/6 inherited field mappings, 12/12 OD-20 additions,
+4/4 adapter kinds, 12/12 handoff phases, 11/11 transitions, 6/6 terminal
+dispositions, 2/2 anonymous transport kinds and 10/10 consumer invariants.
+The F100-owned launcher result descriptor remains consumed in 0/1 cases;
+formal F119 P1 entry remains 0/1.
+
+`kilix_desktop_contract.result_channel.parse_result_channel` is the F110-side
+consumer check for that future return. It accepts only bytes read directly
+from the anonymous endpoint, applies an outer trusted byte bound before JSON
+parsing, requires the exact 18/18-field prepared envelope, and rejects all
+32/32 prepared negative mutations. It does not construct any of the 4/4 F119
+adapters, select the 0/1 unreturned launcher descriptor, or promote either of
+the 0/2 candidate schemas.
+
+The consumer requirements also byte-bind F119 R5's executable preparation in
+22/22 leaves: 9/9 authority bindings, 6/6 CLI options, 4/4 adapter plans,
+17/17 phases, 40/40 corrected self-tests, 8/8 positive adapter executions,
+5/5 negative controls and 12/12 anonymous-channel executions. The packet is
+still preparation: formal freezes, adapters, vectors and P1 entry remain 0/2,
+0/4, 0/84 and 0/1 respectively.
+
+F119 R6 is bound separately in 32/32 preparation fields and 8/8 exact packet-
+artifact hashes. The binding retains the candidate's 23/23 required outer
+result fields, 17/17 nested result-channel fields, 98/98 authority-independent
+field bindings, 32/32 prepared results and 32/32 relational rules while
+consuming accepted F100 values in 0/32 fields. The accompanying
+`validate_r6_result_channel` check exercises all 32/32 prepared channel
+positions across 4/4 adapter rows and 8/8 terminal rows, and has a negative
+control for all 17/17 nested fields. This narrows the F110 consumer boundary;
+it does not validate the complete R6 result, replay any of the 0/84 formal
+vectors, implement any of the 0/4 adapters, or promote either of the 0/2
+candidate schemas.
+
+The requirements also bind the returned F111 consumer amendment as an input to
+that future F119 decision. They retain the exact amendment, report and packet
+manifest identities, all 4/4 requested repair IDs and the 9/9 acceptance-vector
+population while recording bridge acceptance as 0/1. This does not choose an
+F119 representation: Track B still owns verbatim refusal provenance, lifecycle
+variants, reason retention and the multi-case aggregate/partition rule.
+
+The historical R6 packet's published arbitrary-CWD checksum command remains
+recorded at 0/1 passes, while its packet-directory form passes 1/1 attempts
+and 8/8 current members. The requirements now bind Track B's returned R7
+successor for 1/1 packets and all 8/8 checksum members: exact packet/report
+paths, 9/9 packet files, line/byte totals, 8/8 artifact hashes, manifest and
+report SHA-256 identities, and the passing 1/1 outside-directory command.
+This is preparation-only consumer evidence; the SDK rewrites historical R6
+packet bytes in 0/9 cases and does not promote formal F119 entry.
+
+Exact result-channel objects and R6 readiness fractions use recursive JSON
+type comparison. Boolean/integer aliases such as `true`/`1` and numeric
+representation aliases such as `1`/`1.0` are rejected even when Python would
+normally compare their values as equal.
+
+Run both readiness surfaces with:
+
+```sh
+make launcher-consumer-readiness UV=/absolute/path/to/release-pinned-uv-0.12.5
+make f110-local-gate UV=/absolute/path/to/release-pinned-uv-0.12.5
+```
+
+Passing this developer-readiness check does not adopt the shared launcher or
+turn the local E3/E4 construction evidence into release acceptance.
+
+The common developer gate takes a canonical command-set document with schema
+`kilix.desktop.conformance-command-set/v1`. Its `commands` array must contain
+the exact five provider IDs, in contract order, and each command must start
+with an absolute executable. Each row also binds the expected canonical source
+root, source commit, source tree, absolute logical entry path and entry
+SHA-256. The entry must be a canonical path with no symlinked ancestor and
+must reside below that source root. Before and after every
+invocation the gate checks the entry as a regular non-symlink, re-reads its
+digest, proves the Git `HEAD` and tree identities, and requires a clean tracked
+and untracked worktree including submodules. It runs two fresh final-mode
+passes and refuses source-root, source-identity, worktree, entry-byte,
+provider-ID or ordered nine-check-tuple drift:
+
+When an endpoint fails inside the matrix, the diagnostic includes the exact
+pass position and provider ID before the underlying error. This preserves a
+bounded failure such as `pass 2/2 provider kilix-95` without changing the
+provider deadline or treating the failure as a provider refusal.
+
+```sh
+make common-conformance-gate \
+  UV=/absolute/path/to/release-pinned-uv-0.12.5 \
+  COMMANDS=/absolute/provider-commands.json \
+  KILIX_HOME=/absolute/bound/kilix \
+  CONTRACT_COMMAND=/absolute/bound/kilix-desktop-contract-bridge \
+  STATE_LIBRARY=/absolute/bound/libkilix-state.so \
+  LAND_ASSETS=/absolute/bound/kilix-land-desktop
+```
+
+A 5/5-provider, 2/2-pass, 10/10-invocation and 90/90-check result from this
+runner is local SDK evidence only. The separate launcher must still supply and
+protect all required return identities before release acceptance.
+
+Both modes enforce bounded output and deadlines, exact JSON/newline rules,
+schema and semantic validation, consistent provider identities, truthful
+screenshot behavior, unavailable diagnostics, and zero live descendants after
+each non-interactive endpoint. They redirect provider storage into an isolated
+sandbox and reject filesystem changes from describe, check, config reads,
+unavailable config writes, and migration dry-runs within that sandbox.
+Launch/SIGTERM and terminal-restoration coverage remains in the host
+integration suite because it requires a real presentation session.
+
+After v1 is frozen, a change that invalidates an accepted v1 document or alters
+a closed vocabulary requires a new schema identity. Additive optional fields
+may be clarified without changing accepted bytes only through a separately
+reviewed contract release.

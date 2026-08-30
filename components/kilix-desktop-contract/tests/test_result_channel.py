@@ -1,0 +1,353 @@
+from __future__ import annotations
+
+import copy
+import json
+import unittest
+
+from kilix_desktop_contract.jsonio import canonical_bytes
+from kilix_desktop_contract.result_channel import (
+    R6_RESULT_CHANNEL_FIELDS,
+    ResultChannelError,
+    parse_result_channel,
+    validate_r6_result_channel,
+    validate_result_channel,
+)
+
+
+BOUND = 1048576
+DIRECT_SCALAR_TYPE_ALIASES = (
+    ("/transport/unique_to_run", 1),
+    ("/transport/pathname_reachable_by_subject_uid", 0),
+    ("/transport/persistent_bytes", 0),
+    ("/writer_endpoint/cloexec", 1),
+    ("/writer_endpoint/passed_to_subject", 0),
+    ("/writer_endpoint/descendant_inheritable", 0),
+    ("/writer_endpoint/adapter_copy_closed_before_subject", 1),
+    ("/reader_endpoint/cloexec", 1),
+    ("/reader_endpoint/passed_to_subject", 0),
+    ("/subject_access/path_disclosed", 0),
+    ("/subject_access/argv_path_count", False),
+    ("/subject_access/environment_path_count", False),
+    ("/subject_access/inherited_channel_fd_count", False),
+    ("/subject_access/procfd_reachable", 0),
+    ("/bounds/records_expected", True),
+    ("/bounds/line_terminators_expected", True),
+    ("/terminal_record/canonical_utf8", 1),
+    ("/terminal_record/exact_json_values", True),
+    ("/terminal_record/trailing_newline", 1),
+    ("/terminal_record/records_seen", True),
+    ("/finality/descendants_dead", 1),
+    ("/finality/writer_set_closed", 1),
+    ("/finality/eof_seen", 1),
+    ("/finality/launcher_waited", 1),
+    ("/grade_source/bounded_in_memory", 1),
+    ("/grade_source/persistent_copy_used", 0),
+    ("/grade_source/parse_before_persist", 1),
+    ("/persistent_capture/authoritative", 0),
+    ("/persistent_capture/subject_uid_pathname_reachable", 0),
+    ("/kernel_attestation/path_absence_observed", 1),
+    ("/kernel_attestation/before_subject_start", 1),
+    ("/od20/compliant", 1),
+)
+
+
+def _valid(adapter: str = "unittest", kind: str = "anonymous_pipe") -> dict:
+    pipe = kind == "anonymous_pipe"
+    return {
+        "schema": "kilix.test.od20-result-channel/v1",
+        "run_id": f"r25-{adapter}-001",
+        "case_id": f"od20-{adapter}-positive",
+        "adapter": adapter,
+        "subject_uid": 1000,
+        "creator_uid": 1000,
+        "transport": {
+            "kind": kind,
+            "path": None,
+            "object_identity": ("pipe:" if pipe else "socket:") + f"r25-{adapter}-001",
+            "unique_to_run": True,
+            "pathname_reachable_by_subject_uid": False,
+            "persistent_bytes": False,
+        },
+        "writer_endpoint": {
+            "holder": "trusted-launcher",
+            "mode": "write-only",
+            "cloexec": True,
+            "passed_to_subject": False,
+            "descendant_inheritable": False,
+            "adapter_copy_closed_before_subject": True,
+        },
+        "reader_endpoint": {
+            "holder": "adapter-parent",
+            "mode": "read-only",
+            "cloexec": True,
+            "passed_to_subject": False,
+        },
+        "subject_access": {
+            "path_disclosed": False,
+            "argv_path_count": 0,
+            "environment_path_count": 0,
+            "inherited_channel_fd_count": 0,
+            "procfd_reachable": False,
+        },
+        "bounds": {
+            "max_bytes": BOUND,
+            "records_expected": 1,
+            "line_terminators_expected": 1,
+        },
+        "terminal_record": {
+            "canonical_utf8": True,
+            "exact_json_values": 1,
+            "trailing_newline": True,
+            "records_seen": 1,
+        },
+        "finality": {
+            "descendants_dead": True,
+            "writer_set_closed": True,
+            "eof_seen": True,
+            "launcher_waited": True,
+        },
+        "grade_source": {
+            "source": "bounded-endpoint-bytes",
+            "bounded_in_memory": True,
+            "persistent_copy_used": False,
+            "parse_before_persist": True,
+        },
+        "persistent_capture": {
+            "mode": "none",
+            "path": None,
+            "authoritative": False,
+            "subject_uid_pathname_reachable": False,
+        },
+        "kernel_attestation": {
+            "method": "fstat",
+            "observed_type": "S_IFIFO" if pipe else "S_IFSOCK",
+            "path_absence_observed": True,
+            "before_subject_start": True,
+            "observer": "adapter-parent",
+        },
+        "handoff": {
+            "contract_id": "kilix.f119.adapter-channel-handoff/v1",
+            "phase_ids": [f"CH-{ordinal:02d}" for ordinal in range(1, 13)],
+        },
+        "od20": {
+            "authority_id": "OD-20",
+            "owner_decision_sha256": "b7c70acba32ca74518868e894330c6c8158f4436765d0a556a258fe4c4f1de3e",
+            "ratification_status": "RATIFIED_AS_FILED",
+            "compliant": True,
+        },
+    }
+
+
+def _replace(document: dict, pointer: str, value: object) -> None:
+    parts = pointer.strip("/").split("/")
+    target = document
+    for part in parts[:-1]:
+        target = target[part]
+    target[parts[-1]] = value
+
+
+def _valid_r6_channel(
+    adapter: str = "unittest",
+    terminal: str = "pass-clean",
+    kind: str = "anonymous_pipe",
+) -> dict:
+    pipe = kind == "anonymous_pipe"
+    return {
+        "authority_id": "OD-20",
+        "kind": kind,
+        "path": None,
+        "object_identity": (
+            ("pipe:" if pipe else "socket:") + f"r6-{adapter}-{terminal}"
+        ),
+        "subject_uid": 1000,
+        "creator_uid": 1000,
+        "writer_identity": "trusted-launcher",
+        "reader_identity": "adapter-parent",
+        "bounded_bytes": BOUND,
+        "records_seen": 1,
+        "unique_to_run": True,
+        "descendant_writable": False,
+        "pathname_reachable_by_subject_uid": False,
+        "persistent_bytes": False,
+        "grade_source": "bounded-endpoint-bytes",
+        "persistent_copy_authority": False,
+        "kernel_attested_before_subject": True,
+    }
+
+
+class ResultChannelConsumerTests(unittest.TestCase):
+    def test_four_adapters_and_two_transports_are_accepted(self) -> None:
+        transports = set()
+        accepted = 0
+        for adapter in ("unittest", "plain-assert", "shell", "make"):
+            for kind in ("anonymous_pipe", "unnamed_socketpair"):
+                transports.add(kind)
+                document = _valid(adapter, kind)
+                self.assertEqual(
+                    parse_result_channel(
+                        canonical_bytes(document), trusted_max_bytes=BOUND
+                    ),
+                    document,
+                )
+                accepted += 1
+        self.assertEqual(accepted, 8)
+        self.assertEqual(len(transports), 2)
+
+    def test_thirty_two_prepared_negative_mutations_are_rejected(self) -> None:
+        mutations = (
+            ("/transport/kind", "regular_file"),
+            ("/transport/kind", "named_fifo"),
+            ("/transport/kind", "filesystem_unix_socket"),
+            ("/transport/kind", "pathname_character_device"),
+            ("/transport/path", "/tmp/f119-result.json"),
+            ("/transport/pathname_reachable_by_subject_uid", True),
+            ("/transport/persistent_bytes", True),
+            ("/writer_endpoint/passed_to_subject", True),
+            ("/writer_endpoint/descendant_inheritable", True),
+            ("/writer_endpoint/adapter_copy_closed_before_subject", False),
+            ("/reader_endpoint/passed_to_subject", True),
+            ("/subject_access/path_disclosed", True),
+            ("/subject_access/argv_path_count", 1),
+            ("/subject_access/environment_path_count", 1),
+            ("/subject_access/inherited_channel_fd_count", 1),
+            ("/subject_access/procfd_reachable", True),
+            ("/bounds/max_bytes", 0),
+            ("/bounds/records_expected", 2),
+            ("/terminal_record/exact_json_values", 2),
+            ("/terminal_record/trailing_newline", False),
+            ("/finality/descendants_dead", False),
+            ("/finality/writer_set_closed", False),
+            ("/finality/eof_seen", False),
+            ("/finality/launcher_waited", False),
+            ("/grade_source/source", "persistent-copy"),
+            ("/grade_source/persistent_copy_used", True),
+            ("/persistent_capture/mode", "shared-regular-file"),
+            ("/persistent_capture/path", "/tmp/f119-capture.json"),
+            ("/kernel_attestation/before_subject_start", False),
+            ("/kernel_attestation/path_absence_observed", False),
+            ("/od20/compliant", False),
+            ("/od20/authority_id", "OD-19"),
+        )
+        rejected = 0
+        for pointer, value in mutations:
+            candidate = copy.deepcopy(_valid())
+            _replace(candidate, pointer, value)
+            with self.assertRaises(ResultChannelError, msg=pointer):
+                validate_result_channel(candidate, trusted_max_bytes=BOUND)
+            rejected += 1
+        self.assertEqual(rejected, len(mutations))
+        self.assertEqual(len(mutations), 32)
+
+    def test_thirty_two_direct_scalar_type_aliases_are_rejected(self) -> None:
+        rejected = 0
+        for pointer, replacement in DIRECT_SCALAR_TYPE_ALIASES:
+            candidate = copy.deepcopy(_valid())
+            _replace(candidate, pointer, replacement)
+            with self.assertRaises(ResultChannelError, msg=pointer):
+                validate_result_channel(candidate, trusted_max_bytes=BOUND)
+            rejected += 1
+        self.assertEqual(rejected, 32)
+        self.assertEqual(len(DIRECT_SCALAR_TYPE_ALIASES), 32)
+
+    def test_direct_byte_envelope_fails_closed(self) -> None:
+        document = _valid()
+        cases = (
+            json.dumps(document).encode("utf-8"),
+            b'{"schema":1,"schema":2}\n',
+            b"\xff\n",
+            b"",
+            canonical_bytes(document) + b" ",
+        )
+        rejected = 0
+        for payload in cases:
+            with self.assertRaises(ResultChannelError):
+                parse_result_channel(payload, trusted_max_bytes=BOUND)
+            rejected += 1
+        self.assertEqual(rejected, 5)
+
+    def test_transport_relations_fail_closed(self) -> None:
+        rejected = 0
+        for kind, identity, observed_type in (
+            ("anonymous_pipe", "socket:r25-mismatch-001", "S_IFIFO"),
+            ("unnamed_socketpair", "pipe:r25-mismatch-001", "S_IFSOCK"),
+            ("anonymous_pipe", "pipe:r25-mismatch-001", "S_IFSOCK"),
+            ("unnamed_socketpair", "socket:r25-mismatch-001", "S_IFIFO"),
+        ):
+            candidate = _valid(kind=kind)
+            candidate["transport"]["object_identity"] = identity
+            candidate["kernel_attestation"]["observed_type"] = observed_type
+            with self.assertRaises(ResultChannelError):
+                validate_result_channel(candidate, trusted_max_bytes=BOUND)
+            rejected += 1
+        self.assertEqual(rejected, 4)
+
+    def test_r6_thirty_two_nested_channels_are_accepted(self) -> None:
+        adapters = ("unittest", "plain-assert", "shell", "make")
+        terminals = (
+            "pass-clean", "test-failure", "launcher-refusal",
+            "unavailable-required", "unavailable-optional", "cancelled",
+            "resource-leak", "invalid-harness",
+        )
+        accepted = 0
+        transports = set()
+        for adapter_index, adapter in enumerate(adapters):
+            for terminal_index, terminal in enumerate(terminals):
+                kind = (
+                    "unnamed_socketpair"
+                    if (adapter_index + terminal_index) % 2
+                    else "anonymous_pipe"
+                )
+                transports.add(kind)
+                candidate = _valid_r6_channel(adapter, terminal, kind)
+                self.assertEqual(
+                    validate_r6_result_channel(
+                        candidate, trusted_max_bytes=BOUND
+                    ),
+                    candidate,
+                )
+                accepted += 1
+        self.assertEqual(accepted, 32)
+        self.assertEqual(len(transports), 2)
+
+    def test_r6_each_field_has_a_negative_control(self) -> None:
+        mutations = {
+            "authority_id": "OD-19",
+            "kind": "regular_file",
+            "path": "/tmp/result.json",
+            "object_identity": "socket:wrong-kind",
+            "subject_uid": True,
+            "creator_uid": -1,
+            "writer_identity": "subject",
+            "reader_identity": "subject",
+            "bounded_bytes": BOUND - 1,
+            "records_seen": 1.0,
+            "unique_to_run": False,
+            "descendant_writable": True,
+            "pathname_reachable_by_subject_uid": True,
+            "persistent_bytes": True,
+            "grade_source": "persistent-copy",
+            "persistent_copy_authority": True,
+            "kernel_attested_before_subject": False,
+        }
+        self.assertEqual(set(mutations), set(R6_RESULT_CHANNEL_FIELDS))
+        rejected = 0
+        for field, value in mutations.items():
+            candidate = _valid_r6_channel()
+            candidate[field] = value
+            with self.assertRaises(ResultChannelError, msg=field):
+                validate_r6_result_channel(candidate, trusted_max_bytes=BOUND)
+            rejected += 1
+        self.assertEqual(rejected, 17)
+
+    def test_r6_nested_channel_is_closed(self) -> None:
+        missing = _valid_r6_channel()
+        missing.pop("grade_source")
+        extra = _valid_r6_channel()
+        extra["capture_path"] = "/tmp/result.json"
+        for candidate in (missing, extra):
+            with self.assertRaises(ResultChannelError):
+                validate_r6_result_channel(candidate, trusted_max_bytes=BOUND)
+
+
+if __name__ == "__main__":
+    unittest.main()

@@ -1,0 +1,74 @@
+{
+  "action_verbs": [
+    "app.open",
+    "desktop.launch",
+    "desktop.make-default",
+    "document.open",
+    "game.play",
+    "power.request",
+    "session.open",
+    "settings.open",
+    "url.open"
+  ],
+  "capabilities": [
+    "audio",
+    "headless_screenshot",
+    "keyboard",
+    "launcher",
+    "mouse",
+    "reduced_motion",
+    "settings"
+  ],
+  "contract_version": 1,
+  "deadlines_seconds": {
+    "check": 5,
+    "config": 5,
+    "describe": 2,
+    "migrate": 30,
+    "screenshot": 30,
+    "shutdown_grace": 3
+  },
+  "display_modes": [
+    "kitty-graphics",
+    "terminal-text",
+    "x11"
+  ],
+  "exit_statuses": [
+    {
+      "code": 0,
+      "name": "ok"
+    },
+    {
+      "code": 2,
+      "name": "usage"
+    },
+    {
+      "code": 3,
+      "name": "invalid-request"
+    },
+    {
+      "code": 4,
+      "name": "unavailable"
+    },
+    {
+      "code": 5,
+      "name": "incompatible-contract"
+    },
+    {
+      "code": 6,
+      "name": "migration-failed"
+    },
+    {
+      "code": 70,
+      "name": "internal-error"
+    }
+  ],
+  "power_actions": [
+    "logout",
+    "reboot",
+    "shutdown",
+    "suspend"
+  ],
+  "schema": "kilix.desktop.vocabulary/v1",
+  "schema_version": 1
+}

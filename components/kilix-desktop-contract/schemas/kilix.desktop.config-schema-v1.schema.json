@@ -1,0 +1,41 @@
+{
+  "$id": "https://schemas.kilix.org/desktop/config-schema/v1",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": true,
+  "properties": {
+    "$id": {
+      "pattern": "^https://schemas\\.kilix\\.org/desktop/config/[a-z0-9]+(?:[._-][a-z0-9]+)*/v1$",
+      "type": "string"
+    },
+    "$schema": {
+      "const": "https://json-schema.org/draft/2020-12/schema"
+    },
+    "additionalProperties": {
+      "const": true
+    },
+    "properties": {
+      "type": "object"
+    },
+    "type": {
+      "const": "object"
+    },
+    "x-kilix-contract-version": {
+      "const": 1
+    },
+    "x-kilix-provider-id": {
+      "pattern": "^[a-z0-9]+(?:[._-][a-z0-9]+)*$",
+      "type": "string"
+    }
+  },
+  "required": [
+    "$schema",
+    "$id",
+    "type",
+    "properties",
+    "additionalProperties",
+    "x-kilix-contract-version",
+    "x-kilix-provider-id"
+  ],
+  "title": "Kilix provider config-schema response v1",
+  "type": "object"
+}

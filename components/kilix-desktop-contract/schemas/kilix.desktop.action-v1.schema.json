@@ -1,0 +1,107 @@
+{
+  "$id": "https://schemas.kilix.org/desktop/action/v1",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": true,
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "verb": {
+            "enum": [
+              "app.open",
+              "desktop.launch",
+              "desktop.make-default",
+              "game.play",
+              "session.open",
+              "settings.open"
+            ]
+          }
+        },
+        "required": [
+          "verb"
+        ]
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "pattern": "^[a-z0-9]+(?:[._/-][a-z0-9]+)*$"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "verb": {
+            "const": "power.request"
+          }
+        },
+        "required": [
+          "verb"
+        ]
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "enum": [
+              "logout",
+              "reboot",
+              "shutdown",
+              "suspend"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "verb": {
+            "const": "url.open"
+          }
+        },
+        "required": [
+          "verb"
+        ]
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "pattern": "^https://"
+          }
+        }
+      }
+    }
+  ],
+  "properties": {
+    "payload": {
+      "maxLength": 4096,
+      "minLength": 1,
+      "pattern": "^[^\\u0000-\\u001f\\u007f-\\u009f]+$",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": 1
+    },
+    "verb": {
+      "enum": [
+        "app.open",
+        "desktop.launch",
+        "desktop.make-default",
+        "document.open",
+        "game.play",
+        "power.request",
+        "session.open",
+        "settings.open",
+        "url.open"
+      ]
+    }
+  },
+  "required": [
+    "schema_version",
+    "verb",
+    "payload"
+  ],
+  "title": "Kilix typed desktop action v1",
+  "type": "object"
+}

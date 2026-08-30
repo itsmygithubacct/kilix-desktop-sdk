@@ -1,0 +1,114 @@
+{
+  "$id": "https://schemas.kilix.org/desktop/migration/v1",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": true,
+  "properties": {
+    "authoritative_store": {
+      "enum": [
+        "legacy",
+        "xdg"
+      ]
+    },
+    "contract_version": {
+      "const": 1
+    },
+    "dry_run": {
+      "type": "boolean"
+    },
+    "from_version": {
+      "maxLength": 64,
+      "minLength": 1,
+      "type": "string"
+    },
+    "migration_id": {
+      "pattern": "^[a-z0-9]+(?:[._-][a-z0-9]+)*$",
+      "type": "string"
+    },
+    "operations": {
+      "items": {
+        "additionalProperties": true,
+        "properties": {
+          "kind": {
+            "enum": [
+              "config-record",
+              "directory",
+              "file",
+              "state-record"
+            ]
+          },
+          "source": {
+            "pattern": "^(?:legacy|xdg):[^\\u0000-\\u001f\\u007f-\\u009f]+$",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "copied",
+              "failed",
+              "planned",
+              "preserved",
+              "skipped"
+            ]
+          },
+          "target": {
+            "pattern": "^(?:legacy|xdg):[^\\u0000-\\u001f\\u007f-\\u009f]+$",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "source",
+          "target",
+          "status"
+        ],
+        "type": "object"
+      },
+      "type": "array"
+    },
+    "provider_id": {
+      "pattern": "^[a-z0-9]+(?:[._-][a-z0-9]+)*$",
+      "type": "string"
+    },
+    "recovery_paths": {
+      "items": {
+        "pattern": "^(?:legacy|xdg):[^\\u0000-\\u001f\\u007f-\\u009f]+$",
+        "type": "string"
+      },
+      "type": "array",
+      "uniqueItems": true
+    },
+    "schema": {
+      "const": "kilix.desktop.migration/v1"
+    },
+    "schema_version": {
+      "const": 1
+    },
+    "state": {
+      "enum": [
+        "completed",
+        "failed",
+        "in-progress",
+        "planned",
+        "rolled-back"
+      ]
+    },
+    "to_contract_version": {
+      "const": 1
+    }
+  },
+  "required": [
+    "schema",
+    "schema_version",
+    "migration_id",
+    "provider_id",
+    "from_version",
+    "to_contract_version",
+    "contract_version",
+    "dry_run",
+    "state",
+    "authoritative_store",
+    "operations",
+    "recovery_paths"
+  ],
+  "title": "Kilix desktop migration record v1",
+  "type": "object"
+}
