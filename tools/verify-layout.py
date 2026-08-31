@@ -65,10 +65,27 @@ def main():
     checks.append(("no nested Git repositories for owned components",
                    not nested, f"{len(nested)}/0 found"))
 
+    # This once summed the manifest's own numbers and compared them to the
+    # manifest's own total -- true by arithmetic whatever the repository held,
+    # and it printed "398/398" while a map was a row short. Compare against the
+    # map files instead; verify-provenance.py binds those to the repository.
     counted = sum(c["imported_commits"] for c in comps)
     declared_total = manifest["sdk"]["imported_commits"]
-    checks.append(("component commit counts sum to the manifest total",
-                   counted == declared_total, f"{counted}/{declared_total}"))
+    rows_per_component = {}
+    for c in comps:
+        path = ROOT / "docs" / "provenance" / f"map-{c['name']}.tsv"
+        rows_per_component[c["name"]] = len(path.read_text().splitlines()) - 1
+    mismatched = [c["name"] for c in comps
+                  if rows_per_component[c["name"]] != c["imported_commits"]]
+    rows_total = sum(rows_per_component.values())
+    checks.append(("manifest per-component counts equal their map row counts",
+                   not mismatched,
+                   f"{len(comps) - len(mismatched)}/{len(comps)}"
+                   + (f"; mismatched: {', '.join(mismatched)}" if mismatched else "")))
+    checks.append(("manifest total equals the summed map rows",
+                   rows_total == declared_total == counted,
+                   f"rows {rows_total}, manifest total {declared_total}, "
+                   f"component sum {counted}"))
 
     ok = 0
     for name, result, detail in checks:
