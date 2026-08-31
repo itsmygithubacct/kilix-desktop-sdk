@@ -197,6 +197,17 @@ def main():
             checks.append(("parents are imported commits",
                            all(p in new_set for p in parents)))
 
+            # The two descriptive columns are what a human reads out of the
+            # provenance record, and they fed nothing: a seat mutated
+            # author_date and the tool still reported "attributions
+            # cryptographically proven". They are derivable, so check them.
+            actual_date = git("log", "-1", "--format=%aI", new_commit)
+            actual_subject = git("log", "-1", "--format=%s", new_commit)
+            checks.append(("recorded author_date matches the commit",
+                           _date == actual_date))
+            checks.append(("recorded subject matches the commit",
+                           _subject == actual_subject.replace("\t", " ")))
+
             # The attribution check: prove old_commit, do not trust it.
             rebuilt = reconstruct_original(new_commit, old_tree, new_to_old)
             attributed = rebuilt == old_commit
