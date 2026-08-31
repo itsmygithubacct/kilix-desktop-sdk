@@ -28,6 +28,28 @@ def main():
     manifest = tomllib.load((ROOT / "manifest.toml").open("rb"))
     checks = []
 
+    # This tool returned 6/6 PASS on a repository with an entire 79-commit
+    # component erased, because it iterated the components the manifest still
+    # listed. History is the authority: erasing a component's tree, map and
+    # manifest entry does not remove the commits it already contributed.
+    history_components: set[str] = set()
+    for commit in git("rev-list", "HEAD").split():
+        if git("ls-tree", "--name-only", commit).split() != ["components"]:
+            continue
+        inner = git("ls-tree", "--name-only", f"{commit}:components").split()
+        if len(inner) == 1:
+            history_components.add(inner[0])
+    manifest_names = {c["name"] for c in manifest["component"]}
+    erased = sorted(history_components - manifest_names)
+    for name in erased:
+        print(f"  FAIL component '{name}' has imported commits in history but "
+              f"is not a component of this manifest -- erased")
+    checks.append(("every component in history is still a component here",
+                   not erased,
+                   f"{len(history_components & manifest_names)}/"
+                   f"{len(history_components)} history components present"
+                   + (f"; erased: {', '.join(erased)}" if erased else "")))
+
     top = set(git("ls-tree", "--name-only", "HEAD").split())
     checks.append(("top-level layout", top == EXPECTED_TOP,
                    f"{len(top & EXPECTED_TOP)}/{len(EXPECTED_TOP)} expected entries present"))

@@ -33,6 +33,23 @@ are. A fabricated `old_commit`, a swapped upstream, a doctored `old_tree`, an
 altered author, committer, timestamp or message, or a broken parent mapping all
 change the hash and are caught.
 
+THE COMPONENT SET IS BOUND TOO, AND HISTORY IS THE AUTHORITY
+============================================================
+Binding the row set within each component still left the set of COMPONENTS
+unbound. An entire component could be erased coherently -- its tree, its map
+file and its manifest entry removed together -- and verify-layout.py returned
+6/6 PASS, exit 0, while this tool died on an uncaught FileNotFoundError. A crash
+is not a detection: it exits non-zero for the wrong reason, names nothing a
+reader can act on, and would start passing the moment someone hardened the error
+path.
+
+The component set is therefore derived from HISTORY, which is the one source an
+erasure does not reach: the 79 imported commits of a deleted component remain
+reachable from HEAD. Four sources must agree -- the components observed in
+imported commits, the directories under components/ at HEAD, the components
+named in manifest.toml, and the map files on disk. Any divergence is reported by
+name, never by exception.
+
 THE ROW SET IS BOUND TO THE REPOSITORY, NOT TAKEN FROM THE MAP
 ==============================================================
 Proving every row present says nothing about rows that are absent. An earlier
@@ -68,7 +85,11 @@ Exit 0 only when every row passes every check. Prints denominators.
 import subprocess, sys, pathlib, collections, hashlib
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
-COMPONENTS = [
+# Recorded for readability only. It is NOT the authority on which components
+# exist -- a hardcoded list cannot notice that a component was erased, and if it
+# were edited alongside the erasure nothing would object. The authority is
+# history; see derive_imported_sets().
+EXPECTED_COMPONENTS = [
     "kilix-desktop-contract",
     "kilix-95",
     "kilix-cap",
@@ -121,8 +142,8 @@ def derive_imported_sets():
     preservation commit, later record commits) carry the full parent tree and
     are excluded by that shape.
     """
-    sets = {c: set() for c in COMPONENTS}
-    unexpected = []
+    sets: dict[str, set] = {}
+    malformed = []
     assembly = 0
     for commit in git("rev-list", "HEAD").split():
         top = git("ls-tree", "--name-only", commit).split()
@@ -130,11 +151,12 @@ def derive_imported_sets():
             assembly += 1
             continue
         inner = git("ls-tree", "--name-only", f"{commit}:components").split()
-        if len(inner) == 1 and inner[0] in sets:
-            sets[inner[0]].add(commit)
+        if len(inner) == 1:
+            # The component NAME is discovered here, not asserted from a list.
+            sets.setdefault(inner[0], set()).add(commit)
         else:
-            unexpected.append((commit, inner))
-    return sets, assembly, unexpected
+            malformed.append((commit, inner))
+    return sets, assembly, malformed
 
 
 def main():
@@ -142,15 +164,61 @@ def main():
     attribution_ok = 0
     failures = []
 
-    # Bind the SET first, from the repository. A per-row pass over a map that
-    # has had rows removed is a pass over a smaller obligation.
-    derived, assembly, unexpected = derive_imported_sets()
+    # Bind the COMPONENT set first, from history. A pass over the components a
+    # manifest still lists is a pass over a smaller obligation than the
+    # repository actually carries.
+    derived, assembly, malformed = derive_imported_sets()
+    history_components = set(derived)
+
+    head_components = set(git("ls-tree", "--name-only", "HEAD:components").split()) \
+        if "components" in git("ls-tree", "--name-only", "HEAD").split() else set()
+    map_components = {q.name[len("map-"):-len(".tsv")]
+                      for q in (ROOT / "docs" / "provenance").glob("map-*.tsv")}
+    manifest_components, manifest_doc = set(), None
+    try:
+        import tomllib
+        manifest_doc = tomllib.load((ROOT / "manifest.toml").open("rb"))
+        manifest_components = {c["name"] for c in manifest_doc["component"]}
+    except Exception as error:
+        failures.append(f"manifest.toml could not be read: {error}")
+
+    sources = {"history": history_components, "HEAD tree": head_components,
+               "manifest": manifest_components, "map files": map_components}
+    print("component set, by source: "
+          + ", ".join(f"{k} {len(v)}" for k, v in sources.items()))
+    component_set_ok = len({frozenset(v) for v in sources.values()}) == 1
+    if not component_set_ok:
+        # History is the authority: an erasure cannot reach commits already made.
+        for name in sorted(history_components):
+            absent = [k for k, v in sources.items() if name not in v]
+            if absent:
+                failures.append(
+                    f"component '{name}' is present in history with "
+                    f"{len(derived[name])} imported commits but ABSENT from: "
+                    f"{', '.join(absent)} -- a component was erased")
+        for k, v in sources.items():
+            for name in sorted(v - history_components):
+                failures.append(
+                    f"component '{name}' is named by {k} but has 0 imported "
+                    f"commits in history")
+    print(f"component set agreement across {len(sources)} sources: "
+          f"{'yes' if component_set_ok else 'NO'}; "
+          f"expected list for reference: {len(EXPECTED_COMPONENTS)}")
+
+    components = sorted(history_components | map_components | manifest_components)
     set_ok = 0
-    for comp in COMPONENTS:
+    for comp in components:
         path = ROOT / "docs" / "provenance" / f"map-{comp}.tsv"
+        if not path.is_file():
+            failures.append(
+                f"component '{comp}': no provenance map at {path.name}, but "
+                f"history carries {len(derived.get(comp, ()))} imported commits "
+                f"for it -- the map was deleted, not merely shortened")
+            print(f"{comp}: row set 0/{len(derived.get(comp, ()))} -- MAP FILE ABSENT")
+            continue
         claimed = {line.split("\t")[2]
                    for line in path.read_text().splitlines()[1:]}
-        expected = derived[comp]
+        expected = derived.get(comp, set())
         missing = expected - claimed      # in the repository, absent from the map
         extra = claimed - expected        # in the map, not an imported commit here
         if not missing and not extra:
@@ -168,15 +236,17 @@ def main():
               f"derived from the repository"
               + ("" if not (missing or extra)
                  else f" -- {len(missing)} missing, {len(extra)} extra"))
-    if unexpected:
+    if malformed:
         failures.append(
-            f"{len(unexpected)} commit(s) have a components/ tree that names no "
-            f"known component -- e.g. {unexpected[0][0]} -> {unexpected[0][1]}")
-    print(f"component row sets bound to the repository: {set_ok}/{len(COMPONENTS)}; "
+            f"{len(malformed)} commit(s) hold more than one component directory "
+            f"-- e.g. {malformed[0][0]} -> {malformed[0][1]}")
+    print(f"component row sets bound to the repository: {set_ok}/{len(components)}; "
           f"assembly commits excluded by shape: {assembly}")
 
-    for comp in COMPONENTS:
+    for comp in components:
         path = ROOT / "docs" / "provenance" / f"map-{comp}.tsv"
+        if not path.is_file():
+            continue
         rows = [line.rstrip("\n").split("\t") for line in path.open()][1:]
         new_to_old = {r[2]: r[0] for r in rows}
         new_set = set(new_to_old)
@@ -231,9 +301,10 @@ def main():
 
     dupes = [c for c, n in collections.Counter(
         r.split("\t")[2]
-        for comp in COMPONENTS
-        for r in (ROOT / "docs" / "provenance" / f"map-{comp}.tsv")
-        .read_text().splitlines()[1:]
+        for comp in components
+        for r in ((ROOT / "docs" / "provenance" / f"map-{comp}.tsv").read_text()
+                  .splitlines()[1:] if (ROOT / "docs" / "provenance"
+                                        / f"map-{comp}.tsv").is_file() else [])
     ).items() if n > 1]
     print(f"duplicate imported commits across maps: {len(dupes)}/0 expected")
 
@@ -242,17 +313,18 @@ def main():
     manifest_ok = 0
     manifest_total_declared = None
     try:
-        import tomllib
-        manifest = tomllib.load((ROOT / "manifest.toml").open("rb"))
+        manifest = manifest_doc
+        if manifest is None:
+            raise ValueError("manifest.toml was not readable earlier in this run")
         manifest_total_declared = manifest["sdk"]["imported_commits"]
         for c in manifest["component"]:
-            if c["imported_commits"] == len(derived[c["name"]]):
+            if c["imported_commits"] == len(derived.get(c["name"], ())):
                 manifest_ok += 1
             else:
                 failures.append(
                     f"{c['name']}: manifest records {c['imported_commits']} imported "
-                    f"commits, repository has {len(derived[c['name']])}")
-            if c["imported_revision"] not in derived[c["name"]]:
+                    f"commits, repository has {len(derived.get(c['name'], ()))}")
+            if c["imported_revision"] not in derived.get(c["name"], set()):
                 failures.append(
                     f"{c['name']}: manifest imported_revision "
                     f"{c['imported_revision']} is not an imported commit of that "
@@ -270,14 +342,15 @@ def main():
 
     print(f"TOTAL: {passed}/{total} imported commits verified faithful; "
           f"{attribution_ok}/{total} attributions cryptographically proven; "
-          f"{set_ok}/{len(COMPONENTS)} row sets bound to the repository; "
+          f"{set_ok}/{len(components)} row sets bound to the repository; "
           f"{len(failures)}/{total} failures")
     for f in failures[:20]:
         print("  FAIL", f)
     if len(failures) > 20:
         print(f"  ... and {len(failures) - 20} more")
     return 0 if (passed == total and attribution_ok == total and not dupes
-                 and set_ok == len(COMPONENTS) and not failures) else 1
+                 and component_set_ok and set_ok == len(components)
+                 and not failures) else 1
 
 
 if __name__ == "__main__":
