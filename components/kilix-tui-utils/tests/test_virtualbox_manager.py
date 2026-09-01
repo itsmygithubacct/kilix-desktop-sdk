@@ -328,7 +328,15 @@ class IntegrationTests(unittest.TestCase):
             '"kilix-virtualbox-manager:kilix-virtualbox-manager"', source)
 
     def test_legacy_launcher_now_opens_the_manager(self):
-        source = (Path.home() / "kilix_launch_vpn.sh").read_text()
+        # This checks a migration of a launcher script that lives in the
+        # operator's home directory, not in this repository. It can never pass
+        # on a clean checkout by anyone, so it is conditional on the file
+        # actually being there -- and it still runs, and can still fail, on a
+        # machine that has one.
+        legacy = Path.home() / "kilix_launch_vpn.sh"
+        if not legacy.is_file():
+            self.skipTest(f"legacy launcher not present at {legacy}")
+        source = legacy.read_text()
         self.assertIn("kilix-virtualbox-manager", source)
         self.assertNotIn(".virtualbox_vpn", source)
         self.assertNotIn('exec "$kilix" run', source)

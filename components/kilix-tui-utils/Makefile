@@ -22,3 +22,7 @@ runtime-check: runtime
 
 test:
 	python3 tests/run.py
+
+# House convention: sibling 0.2.1 repositories are gated by `make check`.
+.PHONY: check
+check: test

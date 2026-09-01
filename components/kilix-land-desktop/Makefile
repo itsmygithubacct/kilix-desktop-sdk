@@ -156,3 +156,7 @@ clean:
 	items-art parity-check parity-sync release-check test test-deps sanitize
 
 -include $(DEPENDENCIES)
+
+# House convention: sibling 0.2.1 repositories are gated by `make check`.
+.PHONY: check
+check: test

@@ -218,3 +218,7 @@ clean:
 	rm -f a-*.d
 
 -include $(DEP)
+
+# House convention: sibling 0.2.1 repositories are gated by `make check`.
+.PHONY: check
+check: test
