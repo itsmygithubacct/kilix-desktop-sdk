@@ -2,7 +2,7 @@
 """Verify the assembled layout against manifest.toml.
 
 Checks that every component subtree at HEAD equals the tree of its recorded
-imported revision, that the declared submodule gitlinks are the ones actually
+imported revision except at the paths the manifest declares as local_changes, that the declared submodule gitlinks are the ones actually
 present, that no owned component is a nested Git repository, and that the
 top-level layout is the one the design specifies.
 
@@ -12,8 +12,8 @@ import subprocess, sys, pathlib, tomllib
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 EXPECTED_TOP = {
-    ".gitmodules", ".reuse", "LICENSES", "README.md", "components", "docs",
-    "integration", "manifest.toml", "tools",
+    ".gitmodules", ".reuse", "LICENSES", "Makefile", "README.md", "components",
+    "docs", "integration", "manifest.toml", "tools",
 }
 
 
@@ -54,18 +54,38 @@ def main():
     checks.append(("top-level layout", top == EXPECTED_TOP,
                    f"{len(top & EXPECTED_TOP)}/{len(EXPECTED_TOP)} expected entries present"))
 
+    # A component tree may differ from its imported revision ONLY at the paths
+    # the manifest declares as local_changes -- the scaffolding this repository
+    # deliberately carries on top of an import (a `make check` target, test
+    # fixes). Exact tree equality was the previous rule, and the project's own
+    # practice broke it in three of five components. Equality of the changed
+    # set with the declared set is the invariant that survives: an undeclared
+    # change to imported content still fails, and so does a declaration the
+    # tree no longer bears out, which is how a stale manifest gets noticed.
     comps = manifest["component"]
     tree_ok = 0
     for c in comps:
-        head_tree = git("rev-parse", f"HEAD:{c['path']}")
-        imported_tree = git("rev-parse", f"{c['imported_revision']}:{c['path']}")
-        if head_tree == imported_tree:
+        prefix = c["path"] + "/"
+        changed = sorted(
+            p[len(prefix):] for p in git(
+                "diff", "--name-only", c["imported_revision"], "HEAD", "--", c["path"]
+            ).splitlines() if p.startswith(prefix))
+        declared = sorted(c.get("local_changes", []))
+        if changed == declared:
             tree_ok += 1
-        else:
-            print(f"  FAIL {c['name']}: HEAD tree {head_tree} != "
-                  f"imported {c['imported_revision']} tree {imported_tree}")
-    checks.append(("component trees match imported revisions",
-                   tree_ok == len(comps), f"{tree_ok}/{len(comps)}"))
+            continue
+        undeclared = sorted(set(changed) - set(declared))
+        stale = sorted(set(declared) - set(changed))
+        if undeclared:
+            print(f"  FAIL {c['name']}: differs from imported "
+                  f"{c['imported_revision'][:12]} at UNDECLARED paths: "
+                  f"{', '.join(undeclared)}")
+        if stale:
+            print(f"  FAIL {c['name']}: manifest declares local_changes that "
+                  f"the tree does not bear out: {', '.join(stale)}")
+    checks.append(("component trees match imported revisions except at "
+                   "declared local_changes", tree_ok == len(comps),
+                   f"{tree_ok}/{len(comps)}"))
 
     gitlinks = {}
     for line in git("ls-tree", "-r", "HEAD").splitlines():

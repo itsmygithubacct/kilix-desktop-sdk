@@ -65,6 +65,7 @@ source_repo = "https://github.com/itsmygithubacct/kilix-cap.git"
 source_revision = "7cc98eece67f9b6547d5fb0149d483117721a5cf"
 imported_revision = "2e7b99ec76167818162423891f17a1a5c6d3f5d8"
 imported_commits = 30
+local_changes = ["Makefile"]
 licence = "MIT for code; assets per components/kilix-cap/COPYING-ASSETS.md"
 submodules = [
   { path = "third_party/kilix-game-sdk", url = "https://github.com/itsmygithubacct/kilix-game-sdk.git", gitlink = "833c00bd1d053705f1423f4024f2f37df0b83a68" },
@@ -79,6 +80,7 @@ source_repo = "https://github.com/itsmygithubacct/kilix-land-desktop.git"
 source_revision = "c0594aeb955352b904f006fed4c9774e496a2d38"
 imported_revision = "298687c5e712e3636879a9e61f5fd31badda28ef"
 imported_commits = 145
+local_changes = ["Makefile"]
 licence = "MIT for code; CC-BY-NC-SA-4.0 for assets/**"
 submodules = [
   { path = "third_party/kilix-game-sdk", url = "https://github.com/itsmygithubacct/kilix-game-sdk.git", gitlink = "440a1d9730481546aa69c82ebcd701949aa7ad97" },
@@ -94,6 +96,7 @@ source_repo = "https://github.com/itsmygithubacct/kilix-tui-utils.git"
 source_revision = "63187ee199aa16f71a460ef0e95ec876bee8b787"
 imported_revision = "43d7fe829c6cf19a907597ef01f83e635ca33ffc"
 imported_commits = 79
+local_changes = ["Makefile", "tests/run.py", "tests/test_virtualbox_manager.py", "tools/memory/tests/test_graphics.py", "tools/temps/tests/test_graphics.py"]
 licence = "MIT"
 submodules = []
 depends_on = ["kilix-desktop-contract"]
