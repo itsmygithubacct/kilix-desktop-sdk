@@ -17,21 +17,22 @@ collapses that into one checkout pinned once by Kilix’s dependency closure.
 | `kilix-disk` | Filesystem usage and an interruptible directory scan |
 | `kilix-system` | Static machine facts (`--print`) and a combined CPU, memory, disk, network, and process health report (`--json`) |
 | `kilix-volume` | Clickable output mixer, plus `--compact` slider and `--settings` mute card |
+| `kilix-network` | Links and saved NetworkManager connections — Enter brings one up, `d` (confirmed) takes one down; read-only without nmcli |
 | `kilix-file` | File manager — navigate and open, never delete or move |
 | `kilix-system-center` | Focused machine center over CPU, memory, thermal, disk, network, audio, camera, package, and VM tools |
 | `kilix-settings-center` | Shared Kilix settings, display, audio, voice, and default-desktop center |
 | `kilix-software-center` | Catalog browser and confirmed installer using `kilix install` |
-| `kilix-session-center` | Panes, PTYs, switcher, logs, and remote-session tools in one place |
+| `kilix-session-center` | Pane Center, PTYs, logs, and remote-session tools in one place |
 | `kilix-voice-studio` | Speech commands, settings, models, status, and diagnostics |
 | `kilix-launcher` | Launcher catalog: stack programs, discovered XDG apps, your `.desktop` launchers, stack scripts, a run-a-command row, and the laptop session profiles (running ones marked, Enter opens or closes them through `kilix laptop`); `kilix launcher` opens it |
 | `kilix-package` | Installed packages, read-only |
 | `kilix-rollout-resume` | Recover Claude Code, Codex, and Kimi Code sessions; install and update those agents |
 | `kilix-session-log` | Pane transcripts across the live and archived tiers |
-| `kilix-switch` | Go to any page or pane, with a live look at what each one is showing |
+| `kilix-panes` / `kilix-switch` | Pane Center TUI plus pane/session/broker CLI, live text, idle detection, and bounded messaging |
 | `kilix-weather` | Forecast from Open-Meteo |
 | `kilix-cameras` | Camera views and stream profiles for kilix-rtsp — view a camera, mosaic a group, `n` writes a profile to `cameras.conf` |
 | `kilix-calculator` | Calculator (also scriptable: `kilix-calculator '2+2'`) |
-| `kilix-music` | Player driving kilix-amp over its control socket |
+| `kilix-music` | [File and live EnCodec player](tools/music/README.md) controlling the shared Amp backend |
 | `kilix-character-map` | Search Unicode names/codepoints and copy with OSC 52 |
 | `kilix-notepad` | Portable UTF-8 editor with atomic saves and guarded discard |
 | `kilix-find-files` | Bounded filename/glob search that does not follow directory symlinks |
@@ -141,7 +142,7 @@ applications and launches each through `kilix app run ID`. The row is generic:
 new catalog apps appear in TUI panes and in Kilix Land's shared Programs
 computer without another desktop-specific edit.
 
-Three more Programs surfaces follow the same discipline. **Run a command**
+Four more Programs surfaces follow the same discipline. **Run a command**
 (also `!` from anywhere) opens a one-line prompt on the summary row; what you
 type is split like a shell would split it but never given to one — argv only,
 into a Kilix page when remote control is live and in place otherwise, with
@@ -152,12 +153,55 @@ a byte-identical mirror of the host SDK's `kilix_sdk.xdgapps` kept by
 `tools/sync_xdgapps.py` and pinned by a parity test, so no desktop or
 catalog tool can disagree with this list), bucketed by
 category; terminal apps launch like any tool, graphical ones are contained in
-a `kilix run` page. And **Games** launches on Enter when the installed
+a `kilix run` page. **Launchers** lists the user's own desktop-folder
+`.desktop` files — the ones a Create Launcher wizard writes on any desktop —
+read from the same folders `kilix-launcher` reads
+(`kilix_desk.registry.launcher_dirs`), under the same containment. And
+**Games** lists the games from that same host response — a game added to the
+catalog is listed and playable here with no desktop release — with the SDK's
+availability toggles as the on/off hint. Enter launches when the installed
 launcher knows `kilix games play` — probed from its own usage line, cached per
 visit — while `t` keeps the availability toggle one key away; older launchers
-keep Enter as the toggle, so the list is never a dead end.
+keep Enter as the toggle (or the install, for a game the toggle table does not
+know), so the list is never a dead end.
 
-Six sections: Home (status), Programs, Machine,
+That is the contract as the catalog grows: **there is no second list.** Every
+place that offers installable content reads the one cached
+`kilix install --json` answer (or the shared Programs registry), fetched once
+per visit and re-asked on `r`, so a new catalog entry needs a kilix-content
+publish and the kilix pin that ships it — never a desktop release.
+`KILIX_TUI_CATALOG` can point that one answer at a catalog file, for tests and
+for development against a catalog that is not installed yet; it substitutes
+the list, it never adds one. A test audits the real catalog through that
+override: every row must be installable from Software, and every app and game
+must resolve to its `kilix app run` / `kilix games play` launch.
+
+Home also carries the desk's one piece of durable state: rows pinned with
+`p` from any plain entry, and the last few launches, kept in one small JSON
+record (`$XDG_STATE_HOME/kilix-tui/desk.json`; `KILIX_TUI_STATE` relocates
+it) written atomically and only on change. `src/kilix_desk/durable.py`
+records the decision to break the desk's read-only purity exactly this far
+and no further — confirmed actions never become one-Enter rows, and there is
+no last-place restore: Home stays the fixed landing.
+
+The desk's accent is a choice. System ▸ **Palette** tries on one of four
+Tango flavors — sky blue (the default), chameleon green, plum, amber — for
+the running session, and `KILIX_TUI_FLAVOR` in the shared `settings.conf`
+(the same file every `theme.setting` knob reads, with the environment as the
+fallback) makes one permanent. A flavor swaps only the structural/selection
+ramp in `src/kilix_desk/tango.py`, in both the text and pixel renderings;
+red stays reserved for power and refusal in every flavor.
+
+Left alone, the desk saves the screen. When `kilix-tui` is the whole session
+(`KILIX_TUI_SESSION=1`), ten quiet minutes hand the terminal to
+`kilix screensaver` — the same launch the Screensavers place offers — and
+any key is the way back. `KILIX_TUI_SAVER_MINUTES` changes the span (`0`
+switches it off; off is also the default in a pane or over ssh, where taking
+the terminal would interrupt the surrounding session), and `KILIX_TUI_SAVER`
+names a favourite saver. An idle start is nobody's launch: it never becomes
+a Home recents row.
+
+Six sections: Home (status, pinned and recent launches), Programs, Machine,
 System, Session, and Power — the last being the point: it closes the stack's
 no-desktop-provider power gap with confirmed `systemctl`/`loginctl` actions
 shared verbatim with `plebian-os` (`src/kilix_tui/privileged.py` is the one list
@@ -220,6 +264,9 @@ next tool gets it free.
   control. It is a convenience, never a privilege: Kilix scopes the credential
   it hands each pane at the terminal, so a tool asking for anything outside
   that set is refused even though it holds the credential.
+- `pane_center.py` — joins that live page tree with one PTY-broker snapshot and
+  the coding-agent conversation owned by each reported process. It reads only
+  `/proc` descriptors for live pane PIDs rather than walking saved history.
 - `shell.py` — the one four-row frame used by the desktop, managers, and every
   installed text utility.
 - `openers.py` — argv-only document dispatch shared by Files and Find Files.
@@ -232,19 +279,76 @@ monitors, so the suite has one visual and navigation language over SSH, in
 `tmux`, and inside Kilix. Memory, Temperatures, and the desktop retain optional
 framebuffer renderings behind `--graphics`.
 
-## Going to a page or a pane
+**The network boundary, decided.** Machine ▸ Network lands on `kilix-network`:
+the canonical shell over what every link is doing and the saved NetworkManager
+connections — up on Enter, down only after a confirmation, because the link
+being cut is often the one carrying the keystroke. Creating connections and
+entering secrets deliberately stay in `nmtui`, kept one row below as the
+presence-gated **Connection editor**: a password prompt belongs to
+NetworkManager's own agent, and a reimplementation of it here would be a
+second thing to get wrong. Without NetworkManager the tool degrades to a
+read-only `/sys/class/net` view rather than an error.
 
-`kilix-switch` replaces the terminal's two built-in choosers, which were the
+## Pane Center
+
+`kilix-panes` (also installed as the compatible `kilix-switch`) replaces the
+terminal's two built-in choosers, which were the
 same thing twice: a numbered list of titles, one for pages and one for panes. A
 title is a poor handle on a pane — several are `bash` and several more are
 whatever directory they started in — so the list told you least exactly when you
 had enough windows to need it.
 
-It shows one tree of pages and their panes, with the process and working
-directory that actually identify a pane, a filter (`/`) across all of it, and a
-live view of what the highlighted pane is currently showing. `Tab` cycles the
-scope between everything, this page, and everywhere else; Kilix binds `F12` to
+It shows one tree of pages and their panes, with activity, coding-agent type,
+process, working directory, PTY-broker health, current task, and a live view of
+what the highlighted pane is showing. `/` filters across all of those fields;
+`s` writes a message to the highlighted pane and submits it; `Tab` cycles the
+scope between everything, this page, and everywhere else. Kilix binds `F12` to
 open on everything and its tmux-style leader `q` to open on this page.
+
+Activity is evidence-based. A live Codex process is `working` when its newest
+turn boundary is `task_started`, and `idle` only when the same process still
+owns the rollout and the newest boundary is `task_complete`. Claude's validated
+live registry supplies `idle`, `waiting`, or active state. A recognized agent
+without an explicit signal stays `agent`; it is never optimistically called
+idle. Shells, SSH sessions, and other foreground programs are labelled
+separately.
+
+For live OMP panes, a clean assistant stop becomes idle only after a short
+stability window. OMP 18.3.2 can automatically retry a provider error after a
+backoff (five minutes by default, potentially longer for an opted-in quota-reset
+wait), but writes the failed assistant row without persisting its
+`auto_retry_start` event. Therefore a transcript ending in provider `error`
+remains conservatively `working`; a finite idle debounce would expose the pane
+during a retry backoff. Deliberate aborts still use the short stability window.
+
+The same snapshot is a scriptable `kilix panes` interface:
+
+```sh
+kilix panes list                         # compact table
+kilix panes --json                       # stable kilix.panes/v1 record
+kilix panes dump 338 --lines 60          # last 60 lines, including scrollback
+kilix panes dump 338 -n 20 --screen      # visible screen only
+kilix panes wait 338 --for idle --timeout 300
+kilix panes send 338 --enter 'continue with the next item'
+printf 'status please' | kilix panes send 338 --enter
+
+kilix panes new --name codex-office --panes 4 \
+  --pane-name administrator,assistant,engineer,worker \
+  --pane-dir ~/office/administrator,~/office/assistant,~/office/engineer,~/office/worker \
+  --command 'codex --yolo' \
+  --initial-prompt 'familiarize yourself with your role' --enter
+
+kilix panes close 338                    # one pane
+kilix panes close 338 --page             # the whole page it sits in
+```
+
+Targets may be a pane ID, a unique title/substring, a broker-session prefix, or
+a coding-session ID prefix. Ambiguity is rejected with the matching pane IDs.
+`send` refuses the caller's own pane unless `--allow-self` is explicit, targets
+the exact per-pane broker marker, and splits UTF-8 input into the authorizer's
+1024-byte chunks. `--enter` emits carriage return, which submits both a shell
+line and the current Codex prompt. An accepted send remains fire-and-forget;
+read the pane back with `dump` when delivery must be proved.
 
 "This page" means the page the tool is *running* on, resolved from its own
 `KITTY_WINDOW_ID`, not whichever page the terminal currently considers active —
@@ -255,6 +359,27 @@ Renaming and closing are here because a chooser that can see everything and
 change nothing sends you somewhere else to finish the job. Closing always asks
 first, and both go through the terminal's remote control, which refuses them
 outright unless Kilix's scoped credential has been widened to allow them.
+
+### Creating panes
+
+`new` builds a page and fills it, which is the one verb here that makes something
+rather than reading it. Three refusals are deliberate:
+
+- **A per-pane list must match the pane count exactly.** Four panes and three
+  directories is an error, not a cue to invent the fourth — padding would build a
+  different surface than the one asked for, and would succeed while doing it.
+- **`--command` is split into a fixed argv here and never handed to a shell.** A
+  title, a path or a command containing `;` stays one inert argument. This is the
+  same rule `launch_tab` already followed for the desktop launchers.
+- **A created pane is not yet an addressable one.** The PTY broker marker that
+  `send-text` matches on is written by the pane's own startup, so `--initial-prompt`
+  waits for it per pane (`--ready-timeout`) and reports the panes it could not
+  reach instead of assuming the text landed. Unreachable panes make the command
+  exit non-zero with the ids named.
+
+The TUI offers only the narrow case — `n`, type a title, Enter creates one shell
+pane in a new page. A four-pane office with per-pane directories carries more
+arguments than a one-line prompt can hold honestly, so it stays a scripted act.
 
 ## Recovering coding sessions
 

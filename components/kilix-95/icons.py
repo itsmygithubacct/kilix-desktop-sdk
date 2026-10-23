@@ -9,6 +9,7 @@ the desktop and file manager) so they stay crisp and chunky at both sizes.
     icons.paint(img, "folder", x, y, 32[, shortcut=True])
 """
 from PIL import Image, ImageDraw
+import os
 
 # the 16-color palette (single-char keys used by the drawing code)
 K = (0, 0, 0)
@@ -872,7 +873,23 @@ def _defrag(p):
                    outline=K)
 
 
+def _chat(p):
+    p.rect(1, 2, 13, 10, fill=W, outline=K)
+    p.poly([(3, 10), (3, 14), (7, 10)], fill=W, outline=K)
+    for x in (4, 7, 10):
+        p.rect(x, 5, x + 1, 6, fill=DB)
+
+
+def _avatar(p):
+    p.rect(4, 1, 11, 10, fill=Y, outline=K)
+    p.px(6, 4, DB)
+    p.px(9, 4, DB)
+    p.hline(6, 9, 7, DR)
+    p.rect(2, 11, 13, 14, fill=DB, outline=K)
+
+
 ICONS = {
+    "chat": _chat, "avatar": _avatar,
     "computer": _computer, "display": _display, "drive": _drive,
     "folder": _folder, "folder_open": _folder_open,
     "doc": _doc, "doc_text": _doc_text, "doc_image": _doc_image,
@@ -905,6 +922,9 @@ ICONS = {
     "powertoys": _powertoys, "key": _key_icon, "desktop": _display,
     "sendto": _sendto, "defrag": _defrag,
 }
+ICONS.update({"web-browser": _browser, "calculator": _calc, "music": _amp,
+              "package": _briefcase, "camera": _display, "chart": _taskmgr,
+              "weather": _display})
 
 _cache = {}
 
@@ -917,6 +937,16 @@ def get(name, size=32, shortcut=False):
         p = P(u)
         ICONS.get(name, _doc)(p)
         img = p.img
+        if name and os.path.isabs(name):
+            try:
+                with Image.open(name) as source:
+                    art = source.convert("RGBA")
+                    art.thumbnail((size, size), Image.Resampling.LANCZOS)
+                    img = Image.new("RGBA", (size, size))
+                    img.alpha_composite(art, ((size - art.width) // 2,
+                                             (size - art.height) // 2))
+            except (OSError, ValueError):
+                pass
         if img.size != (size, size):
             img = img.resize((size, size), Image.NEAREST)
         if shortcut:                              # little corner link-arrow

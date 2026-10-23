@@ -215,8 +215,13 @@ def _sha256(path):
 
 def _fetch(urls, dest, report, sha256=None):
     """Compatibility wrapper around the host's checksum-bound downloader."""
-    return kilix_content.download(
-        urls, dest, report=report, expected_sha256=sha256 or "")
+    try:
+        return kilix_content.download(
+            urls, dest, report=report, expected_sha256=sha256 or "")
+    except kilix_content.InstallError:
+        # The Content mirror error includes the final URL, which may contain
+        # private paths or credentials. Keep it out of the desktop message.
+        raise kilix_content.InstallError("content download failed") from None
 
 
 def _inside(root, path):
@@ -583,17 +588,20 @@ def ensure_brokeout(cp, report):
 
 
 def amp_ready(cp=None):
-    return _repo_ready(
-        cp or load(), "kilix-amp", "kilix-amp",
-        os.path.join(APPS_DIR, "kilix-amp"), AMP_REPO, AMP_REF)
+    # Keep the complete catalog recipe, including optional native dependencies;
+    # the content installer owns ordinary managed-cache readiness semantics.
+    cp = cp or load()
+    spec = CONTENT_CATALOG.require("kilix-amp")
+    directory = _configured_content_dir(cp, "kilix-amp")
+    return kilix_content.Installer(_content_root(spec)).ready(
+        spec, directory=directory)
 
 
 def ensure_amp(cp, report):
-    return amp_ready(cp) or _clone_and_make(
-        AMP_REPO, AMP_REF, os.path.join(APPS_DIR, "kilix-amp"), "kilix-amp",
-        "needs libsdl2-dev, libsdl2-image-dev, libsndfile1-dev, zlib1g-dev, "
-        "libfluidsynth-dev, and a GM SoundFont",
-        report)
+    spec = CONTENT_CATALOG.require("kilix-amp")
+    installer = kilix_content.Installer(_content_root(spec))
+    ready = installer.ready(spec, directory=_configured_content_dir(cp, "kilix-amp"))
+    return ready or installer.ensure(spec, report)
 
 
 def ensure(game, report=print):

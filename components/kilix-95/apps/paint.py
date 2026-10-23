@@ -174,6 +174,34 @@ class Paint(wm.Window):
     def request_close(self):
         self._if_saved(self.close)
 
+    # ── crash recovery (doc_recovery) ───────────────────────────────────────
+    recovery_app = "paint"
+
+    def recovery_snapshot(self):
+        """The image as PNG; re-encoded only when its pixels changed."""
+        import base64
+        import hashlib
+        import io
+        img = self.canvas.img
+        digest = hashlib.sha256(img.tobytes() + repr(img.size).encode()).hexdigest()
+        cached = getattr(self, "_recovery_png", None)
+        if cached is None or cached[0] != digest:
+            buf = io.BytesIO()
+            img.save(buf, "PNG")
+            cached = self._recovery_png = (
+                digest, base64.b64encode(buf.getvalue()).decode("ascii"))
+        return {"format": "png", "png": cached[1]}
+
+    def recovery_restore(self, record):
+        """Show a checkpointed image as unsaved, bound to its original file."""
+        import base64
+        import io
+        data = base64.b64decode(record["snapshot"]["png"])
+        self.canvas.set_image(Image.open(io.BytesIO(data)))
+        self.path = record.get("path")
+        self.modified = True
+        self._retitle()
+
     # ── menus ───────────────────────────────────────────────────────────────
     def _file_menu(self):
         MI, sep = W.MenuItem, W.sep

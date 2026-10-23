@@ -3726,20 +3726,23 @@ static int run_interactive(void)
     terminal_options.framebuffer.min_height = DESK_FRAMEBUFFER_MIN_HEIGHT;
     terminal_options.framebuffer.max_width = DESK_FRAMEBUFFER_MAX_WIDTH;
     terminal_options.framebuffer.max_height = DESK_FRAMEBUFFER_MAX_HEIGHT;
+    if (!kilix_game_signals_install(&signals)) {
+        desk_audio_shutdown(&audio);
+        desk_graphics_shutdown(&graphics);
+        (void)fprintf(stderr, "kilix-land-desktop: signal scope failed\n");
+        return EXIT_FAILURE;
+    }
+    kilix_game_signals_set_emergency_terminal(&terminal_session);
     if (kittyts_start(&terminal_session, STDIN_FILENO, STDOUT_FILENO,
                       &terminal_options) != 0) {
         (void)fprintf(stderr,
                       "kilix-land-desktop: terminal start failed: %s\n",
                       strerror(errno));
-        desk_audio_shutdown(&audio);
-        desk_graphics_shutdown(&graphics);
-        return EXIT_FAILURE;
-    }
-    if (!kilix_game_signals_install(&signals)) {
         kittyts_stop(&terminal_session);
+        kilix_game_signals_set_emergency_terminal(NULL);
+        kilix_game_signals_restore(&signals);
         desk_audio_shutdown(&audio);
         desk_graphics_shutdown(&graphics);
-        (void)fprintf(stderr, "kilix-land-desktop: signal scope failed\n");
         return EXIT_FAILURE;
     }
     last_movement_key = KITTYKB_KEY_NONE;
@@ -3763,6 +3766,42 @@ static int run_interactive(void)
         int resized_width;
         int resized_height;
         int64_t now;
+
+        if (kilix_game_signals_suspend_requested(&signals)) {
+            signals.suspend_requested = 0;
+            kittyts_suspend(&terminal_session);
+            kilix_game_signals_set_emergency_terminal(NULL);
+            if (kilix_game_signals_requested(&signals)) break;
+            if (raise(SIGSTOP) != 0) {
+                failed = true;
+                break;
+            }
+            if (kilix_game_signals_requested(&signals)) break;
+            kilix_game_signals_set_emergency_terminal(&terminal_session);
+            if (kittyts_start(&terminal_session, STDIN_FILENO, STDOUT_FILENO,
+                              &terminal_options) != 0) {
+                failed = true;
+                break;
+            }
+            width = kittyts_width(&terminal_session);
+            height = kittyts_height(&terminal_session);
+            if (!ki_td_soft_renderer_resize(&renderer, width, height)) {
+                failed = true;
+                break;
+            }
+            now = kilix_game_monotonic_ns();
+            if (now < 0) {
+                failed = true;
+                break;
+            }
+            kilix_game_clock_reset(&clock, now);
+            memset(&pending_input, 0, sizeof pending_input);
+            pending_input.select_slot = -1;
+            last_movement_key = KITTYKB_KEY_NONE;
+            first_frame = true;
+            last_presented_step = UINT64_MAX;
+            continue;
+        }
 
         if (!poll_input(&current_input, &quit_requested)) {
             failed = true;
@@ -3902,6 +3941,7 @@ done:
         (void)desk_world_state_save(&state.items, &catalog);
     ki_td_soft_renderer_destroy(&renderer);
     kittyts_stop(&terminal_session);
+    kilix_game_signals_set_emergency_terminal(NULL);
     kilix_game_signals_restore(&signals);
     desk_audio_shutdown(&audio);
     desk_graphics_shutdown(&graphics);
@@ -4372,7 +4412,13 @@ static int laptop_test_body(const char *config_dir)
                           "FAIL laptop lid closes when the session ends\n");
             return EXIT_FAILURE;
         }
-        (void)rmdir(run_dir);
+        written = snprintf(pid_path, sizeof pid_path, "%s/ops.pid.identity",
+                           run_dir);
+        if (written < 0 || (size_t)written >= sizeof pid_path ||
+            unlink(pid_path) != 0 || rmdir(run_dir) != 0) {
+            (void)fprintf(stderr, "FAIL laptop identity fixture cleanup\n");
+            return EXIT_FAILURE;
+        }
     }
 
     /* An empty profile directory still opens a usable menu. */

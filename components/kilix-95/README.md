@@ -20,6 +20,68 @@ kilix desktop
 
 Quit through Start -> Shut Down..., or press `Ctrl+Alt+Q`.
 
+## Release 0.2.2 — in development
+
+Prepared for the coordinated Plebian-OS 0.2.2 candidate, upgrading from 0.2.1.
+Image, upgrade and final human acceptance remain pending.
+
+The RC5 desktop-completion candidate gives XPane applications their own
+singleton bus and uses the matching Kilix SDK's portal relay to reach physical
+desktop services. Portal request/session handles and Unix file descriptors
+cross that relay while the application's windows stay on its private display.
+With the matching Kilix/Pleb candidates, each local XPane is offered separately
+in the physical capture picker, under its desktop application title. Capture
+includes that pane's private application windows and dialogs; consent and
+Stop sharing stay on the physical desktop.
+
+- CI pairs this provider with the coordinated host's floating Start and status
+  widget menus. The host's dropdowns appear above the desktop pane.
+- Settings exposes the page-strip edge. Desktop Amp and sibling TUI launches
+  carry the selected content installation root.
+- Desktop and file-manager icons support arrow keys, Home/End, Shift selection
+  ranges and Enter activation. File-manager navigation reveals offscreen rows.
+- The shared clipboard hub tracks pending copies so the matching SDK can hold
+  paste requests until the complete requested format arrives. Completed formats
+  are usable while other representations are still being collected; the hub
+  retains its previous bundle until the new bundle finishes. Failed copies refuse
+  waiting pastes; expired or closed requests release their resources.
+  Pending-copy notifications refresh the private panes' cached clipboard formats.
+- Desktop and open file-manager views follow external file creation, removal,
+  renaming and launcher edits. Filesystem scans run off the UI thread; unchanged
+  items retain their accessible identities, selection and keyboard anchors.
+  Refresh preserves address drafts and scroll position, defers through menus
+  and drags, and refuses activation of a replaced file. Missing folders show an
+  accessible status and recover when recreated. Linux directory notifications
+  are backed by periodic consistency scans; owned monitors close with the desktop.
+- The candidate exposes the live pixel shell through AT-SPI: desktop icons,
+  windows, taskbar actions, menus, buttons, checkboxes, text editors, lists,
+  tab strips and dropdowns. Requests run on the UI thread against current
+  controls; closed or replaced items are refused, modal dialogs restrict
+  underlying actions, and password text crosses the bridge only as bullets.
+  The owned GIO helper exits with its desktop. Tab strips and dropdowns also
+  support keyboard navigation and show focus. The matching native candidate
+  supplies pane geometry through a bounded background observer. Component
+  screen bounds and hit-testing use that live X11 placement and refuse expired,
+  hidden or mismatched grids. Text character/range extents and point-to-offset
+  queries run against the actual text widget on the UI thread, sharing its
+  drawing origins, font and scroll positions. Character boxes include glyph
+  overhang; point queries respect the text viewport. Masked fields measure only
+  displayed bullets. Typed replies revalidate text, font, layout and native
+  placement before returning coordinates. Broader text/coordinate qualification,
+  native Kilix chrome semantics, keyboard/input workflows and complete installed
+  screen-reader acceptance remain pending. Owned VM
+  checks cover live icon/document/menu/dialog actions, saving edited Unicode
+  text, and Orca speaking icons, menus and a real editor line. List-selection
+  requests carry the selected item's identity so a refresh cannot redirect
+  a pending index-based request to a replacement file.
+- The text editor supports Ctrl+Home/End for document boundaries, including
+  Shift selection. Accessible focus dismisses open popup menus before moving
+  to a desktop icon or window control.
+- Full graphics placements recur even while damage updates are active, so a
+  recovered frontend can rebuild the desktop image without a manual resize.
+- With the matching host candidate, a surviving broker-backed desktop refreshes
+  its authenticated route from the live attach process before launching tabs.
+
 ## Release 0.2.0
 
 Prepared for the coordinated Plebian-OS 0.2.0 release.
@@ -30,7 +92,7 @@ Prepared for the coordinated Plebian-OS 0.2.0 release.
 - Interrupting startup now restores the terminal even before the main loop is
   active. Terminal-mode and private-frame cleanup are idempotent across both
   early exits and normal shutdown.
-- The provider contract advances to Kilix SDK 1.14 for the coordinated host
+- The provider contract advances to Kilix SDK 1.16 for the coordinated host
   pairing while retaining the existing provider API and security declarations.
 
 ## Release 0.1.9
@@ -768,10 +830,16 @@ Limitations:
 - terminal/TUI apps should not be launched through XPane because private Xvfb
   has no usable TTY for them;
 - GL-heavy apps may be constrained by software rendering;
-- clipboard bridging handles text-oriented CLIPBOARD selection, not arbitrary
-  large binary clipboard transfers;
+- clipboard bridging carries Unicode text, PNG/JPEG images, and local file URI
+  lists through the host SDK, with incremental transfers and a 64 MiB total
+  data limit; other formats and cross-display drag/drop remain unsupported;
 - ffmpeg/Xvfb failures close the pane or show an error instead of retrying
   indefinitely.
+
+File Manager Copy and Cut publish the standard URI-list, GNOME copied-files,
+and KDE cut-selection representations to this same clipboard. Paste accepts
+local file URIs copied by another app; a later text or image copy replaces the
+file selection. Failed and same-folder moves retain their pending cut items.
 
 ## Games
 
@@ -1035,9 +1103,95 @@ picked up by preference.
 
 ## License
 
-Kilix 95 is released under the [MIT License](LICENSE) (`MIT`).
+Kilix 95 is released under the [GNU General Public License version 3](LICENSE)
+(`GPL-3.0-only`).
 
-Releases up to and including `v0.2.0` were published under `GPL-3.0-only`.
-That grant is irrevocable: anyone who received those releases keeps their
-copyleft rights and may continue to use, modify and redistribute that code
-under GPL-3.0. The relicence applies from `v0.2.1` onward.
+### Kilix Workflows
+
+On Plebian-OS, Kilix 95 asks at startup whether to enable Kilix Workflows.
+They use local language models only for tasks that need them; grammar and
+direct actions remain usable without model downloads. The visible setup reuses
+verified model files already on the computer and shows each licence before
+fetching a missing model. After you opt in, Kilix checks the models at each
+desktop start and brings up the same setup and licence screen if one is
+missing. Updates do not reset your choice.
+
+Choose **Enable Kilix Workflows** to start setup. A failed or interrupted setup
+can be retried from the same window. **Later** leaves the question open for a
+future launch, and **No thanks** declines it. Reopen setup from **Start →
+Programs → Kilix Workflows…** or **Start → Settings → Kilix Workflows…**.
+When workflows are enabled, the window offers **Check models** and **Turn
+off**. Existing files that fail verification are left unchanged and reported
+for attention; this setup does not replace a damaged or mismatched selection.
+
+### System voice
+
+On Plebian-OS, the first Kilix 95 launch offers **Enable system voice** in a
+window. Opting in opens the pinned Piper Kristin download notice; the desktop
+records the preference only after setup succeeds. A later desktop launch loads
+Piper in the background and says **hello** once. The provider stays warm during
+the desktop session. Startup does not block the desktop or download model weights.
+
+Use **Settings → Voice → System voice…** (or **Start → Programs → System Voice**)
+to edit the startup message or turn the feature off. An empty message preloads
+Piper silently. Closing the first-launch offer leaves voice disabled. Preferences
+are per-user native desktop state and survive reboots and updates. A failed setup
+can be retried from the same window. `KILIX_SYSTEM_VOICE_OFFER=1` enables the offer
+outside Plebian-OS; `0` suppresses the offer without disabling a saved preference.
+
+While enabled, system voice also announces overheating, low/critical battery,
+loss of a previously connected physical network link, and sustained heavy
+swapping. Warnings play once per incident using clips prepared at startup.
+Temperature alerts use sensor Celsius values independently of display units.
+See the host SDK system-health documentation for thresholds and recovery rules.
+
+With system voice enabled, normal machine shutdown says **Goodbye** using a
+clip cached at startup. Plebian-OS listens for logind's shutdown notification and
+holds a delay inhibitor only until playback finishes (bounded by logind's delay
+limit). The desktop's Shut Down action also requests the clip before power-off;
+the two paths suppress duplicate speech. Turning voice off, leaving the desktop,
+or restarting just the desktop stays silent. Forced shutdown or power loss
+cannot guarantee speech.
+
+System voice also announces **power connected** / **running on battery** after
+a power-source change stays stable for four seconds. The initial power source
+is silent. **Disk space low** watches the writable local filesystems used by
+`/`, home and Kilix data; it warns below 5% available when less than 2 GiB remains.
+A successful Plebian-OS whole-stack update run by the desktop user announces
+**update complete. restart required** when automatic restart was not requested.
+Failed updates and old notices at desktop startup are silent.
+
+### Document Reader
+
+Open **Start → Programs → Document Reader** for local TXT, Markdown or PDF
+files. Open a file, then press **Play**. The window shows the current passage
+and progress, with Pause/Resume, Stop, Previous and Next controls. Resume repeats
+the paused passage; Stop returns to the beginning. Closing the window stops its
+own playback. The voice daemon does not need to be running.
+
+**Use Kristin for read-aloud…** is an explicit opt-in: confirm the choice, then
+complete the first-use download notice in its terminal. Only successful setup
+changes the shared read-aloud default to Piper Kristin. The startup/system voice
+remains a separate preference. Use **Voice settings…** to change the voice later.
+
+Markdown is read as prose, with fenced code and formatting skipped. PDF reading
+uses `pdftotext` from `poppler-utils` (included by Plebian-OS); scanned pages
+need OCR first. Documents are limited to 16 MiB, with up to 8 MiB of UTF-8 text.
+Long documents are read passage by passage without the terminal-pane text limit.
+Desktop TXT/MD/PDF file icons also have a **Read aloud…** context action.
+
+## Model setup
+
+The startup **Model setup** window shows only unanswered categories. Each page
+has checkbox alternatives, a recommended/default selection where available,
+and sizing information. **Accept checked** or **No thanks** saves the choice;
+**Continue** advances within the same window. Reopen it from **Model Setup** in
+the Programs or Settings menu. Closing it preserves prior answers.
+
+After model selection, **Review licences and install** opens a terminal box
+inside the desktop. Licence questions are grouped by licence and name all
+applicable models; use **Yes** or **No**, without copying an acceptance phrase.
+Declined groups are skipped. Interrupted installation remains available to
+retry. The same choices are accessible through `kilix wizard` in a terminal;
+`kilix wizard --all` revisits answered pages and `kilix wizard finish` resumes
+the final batch. The host must provide the matching model wizard backend.

@@ -3,11 +3,11 @@
  *
  * Everything that runs a program here is a fixed argv vector through
  * posix_spawnp with stdio on /dev/null — profile text can never reach a
- * shell. The registry rules are deliberately identical, byte for byte of
- * behavior, to kilix-land-desktop's laptop.c and the host's
- * config/laptop.py: four surfaces share these files, and the only thing
- * that keeps them agreeing is all of them enforcing the same checks. */
+ * shell. The decimal PID registry remains readable by other providers;
+ * Cap additionally requires birth/boot metadata. See docs/LAPTOP.md for
+ * the additive format and the remaining provider integration requirement. */
 #include "laptop_run.h"
+#include "launcher.h"
 
 #include <dirent.h>
 #include <errno.h>
@@ -21,6 +21,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/wait.h>
+#include <sys/syscall.h>
 #include <time.h>
 #include <unistd.h>
 
@@ -30,9 +31,9 @@ extern char **environ;
 #define PATH_MAX 4096
 #endif
 
-enum { RUN_CHILD_MAX = 8 };
+enum { RUN_CHILD_MAX = LAPTOP_PROFILES_MAX + 8 };
 
-/* Short-lived helper children (`kilix laptop open|close`) and fallback
+/* Short-lived helper children (`kilix laptop open`) and fallback
  * session windows this process spawned; reaped opportunistically so an
  * exited child never lingers as a zombie that would fool kill(pid, 0)
  * elsewhere. */
@@ -42,23 +43,38 @@ static void reap_run_children(void)
 {
     for (int i = 0; i < RUN_CHILD_MAX; i++) {
         if (run_children[i] <= 0) continue;
-        if (waitpid(run_children[i], NULL, WNOHANG) != 0)
+        pid_t result = waitpid(run_children[i], NULL, WNOHANG);
+        if (result == run_children[i] || (result < 0 && errno == ECHILD))
             run_children[i] = 0;
     }
 }
 
-static void track_run_child(pid_t pid)
+/* Single UI thread: select capacity before spawn, publish the pid immediately. */
+static int available_child_slot(void)
 {
     reap_run_children();
-    for (int i = 0; i < RUN_CHILD_MAX; i++) {
-        if (run_children[i] <= 0) {
-            run_children[i] = pid;
-            return;
-        }
+    for (int i = 0; i < RUN_CHILD_MAX; i++)
+        if (run_children[i] == 0) return i;
+    errno = EAGAIN;
+    return -1;
+}
+
+/* Only called for a newly spawned, unreaped child owned by this module.
+ * Never wait indefinitely, even after SIGKILL; retain survivors for reaping. */
+static void cancel_run_child(pid_t pid)
+{
+    pid_t owned = waitpid(pid, NULL, WNOHANG);
+    if (owned == pid || (owned < 0 && errno == ECHILD)) return;
+    if (owned < 0 && errno != EINTR) return;
+    (void)kill(pid, SIGTERM);
+    for (int i = 0; i < 25; i++) {
+        pid_t result = waitpid(pid, NULL, WNOHANG);
+        if (result == pid || (result < 0 && errno == ECHILD)) return;
+        struct timespec delay = {0, 10L * 1000L * 1000L};
+        (void)nanosleep(&delay, NULL);
     }
-    /* Full table: block briefly on the oldest slot rather than leak it. */
-    (void)waitpid(run_children[0], NULL, 0);
-    run_children[0] = pid;
+    (void)kill(pid, SIGKILL);
+    reap_run_children();
 }
 
 static void set_error(char *error, size_t error_size, const char *message)
@@ -137,8 +153,8 @@ static bool write_run_file(const char *path, const char *data,
               0600);
     if (fd < 0) return false;
     put = write(fd, data, length);
-    if (put < 0 || (size_t)put != length || close(fd) != 0) {
-        if (put >= 0 && (size_t)put != length) close(fd);
+    int closed = close(fd);
+    if (put < 0 || (size_t)put != length || closed != 0) {
         unlink(temp);
         return false;
     }
@@ -165,61 +181,126 @@ static bool run_pid_path(const char *id, char *path, size_t size)
     return format_two(path, size, "%s/%s.pid", directory, id);
 }
 
-/* The contract's liveness check: kill(pid, 0), EPERM counts as alive, a
- * /proc zombie does not — its window is already gone, and only an
- * unreaped parent keeps the pid answering. */
-static bool run_pid_alive(long pid)
+/* procfs reports st_size=0; read its bounded text until EOF instead. */
+static bool read_proc_stat(const char *path, char *buffer, size_t size)
 {
-    char stat_path[64];
-    char stat_text[512];
-    size_t stat_length = 0;
-    if (pid <= 1) return false;
-    if (kill((pid_t)pid, 0) != 0 && errno != EPERM) return false;
-    if (snprintf(stat_path, sizeof stat_path, "/proc/%ld/stat", pid) > 0 &&
-        read_run_file(stat_path, stat_text, sizeof stat_text,
-                      &stat_length)) {
-        const char *closing = strrchr(stat_text, ')');
-        if (closing != NULL && closing[1] == ' ' && closing[2] == 'Z')
-            return false;
+    size_t used = 0;
+    int fd = open(path, O_RDONLY | O_CLOEXEC | O_NOFOLLOW);
+    if (fd < 0 || size == 0) {
+        if (fd >= 0) close(fd);
+        return false;
     }
-    return true;
+    while (used < size - 1) {
+        ssize_t got = read(fd, buffer + used, size - 1 - used);
+        if (got < 0 && errno == EINTR) continue;
+        if (got < 0) {
+            close(fd);
+            return false;
+        }
+        if (got == 0) break;
+        used += (size_t)got;
+    }
+    close(fd);
+    buffer[used] = '\0';
+    return used > 0;
+}
+
+/* Additive metadata: keep the shared decimal .pid format readable by older
+ * providers. Cap requires the matching .identity sidecar before trusting it.
+ * Legacy readers still need their own identity-validation upgrade. */
+static bool process_identity(long pid, char *identity, size_t size, bool *dead)
+{
+    char path[64], stat_text[4096], boot[64];
+    if (dead != NULL) *dead = false;
+    if (pid <= 1 || pid > INT_MAX) return false;
+    (void)snprintf(path, sizeof path, "/proc/%ld/stat", pid);
+    if (!read_proc_stat(path, stat_text, sizeof stat_text) ||
+        !read_proc_stat("/proc/sys/kernel/random/boot_id", boot, sizeof boot))
+        return false;
+    char *closing = strrchr(stat_text, ')');
+    if (closing == NULL || closing[1] != ' ') return false;
+    if (closing[2] == 'Z' || closing[2] == 'X') {
+        if (dead != NULL) *dead = true;
+        return false;
+    }
+    char *save = NULL;
+    char *token = strtok_r(closing + 2, " ", &save);
+    for (int field = 3; token != NULL && field < 22; field++)
+        token = strtok_r(NULL, " ", &save);
+    if (token == NULL || token[0] < '0' || token[0] > '9') return false;
+    char *end;
+    errno = 0;
+    unsigned long long start = strtoull(token, &end, 10);
+    if (errno != 0 || *end != '\0' || start == 0) return false;
+    boot[strcspn(boot, "\n")] = '\0';
+    if (strlen(boot) != 36 || strspn(boot, "0123456789abcdef-") != 36)
+        return false;
+    int n = snprintf(identity, size, "v1 %ld %llu %s\n", pid, start, boot);
+    return n > 0 && (size_t)n < size;
 }
 
 bool laptop_run_record(const char *id, long pid)
 {
-    char path[PATH_MAX];
-    char directory[PATH_MAX];
-    char text[32];
-    int written;
-    if (pid <= 1 || !run_pid_path(id, path, sizeof path)) return false;
-    if (!laptop_run_directory(directory, sizeof directory) ||
-        !ensure_run_directory(directory))
-        return false;
-    written = snprintf(text, sizeof text, "%ld\n", pid);
+    char path[PATH_MAX], metadata[PATH_MAX], directory[PATH_MAX];
+    char text[32], identity[128];
+    if (!process_identity(pid, identity, sizeof identity, NULL) ||
+        !run_pid_path(id, path, sizeof path) ||
+        !format_two(metadata, sizeof metadata, "%s.identity", path, NULL) ||
+        !laptop_run_directory(directory, sizeof directory) ||
+        !ensure_run_directory(directory)) return false;
+    int written = snprintf(text, sizeof text, "%ld\n", pid);
     if (written <= 0 || (size_t)written >= sizeof text) return false;
-    return write_run_file(path, text, (size_t)written);
+    /* Publish metadata first. A partial pair fails closed in Cap. */
+    return write_run_file(metadata, identity, strlen(identity)) &&
+           write_run_file(path, text, (size_t)written);
+}
+
+static int read_registered_pid(const char *id, long *pid)
+{
+    char path[PATH_MAX], text[64], canonical[64];
+    size_t length;
+    if (!run_pid_path(id, path, sizeof path)) return -1;
+    errno = 0;
+    if (!read_run_file(path, text, sizeof text, &length))
+        return errno == ENOENT ? 0 : -1;
+    char *end;
+    errno = 0;
+    long value = strtol(text, &end, 10);
+    if (errno != 0 || end == text || value <= 1 || value > INT_MAX)
+        return -1;
+    int n = snprintf(canonical, sizeof canonical, "%ld\n", value);
+    if (n < 0 || length != (size_t)n || memcmp(text, canonical, length) != 0)
+        return -1;
+    *pid = value;
+    return 1;
+}
+
+static bool registered_identity_matches(const char *id, long pid, bool *dead)
+{
+    char path[PATH_MAX], metadata[PATH_MAX], expected[128], actual[128];
+    size_t length;
+    if (dead != NULL) *dead = false;
+    return process_identity(pid, actual, sizeof actual, dead) &&
+           run_pid_path(id, path, sizeof path) &&
+           format_two(metadata, sizeof metadata, "%s.identity", path, NULL) &&
+           read_run_file(metadata, expected, sizeof expected, &length) &&
+           length == strlen(actual) && memcmp(expected, actual, length) == 0;
 }
 
 int laptop_run_status(const char *id, long *pid)
 {
-    char path[PATH_MAX];
-    char text[64];
-    size_t length = 0;
-    char *end = NULL;
-    long value;
+    long value = 0;
     if (pid != NULL) *pid = 0;
     reap_run_children();
-    if (!run_pid_path(id, path, sizeof path)) return -1;
-    if (!read_run_file(path, text, sizeof text, &length)) return 0;
-    value = strtol(text, &end, 10);
-    if (end != NULL && end != text && (*end == '\n' || *end == '\0') &&
-        run_pid_alive(value)) {
-        if (pid != NULL) *pid = value;
-        return 1;
-    }
-    /* Stale: whichever reader notices cleans up. */
-    (void)unlink(path);
-    return 0;
+    int status = read_registered_pid(id, &value);
+    if (status != 1) return status;
+    if (kill((pid_t)value, 0) != 0 && errno == ESRCH) return 0;
+    /* Do not unlink shared records on read: another provider may be updating
+     * the pair. Unverifiable records also block duplicate launches. */
+    bool dead = false;
+    if (!registered_identity_matches(id, value, &dead)) return dead ? 0 : -1;
+    if (pid != NULL) *pid = value;
+    return 1;
 }
 
 bool laptop_run_any(void)
@@ -278,7 +359,8 @@ static pid_t spawn_run_argv(const char *const argv_words[], size_t count)
     pid_t pid = -1;
     int rc;
     size_t i;
-    if (count == 0 || count > 7) return -1;
+    int slot = available_child_slot();
+    if (slot < 0 || count == 0 || count > 7) return -1;
     for (i = 0; i < count; i++) argv[i] = (char *)argv_words[i];
     argv[count] = NULL;
     if (posix_spawn_file_actions_init(&actions) != 0) return -1;
@@ -293,6 +375,7 @@ static pid_t spawn_run_argv(const char *const argv_words[], size_t count)
     }
     rc = posix_spawnp(&pid, argv[0], &actions, NULL, argv, environ);
     (void)posix_spawn_file_actions_destroy(&actions);
+    if (rc == 0) run_children[slot] = pid;
     return rc == 0 ? pid : -1;
 }
 
@@ -312,10 +395,12 @@ static bool laptop_host_verb_available(const char *kilix)
     size_t output_length = 0;
     int status = 0;
     bool exited = false;
+    int slot;
 
     if (cached >= 0) return cached == 1;
     cached = 0;
-    if (kilix == NULL || pipe(pipe_fds) != 0) return false;
+    slot = available_child_slot();
+    if (slot < 0 || kilix == NULL || pipe(pipe_fds) != 0) return false;
     argv[0] = (char *)kilix;
     argv[1] = (char *)"laptop";
     argv[2] = (char *)"help";
@@ -339,6 +424,7 @@ static bool laptop_host_verb_available(const char *kilix)
         return false;
     }
     (void)posix_spawn_file_actions_destroy(&actions);
+    run_children[slot] = pid;
     close(pipe_fds[1]);
     (void)fcntl(pipe_fds[0], F_SETFL, O_NONBLOCK);
     for (int waited = 0; waited < 200; waited++) {
@@ -360,8 +446,7 @@ static bool laptop_host_verb_available(const char *kilix)
     }
     close(pipe_fds[0]);
     if (!exited) {
-        (void)kill(pid, SIGKILL);
-        (void)waitpid(pid, &status, 0);
+        cancel_run_child(pid);
         return false;
     }
     output[output_length] = '\0';
@@ -387,7 +472,6 @@ static bool settle_helper(pid_t pid)
             (void)nanosleep(&delay, NULL);
         }
     }
-    track_run_child(pid);
     return true;
 }
 
@@ -423,6 +507,10 @@ bool laptop_run_open(const char *profile_id, char *error,
     char load_error[LAPTOP_ERROR_MAX];
 
     set_error(error, error_size, "");
+    if (!launcher_enabled()) {
+        set_error(error, error_size, "Desktop app launching is disabled.");
+        return false;
+    }
     if (!run_in_kilix_session()) {
         set_error(error, error_size,
                   "Run Kilix Cap inside Kilix to open the laptop.");
@@ -434,9 +522,13 @@ bool laptop_run_open(const char *profile_id, char *error,
         return false;
     }
     if (profile.desktop[0] == '\0' &&
-        laptop_run_status(profile.id, NULL) == 1) {
+        laptop_run_status(profile.id, NULL) != 0) {
         set_error(error, error_size,
-                  "That session is already running.");
+                  "Session running or registry unverifiable; close it in its owner.");
+        return false;
+    }
+    if (available_child_slot() < 0) {
+        set_error(error, error_size, "Laptop child capacity reached; try again later.");
         return false;
     }
     kilix = resolve_kilix_word(kilix_path, sizeof kilix_path);
@@ -509,14 +601,22 @@ bool laptop_run_open(const char *profile_id, char *error,
                           "The laptop session ended immediately.");
                 return false;
             }
-            if (reaped < 0) break;
+            if (reaped < 0) {
+                if (errno == EINTR) continue;
+                set_error(error, error_size, "The laptop child could not be tracked.");
+                return false;
+            }
             {
                 struct timespec delay = { 0, 10L * 1000L * 1000L };
                 (void)nanosleep(&delay, NULL);
             }
         }
-        track_run_child(session);
-        (void)laptop_run_record(profile.id, (long)session);
+        if (!laptop_run_record(profile.id, (long)session)) {
+            cancel_run_child(session);
+            set_error(error, error_size,
+                      "The session could not be registered; launch cancelled.");
+            return false;
+        }
         return true;
     }
 }
@@ -524,39 +624,32 @@ bool laptop_run_open(const char *profile_id, char *error,
 bool laptop_run_close(const char *profile_id, char *error,
                       size_t error_size)
 {
-    char kilix_path[PATH_MAX];
-    const char *kilix;
     long pid = 0;
-    int status;
-
     set_error(error, error_size, "");
-    if (!valid_run_id(profile_id)) {
-        set_error(error, error_size, "That profile name is not valid.");
-        return false;
-    }
-    kilix = resolve_kilix_word(kilix_path, sizeof kilix_path);
-    if (run_in_kilix_session() && laptop_host_verb_available(kilix)) {
-        const char *argv_words[4];
-        pid_t helper;
-        argv_words[0] = kilix;
-        argv_words[1] = "laptop";
-        argv_words[2] = "close";
-        argv_words[3] = profile_id;
-        helper = spawn_run_argv(argv_words, 4);
-        if (helper >= 0 && settle_helper(helper)) return true;
-        /* fall through to the direct signal */
-    }
-    status = laptop_run_status(profile_id, &pid);
+    int status = read_registered_pid(profile_id, &pid);
+    if (status == 0) return true;
     if (status < 0) {
-        set_error(error, error_size, "No laptop profile directory.");
+        set_error(error, error_size, "The session registry cannot be verified.");
         return false;
     }
-    if (status == 0) return true; /* already gone counts as closed */
-    if (kill((pid_t)pid, SIGTERM) != 0 && errno != ESRCH) {
-        set_error(error, error_size, "That session cannot be signaled.");
-        return false;
+#if defined(SYS_pidfd_open) && defined(SYS_pidfd_send_signal)
+    /* Acquire a stable handle BEFORE comparing birth identity. No numeric
+     * signal fallback, and no delegation to an older PID-only host closer. */
+    int fd = (int)syscall(SYS_pidfd_open, (pid_t)pid, 0);
+    if (fd < 0 && errno == ESRCH) return true;
+    if (fd >= 0) {
+        bool verified = registered_identity_matches(profile_id, pid, NULL);
+        int result = -1;
+        if (verified) result = (int)syscall(SYS_pidfd_send_signal, fd,
+                                           SIGTERM, NULL, 0);
+        int saved_errno = errno;
+        close(fd);
+        if (verified && (result == 0 || saved_errno == ESRCH)) return true;
     }
-    return true;
+#endif
+    set_error(error, error_size,
+              "Cannot safely close this session; close it in its owning window.");
+    return false;
 }
 
 /* ---- selftest ---- */
@@ -603,12 +696,16 @@ bool laptop_run_selftest(void)
     long pid = 0;
     bool ok = true;
     SavedVariable session_variables[3];
+    SavedVariable profiles_variable;
 
     if (mkdtemp(root) == NULL) return false;
-    if (setenv("KILIX_LAPTOP_PROFILES", root, 1) != 0) return false;
-    /* Outside any Kilix session on purpose: the close path must take
-     * the direct-signal branch, not shell out to a host that may or may
-     * not exist on the test machine. */
+    save_and_clear(&profiles_variable, "KILIX_LAPTOP_PROFILES");
+    if (setenv("KILIX_LAPTOP_PROFILES", root, 1) != 0) {
+        restore_variable(&profiles_variable);
+        (void)rmdir(root);
+        return false;
+    }
+    /* Keep launch checks independent of any surrounding Kilix session. */
     save_and_clear(&session_variables[0], "KILIX_HOME");
     save_and_clear(&session_variables[1], "KITTY_LISTEN_ON");
     save_and_clear(&session_variables[2], "KILIX_RC_PASSWORD_FILE");
@@ -627,46 +724,69 @@ bool laptop_run_selftest(void)
                          snprintf(stale, sizeof stale, "%s/junk.pid",
                                   run_dir) > 0 &&
                          write_run_file(stale, "not-a-pid\n", 10) &&
-                         laptop_run_status("junk", NULL) == 0 &&
-                         access(stale, F_OK) != 0,
-                     "a garbled pid file is cleaned up on read");
+                         laptop_run_status("junk", NULL) == -1 &&
+                         access(stale, F_OK) == 0,
+                     "an unverifiable shared record is retained and refused");
     ok &= run_expect(write_run_file(stale, "1\n", 2) &&
-                         laptop_run_status("junk", NULL) == 0 &&
-                         access(stale, F_OK) != 0,
+                         laptop_run_status("junk", NULL) == -1 &&
+                         access(stale, F_OK) == 0,
                      "pid 1 and below never count as a session");
     ok &= run_expect(laptop_run_status("../escape", NULL) == -1,
                      "registry ids follow the profile id rules");
 
-    /* close: the SIGTERM reaches the recorded pid — held to SIG_IGN
-     * here so the selftest survives its own medicine — and the entry
-     * stays until the process is really gone; a stopped profile closes
-     * calmly. */
+    /* This child is not in the launcher's tracked-child array: registry
+     * readers must detect zombies left for another surface to reap. */
     {
-        struct sigaction ignore_term;
-        struct sigaction previous_term;
-        char bench[PATH_MAX];
-        memset(&ignore_term, 0, sizeof ignore_term);
-        ignore_term.sa_handler = SIG_IGN;
-        ok &= run_expect(sigaction(SIGTERM, &ignore_term,
-                                   &previous_term) == 0,
-                         "SIGTERM can be held for the close check");
-        ok &= run_expect(laptop_run_close("bench", NULL, 0),
-                         "close signals the recorded session");
-        (void)sigaction(SIGTERM, &previous_term, NULL);
-        ok &= run_expect(laptop_run_status("bench", NULL) == 1,
-                         "a surviving session stays registered");
-        if (format_two(bench, sizeof bench, "%s/bench.pid", run_dir,
-                       NULL))
+        pid_t child = fork();
+        if (child == 0) _exit(0);
+        ok &= run_expect(child > 0, "private zombie fixture starts");
+        if (child > 0) {
+            siginfo_t info;
+            ok &= run_expect(waitid(P_PID, (id_t)child, &info,
+                                    WEXITED | WNOWAIT) == 0,
+                             "private child exits without being reaped");
+            ok &= run_expect(!laptop_run_record("zombie", (long)child) &&
+                             laptop_run_status("zombie", NULL) == 0,
+                             "an externally tracked zombie cannot be registered");
+            (void)waitpid(child, NULL, 0);
+        }
+    }
+    {
+        SavedVariable external;
+        char error[LAPTOP_ERROR_MAX];
+        save_and_clear(&external, "KILIX_CAP_EXTERNAL_APPS");
+        (void)setenv("KILIX_CAP_EXTERNAL_APPS", "0", 1);
+        (void)setenv("KILIX_HOME", root, 1);
+        launcher_init();
+        ok &= run_expect(!laptop_run_open("missing", error, sizeof error) &&
+                         strstr(error, "disabled") != NULL,
+                         "disabled launching refuses before profile lookup or spawn");
+        launcher_shutdown();
+        (void)unsetenv("KILIX_HOME");
+        restore_variable(&external);
+    }
+
+    /* No live process is signaled by this test. Signal paths are mocked in
+     * tests/laptop_run_unit.c. */
+    {
+        char bench[PATH_MAX], metadata[PATH_MAX];
+        ok &= run_expect(laptop_run_close("missing", NULL, 0),
+                         "closing a missing session counts as closed");
+        if (run_pid_path("bench", bench, sizeof bench) &&
+            format_two(metadata, sizeof metadata, "%s.identity", bench, NULL)) {
+            (void)unlink(metadata);
+            ok &= run_expect(laptop_run_status("bench", NULL) == -1,
+                             "legacy records require owner verification");
             (void)unlink(bench);
-        ok &= run_expect(laptop_run_close("bench", NULL, 0),
-                         "closing a stopped session counts as closed");
+        }
+        (void)unlink(stale);
     }
 
     restore_variable(&session_variables[0]);
     restore_variable(&session_variables[1]);
     restore_variable(&session_variables[2]);
     (void)rmdir(run_dir);
-    unsetenv("KILIX_LAPTOP_PROFILES");
+    restore_variable(&profiles_variable);
     (void)rmdir(root);
     return ok;
 }

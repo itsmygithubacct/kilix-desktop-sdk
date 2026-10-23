@@ -15,6 +15,24 @@ import time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 
+# Never inherited by a test subprocess. The first three are a running Kilix
+# session's live paths, flavor, chrome settings and Kitty control variables.
+# BASH_FUNC_* is bash's carrier for *exported shell functions*: every child
+# shell inherits them and `command -v` reports them as real commands, so a test
+# asking "is X installed" would be answering about the operator's shell rather
+# than about its sandbox.
+STACK_PREFIXES = ("GPU_TERMINAL_", "KILIX", "KITTY_", "BASH_FUNC_")
+
+
+def parent_env_without_stack_vars(environ=None):
+    """The parent environment minus anything that could decide a test outcome."""
+    environ = os.environ if environ is None else environ
+    return {
+        key: value for key, value in environ.items()
+        if not key.startswith(STACK_PREFIXES)
+    }
+
+
 
 def resolve_source_layout(environ=None, here=HERE):
     """Return the shared source root and exact Kilix checkout for tests.
@@ -68,14 +86,9 @@ def main():
             return 1
         state_library = result.stdout.strip()
     for name in names:
-        # A running Kilix session exports live paths, flavor, chrome settings,
-        # and Kitty control variables. None of those may decide the behavior of
-        # an offscreen test: retain the ordinary process environment, then add
-        # back only the stack variables rooted in this test's sandbox.
-        env = {
-            key: value for key, value in os.environ.items()
-            if not key.startswith(("GPU_TERMINAL_", "KILIX", "KITTY_"))
-        }
+        # Retain the ordinary process environment, then add back only the
+        # stack variables rooted in this test's own sandbox.
+        env = parent_env_without_stack_vars()
         sandbox = tempfile.mkdtemp(prefix="kilix95-test-")
         home = os.path.join(sandbox, "home")
         data_root = os.path.join(sandbox, "gpu-terminal-data")
@@ -108,6 +121,7 @@ def main():
             "XDG_STATE_HOME": os.path.join(sandbox, "xdg", "state"),
             "XDG_CACHE_HOME": os.path.join(sandbox, "xdg", "cache"),
             "XDG_DATA_HOME": os.path.join(sandbox, "xdg", "data"),
+            "XDG_DATA_DIRS": os.path.join(sandbox, "xdg", "system"),
             "KILIX_STATE_LIBRARY": state_library,
             "PYTHONDONTWRITEBYTECODE": "1",
         })

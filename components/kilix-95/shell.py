@@ -14,11 +14,18 @@ import os
 import shutil
 import stat
 import subprocess
+import threading
+import time
 
 from PIL import Image
 from kilix_sdk import content as kilix_content
+try:
+    from kilix_sdk import frontend_context
+except ImportError:                  # older hosts retain their existing route
+    frontend_context = None
 
 import icons
+import directory_listing
 import durable_state
 import nostalgia
 import recycle
@@ -28,6 +35,8 @@ import widgets as W
 import wm
 import host as kilix_host
 import storage
+import applications
+import xdgapps
 
 _here = os.path.dirname(os.path.abspath(__file__))
 KILIX_HOME = kilix_host.find_kilix_home()
@@ -39,7 +48,7 @@ MODE_KEYS = {"kilix tab": "tab", "kilix os-window": "window",
              "kilix fullscreen": "fullscreen",
              "kilix run (X11 app)": "run", "web browser": "browse"}
 ICON_CHOICES = ["exe", "terminal", "mux", "doc", "doc_text", "doc_image", "folder",
-                "computer", "browser", "notepad", "settings", "display",
+                "computer", "browser", "notepad", "documentreader", "settings", "display",
                 "drive", "home", "run", "flame"]
 NAME_ERROR = "Use a plain name, not a path."
 
@@ -116,7 +125,33 @@ class Shell:
         self.grid.window = self       # duck-typed: needs .invalidate/.desk
         self.focus = None             # part of the window duck-type
         self.caret_on = False
+        self.installed_applications = []
+        self._application_result = None
+        self._application_worker = None
+        self._application_scan_after = 0
         self.refresh()
+
+    def poll_applications(self, now=None):
+        """Refresh installed programs off the UI thread; publish on this thread."""
+        if self._application_result is not None:
+            rows, self._application_result = self._application_result, None
+            self.installed_applications = rows
+            self.refresh()
+        if self._application_worker and self._application_worker.is_alive():
+            return
+        now = time.monotonic()
+        if now < self._application_scan_after:
+            return
+        self._application_scan_after = now + 30
+
+        def scan():
+            try:
+                self._application_result = applications.inventory()
+            except Exception:
+                # An unavailable optional provider must not break the desktop.
+                self._application_result = []
+        self._application_worker = threading.Thread(target=scan, daemon=True)
+        self._application_worker.start()
 
     def _load_flavor(self):
         old_wall = tuple(T.DESKTOP)
@@ -151,6 +186,8 @@ class Shell:
         self.desk.dirty = True
 
     def _save_state(self):
+        if getattr(self, "state_frozen", False):
+            return                    # a restore just replaced the saved state
         try:
             self.state_store.save_dict(self.state)
         except durable_state.StateError:
@@ -183,7 +220,7 @@ class Shell:
         return True
 
     # ── the icons ───────────────────────────────────────────────────────────
-    def refresh(self):
+    def refresh(self, listing=None):
         bin_full = bool(recycle.items())
         items = [
             {"label": "My Computer", "icon": "computer",
@@ -212,25 +249,34 @@ class Shell:
                 {"label": "Mux Terminal", "icon": "mux",
                  "data": ("builtin", ("mux", None))},
             ]
-        try:
-            names = sorted(os.listdir(self.dir), key=str.lower)
-        except OSError:
-            names = []
-        for n in names:
+        listing = listing if listing is not None else directory_listing.scan(self.dir)
+        for entry in sorted(listing.entries, key=lambda e: e.name.lower()):
+            n, p = entry.name, entry.path
             if n.startswith("."):
                 continue
-            p = os.path.join(self.dir, n)
-            if n.endswith(".desktop"):
-                spec = parse_launcher(p)
-                items.append({"label": spec.get("Name") or n[:-8],
+            if entry.launcher is not None:
+                spec = entry.launcher
+                items.append(entry.tag({"label": spec.get("Name") or n[:-8],
                               "icon": spec.get("Icon") or "exe",
-                              "shortcut": True, "data": ("launcher", p)})
+                              "shortcut": True, "data": ("launcher", p)}))
             else:
-                isdir = os.path.isdir(p)
-                items.append({"label": n,
-                              "icon": icons.for_path(p, isdir),
-                              "data": ("path", p)})
-        self.grid.set_items(items)
+                items.append(entry.tag({"label": n,
+                              "icon": icons.for_path(p, entry.isdir),
+                              "data": ("path", p)}))
+        # Preserve explicit desktop launchers; generated icons are read-only and
+        # disappear when the corresponding application/model is removed.
+        existing = {item["label"].casefold() for item in items}
+        for entry in xdgapps.scan():
+            if entry["name"].casefold() not in existing:
+                items.append({"label": entry["name"], "icon": xdgapps.icon_for(entry),
+                              "shortcut": True, "data": ("xdg-app", entry)})
+                existing.add(entry["name"].casefold())
+        for row in self.installed_applications:
+            if row["label"].casefold() not in existing:
+                items.append({"label": row["label"], "icon": row["icon"],
+                              "shortcut": True, "data": ("installed-app", row)})
+                existing.add(row["label"].casefold())
+        self.grid.set_items(items, preserve=True)
         self.invalidate()
 
     def dir_changed(self, path):
@@ -309,6 +355,9 @@ class Shell:
 
     # ── activation / context menus ──────────────────────────────────────────
     def _activate(self, item):
+        if not directory_listing.current(item):
+            self.refresh()
+            return False
         kind, arg = item["data"]
         if kind == "builtin":
             app, param = arg
@@ -320,6 +369,10 @@ class Shell:
                 self.open_app(app, param)
         elif kind == "launcher":
             self.launch(parse_launcher(arg), arg)
+        elif kind == "xdg-app":
+            xdgapps.launch(self, arg)
+        elif kind == "installed-app":
+            applications.launch(self, arg)
         else:
             self.open_path(arg)
 
@@ -339,6 +392,9 @@ class Shell:
             if kind == "path" and not os.path.isdir(arg):
                 items.append(MI("Open with Notepad", icon="notepad",
                                 action=lambda: self.open_app("notepad", arg)))
+            if kind == "path" and os.path.splitext(arg)[1].lower() in {".txt", ".md", ".markdown", ".pdf"}:
+                items.append(MI("Read aloud…", icon="speak",
+                                action=lambda: self.open_app("documentreader", arg)))
             if kind in ("launcher", "path"):
                 paths = [entry["data"][1] for entry in self._sel_or_one(item)
                          if entry["data"][0] in ("launcher", "path")]
@@ -635,6 +691,19 @@ class Shell:
                       icon="error")
             return
         sanitized_cmd = " ".join(shell_quote(arg) for arg in argv)
+        # Imported Kilix/Kitty .desktop entries say Terminal=false, but are
+        # terminal hosts, not applications to capture inside another desktop.
+        if mode == "run" and os.path.basename(argv[0]) in {"kilix", "kitty"}:
+            if len(argv) == 1:
+                self._tab([os.environ.get("SHELL") or "/bin/bash"], name, cwd=cwd)
+            elif argv[1] == "-e" and len(argv) > 2:
+                self._tab(argv[2:], name, cwd=cwd)
+            else:
+                wm.msgbox(self.desk, name,
+                          "Use a terminal launcher for Kilix/Kitty commands.\n"
+                          "A terminal host cannot be opened as an X11 app.",
+                          icon="error")
+            return
         if vbox.is_virtualbox_argv(argv):
             self.open_x11_tab(argv, name, cwd=cwd, fill=(mode == "fullscreen"),
                               size=self.desk.size() if mode == "fullscreen"
@@ -668,6 +737,8 @@ class Shell:
         return None
 
     def _kitten_remote(self, kitten, command):
+        if frontend_context is not None:
+            frontend_context.refresh()
         argv = [kitten, "@"]
         password_file = os.environ.get("KILIX_RC_PASSWORD_FILE")
         if password_file:
@@ -737,6 +808,24 @@ class Shell:
                             title, "--cwd", cwd or os.path.expanduser("~"),
                             *env_args, "--"]
                            + argv)
+
+    def open_device_settings(self, tool):
+        labels = {
+            "power": "Power", "bluetooth": "Bluetooth", "storage": "Disks",
+            "printers": "Printers", "audio": "Sound Devices",
+            "input-method": "Input Methods", "accessibility": "Accessibility",
+            "lock": "Lock Desktop",
+        }
+        if tool not in labels:
+            raise ValueError("Unknown desktop device control")
+        pleb = self._resolve_program("pleb")
+        if not pleb:
+            wm.msgbox(self.desk, labels[tool],
+                      "Desktop device controls require Pleb. Run pleb install.",
+                      icon="error")
+            return False
+        argv = [pleb, "lock"] if tool == "lock" else [pleb, "devices", tool]
+        return self._tab(argv, labels[tool])
 
     def open_x11_tab(self, argv, title, cwd=None, fill=False, size=None,
                      refit_windows=False):
@@ -896,6 +985,14 @@ class Shell:
         return None
 
     @staticmethod
+    def kilix_workflows_target():
+        """Use the selected host catalog, never an unrelated PATH checkout."""
+        launcher = os.path.join(KILIX_HOME, "kilix")
+        if os.path.isfile(launcher) and os.access(launcher, os.X_OK):
+            return [launcher, "app", "run", "kilix-needle", "--"]
+        return None
+
+    @staticmethod
     def kilix_tts_target():
         """Pinned launcher first, so it can refresh an older Voice runtime."""
         kilix = os.path.join(KILIX_HOME, "kilix")
@@ -953,6 +1050,8 @@ class Shell:
         wm.msgbox(
             self.desk,
             "Kilix Voice Help",
+            "Open Start > Programs > Document Reader to read TXT, Markdown, "
+            "or PDF files. Its Kristin button optionally changes your shared voice.\n\n"
             "Read Aloud and Dictation are the speaking-head and microphone "
             "buttons in the page strip at the top of Kilix.\n\n"
             "They work on terminal panes. Open Start > Programs > Terminal, "
@@ -1041,31 +1140,9 @@ class Shell:
             filters=[("Pictures", "*.png;*.ppm"), ("All Files", "*")])
         return True
 
-    @staticmethod
-    def kilix_cameras_target():
-        """The camera list: the installed command, else the host's verb.
-
-        `kilix-cameras` is the camera UI and knows about stream profiles;
-        `kilix rtsp` is the viewer underneath it and installs itself on
-        first use.  Either answers "show me my cameras", so whichever the
-        machine has is the right one to open."""
-        if executable := shutil.which("kilix-cameras"):
-            return [executable]
-        kilix = os.path.join(KILIX_HOME, "kilix")
-        if os.path.isfile(kilix) and os.access(kilix, os.X_OK):
-            return [kilix, "rtsp", "list"]
-        return None
-
     def open_kilix_cameras(self):
-        """Watch the RTSP cameras this machine is configured for."""
-        target = self.kilix_cameras_target()
-        if target is not None:
-            return self._tab(target, "Cameras", os.path.expanduser("~"))
-        wm.msgbox(
-            self.desk, "Cameras",
-            "Neither an installed camera list nor the Kilix launcher that "
-            "installs the viewer could be found.", icon="error")
-        return False
+        """Open the camera manager inside the desktop, including diagnostics."""
+        return self.open_catalog_application("kilix-camera-manager")
 
     def open_kilix_bonsai(self):
         """The BitNet model store: browse, download, and verify local models.
@@ -1096,6 +1173,13 @@ class Shell:
             self.desk, "Open PDF",
             lambda selected: selected and self.open_kilix_pdf(selected),
             filters=[("PDF Documents", "*.pdf"), ("All Files", "*.*")])
+
+    def open_pdf(self, path):
+        """Use the OS default viewer; retain the catalog viewer on other hosts."""
+        if binary := self._resolve_program("okular"):
+            return self.open_in_xpane([binary, os.path.abspath(path)], "Okular",
+                                      icon="doc_text", app_size=(960, 700))
+        return self.open_kilix_pdf(path)
 
     def open_catalog_application(self, content_id, action=None, arguments=()):
         """Render any shared catalog application as a managed desktop box."""
@@ -1133,6 +1217,11 @@ class Shell:
             if record.get("kind") == "app"
         ]
 
+    def installed_application_menu_items(self):
+        return [W.MenuItem(row["label"], icon=row["icon"],
+                           action=lambda row=row: applications.launch(self, row))
+                for row in self.installed_applications]
+
     @staticmethod
     def kilix_tui_target():
         """Installed command first; the Kilix launcher is the fallback.
@@ -1145,7 +1234,10 @@ class Shell:
             return [executable]
         kilix = os.path.join(KILIX_HOME, "kilix")
         if os.path.isfile(kilix) and os.access(kilix, os.X_OK):
-            return [kilix, "kilix-tui"]
+            import games
+
+            return [kilix, "kilix-tui", "--content-root",
+                    os.path.normpath(games.APPS_DIR)]
         return None
 
     @staticmethod
@@ -1201,7 +1293,13 @@ class Shell:
         be reached without changing the session's provider."""
         target = self.kilix_tui_target()
         if target is not None:
-            return self._tab(target, "Kilix TUI", os.path.expanduser("~"))
+            import games
+
+            # The terminal's environment may belong to a different desktop.
+            # Direct installed TUI and host fallback share this install root;
+            # the fallback also passes it explicitly to the host launcher.
+            return self._tab(target, "Kilix TUI", os.path.expanduser("~"), env={
+                "KILIX_CONTENT_ROOT": os.path.normpath(games.APPS_DIR)})
         wm.msgbox(
             self.desk, "Kilix TUI",
             "Neither an installed Kilix TUI desktop nor its pinned "
@@ -1453,7 +1551,7 @@ class Shell:
             self.add_recent(path)
             return
         if low.endswith(".pdf"):
-            self.open_kilix_pdf(path)
+            self.open_pdf(path)
         elif low.endswith(IMG_EXT):
             self.open_app("viewer", path)
         elif low.endswith(AUDIO_EXT):
@@ -1639,12 +1737,36 @@ class Shell:
     # ── dialogs ─────────────────────────────────────────────────────────────
     def run_dialog(self):
         def do(cmd):
-            if cmd:
+            if not cmd or not cmd.strip():
+                return
+            first = os.path.expanduser(split_cmd(cmd)[0])
+            if self._resolve_program(first):
                 self._spawn_kitty_launch(["--type=tab"], cmd,
-                                         split_cmd(cmd)[0] if cmd else "run")
+                                         split_cmd(cmd)[0])
+                return
+            self.ask_kilix_dialog(cmd.strip())
         wm.inputbox(self.desk, "Run",
                     "Type the name of a program to open it in a kilix tab:",
                     "", cb=do, icon="run", width=320)
+
+    def ask_kilix_dialog(self, text):
+        """Confirm, then hand `text` to `kilix ask` in a tab. This dialog
+        never acts on the request: the plan and the y/N prompt live in the
+        terminal."""
+        def chosen(label):
+            if label == "OK":
+                self.ask_kilix(text)
+        wm.msgbox(self.desk, "Run", f"Ask Kilix: {text}?", icon="question",
+                  buttons=("OK", "Cancel"), cb=chosen)
+
+    def ask_kilix(self, text):
+        # _tab takes an argv list, so the text stays one literal argument;
+        # `--` keeps text that starts with a dash from reading as an option.
+        # The tab closes when its command exits, so --hold keeps the result.
+        return self._tab(["kilix", "ask", "--hold", "--", text], "Ask Kilix")
+
+    def ask_voice(self):
+        return self._tab(["kilix", "ask", "--voice", "--hold"], "Ask Kilix")
 
     def change_password_dialog(self):
         """Modal change-password dialog (masked fields), backed by the
@@ -1722,6 +1844,9 @@ class Shell:
 
     # ── shutdown actions ────────────────────────────────────────────────────
     def _power_off(self):
+        voice = getattr(self.desk, 'system_voice', None)
+        if voice is not None:
+            voice.goodbye()
         # run in a tab so a permission error (rather than a silent no-op) shows
         self._spawn_kitty_launch(["--type=tab"], "systemctl poweroff",
                                  "Shut Down")
@@ -1733,6 +1858,8 @@ class Shell:
         if self._tab(["env", "KILIX_IN_OVERLAY=1", kilix, "desktop"],
                      T.PRODUCT_NAME):
             self.desk.quit()
+            return True
+        return False
 
     def _update_and_restart(self):
         kilix = os.path.join(KILIX_HOME, "kilix")
@@ -1771,16 +1898,7 @@ class Shell:
 # ── launcher file helpers ────────────────────────────────────────────────────
 
 def parse_launcher(path):
-    cp = configparser.ConfigParser(interpolation=None)
-    cp.optionxform = str
-    out = {}
-    try:
-        cp.read(path)
-        if cp.has_section("Desktop Entry"):
-            out = dict(cp["Desktop Entry"])
-    except (OSError, ValueError, configparser.Error):  # ValueError: bad UTF-8
-        pass
-    return out
+    return directory_listing.parse_launcher(path)
 
 
 def write_launcher(path, spec):

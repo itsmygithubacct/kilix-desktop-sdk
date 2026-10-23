@@ -237,6 +237,50 @@ def test_frame_files_are_private():
     assert not frame_dir or not os.path.exists(frame_dir)
 
 
+def test_damage_updates_do_not_starve_full_placement_recovery():
+    from unittest.mock import patch
+
+    term = FakeTerm(cols=4, rows=3, cell_w=8, cell_h=8)
+    desk = desk_main.Desk(term=term)
+    try:
+        with patch.object(desk_main.time, 'time', return_value=100):
+            desk.blit(force_full=True)
+        for step in range(1, 21):
+            now = 100 + step * .5
+            desk.fb.putpixel((0, 0), (step, 2, 3))
+            with patch.object(desk_main.time, 'time', return_value=now):
+                desk.blit()
+                assert '\x1b_Ga=f,' in term.writes[-1], term.writes[-1]
+                desk._keepalive(now, started=90)
+            placements = [write for write in term.writes if '\x1b_Ga=T,' in write]
+            if step < 20:
+                assert len(placements) == 1
+            else:
+                assert len(placements) == 2, 'active damage suppressed full refresh'
+                assert '\x1b_Ga=T,' in term.writes[-1]
+        assert desk._last_full_blit == 110
+    finally:
+        desk.cleanup_shm()
+
+
+def test_startup_keepalive_still_repeats_full_placements():
+    from unittest.mock import patch
+
+    term = FakeTerm(cols=4, rows=3, cell_w=8, cell_h=8)
+    desk = desk_main.Desk(term=term)
+    try:
+        with patch.object(desk_main.time, 'time', return_value=100):
+            desk.blit(force_full=True)
+        desk._keepalive(100.4, started=100)
+        assert len(term.writes) == 1
+        with patch.object(desk_main.time, 'time', return_value=100.5):
+            desk._keepalive(100.5, started=100)
+        assert len(term.writes) == 2
+        assert all('\x1b_Ga=T,' in write for write in term.writes)
+    finally:
+        desk.cleanup_shm()
+
+
 def test_frame_reaper_removes_orphans_but_preserves_other_entries():
     import os
     import shutil
@@ -296,6 +340,7 @@ def test_frame_reaper_preserves_live_locked_directory():
 
 
 def test_frame_cleanup_survives_terminal_restore_failure():
+    import fcntl
     import os
 
     class BrokenRestore(FakeTerm):
@@ -305,21 +350,29 @@ def test_frame_cleanup_survives_terminal_restore_failure():
     term = BrokenRestore(cols=4, rows=3, cell_w=8, cell_h=8)
     d = desk_main.Desk(term=term)
     d.blit(force_full=True)
-    frame_dir, frame_fd = d._frame_dir, d._frame_dir_fd
+    frame_dir = d._frame_dir
+    # Keep an independent handle to the inode: another thread may reuse the
+    # owner's descriptor number immediately after cleanup closes it.
+    probe = os.open(frame_dir, os.O_RDONLY | os.O_DIRECTORY)
     try:
-        d._restore_and_cleanup(term)
-    except BrokenPipeError:
-        pass
-    else:
-        assert False, "terminal restore failure did not propagate"
-    assert not os.path.exists(frame_dir), "restore failure skipped frame cleanup"
-    assert d._frame_dir is None and d._frame_dir_fd is None
-    try:
-        os.fstat(frame_fd)
-    except OSError:
-        pass
-    else:
-        assert False, "frame-directory lifetime lock was not released"
+        try:
+            fcntl.flock(probe, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError:
+            pass
+        else:
+            assert False, "frame-directory lifetime lock was not held"
+        try:
+            d._restore_and_cleanup(term)
+        except BrokenPipeError:
+            pass
+        else:
+            assert False, "terminal restore failure did not propagate"
+        assert not os.path.exists(frame_dir), "restore failure skipped frame cleanup"
+        assert d._frame_dir is None and d._frame_dir_fd is None
+        fcntl.flock(probe, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    finally:
+        os.close(probe)
+        d.cleanup_shm()
 
 
 def test_early_startup_exit_still_restores_terminal():

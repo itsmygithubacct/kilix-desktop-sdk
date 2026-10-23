@@ -35,9 +35,11 @@ class FileDialog(wm.Window):
         self.lookin = self.add(W.Dropdown(58, 8, cw - 64 - 58, ["/"]))
         self.lookin.cb = lambda *_: self._nav(
             self._ancestors[self.lookin.index])
-        self.add(W.Button(cw - 58, 8, 24, 22, icon="up", cb=self._up))
-        self.add(W.Button(cw - 30, 8, 24, 22, icon="home",
-                          cb=lambda: self._nav("~")))
+        up = self.add(W.Button(cw - 58, 8, 24, 22, icon="up", cb=self._up))
+        up.accessibility_name = 'Up one folder'
+        home = self.add(W.Button(cw - 30, 8, 24, 22, icon="home",
+                                 cb=lambda: self._nav("~")))
+        home.accessibility_name = 'Home folder'
 
         self.list = self.add(W.ListBox(10, 38, cw - 20, 200,
                                        on_activate=self._activate,

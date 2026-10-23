@@ -54,6 +54,18 @@ def open(desk, name, arg=None):
                 desk.wm.activate(w)
                 return
         desk.wm.add(settings.SettingsWin(desk))
+    elif name == "documentreader":
+        from . import documentreader
+        desk.wm.add(documentreader.DocumentReader(desk, arg))
+    elif name == "systemvoice":
+        from . import systemvoice
+        systemvoice.open_window(desk)
+    elif name == "modelwizard":
+        from . import modelwizard
+        modelwizard.open_window(desk)
+    elif name == "workflows":
+        from . import workflows
+        workflows.open_window(desk)
     elif name == "soundcp":
         from . import soundcp
         soundcp.open(desk)
@@ -69,6 +81,9 @@ def open(desk, name, arg=None):
     elif name == "paint":
         from . import paint
         desk.wm.add(paint.Paint(desk, arg))
+    elif name == "backup":
+        from . import backup
+        desk.wm.add(backup.BackupWin(desk, arg))
     elif name == "wordpad":
         from . import wordpad
         desk.wm.add(wordpad.WordPad(desk, arg))
@@ -78,6 +93,9 @@ def open(desk, name, arg=None):
     elif name == "winhelp":
         from . import winhelp
         desk.wm.add(winhelp.Help(desk, arg))
+    elif name == "helpsearch":
+        from . import helpsearch
+        desk.wm.add(helpsearch.HelpSearch(desk, arg))
     elif name == "manual":
         from . import manual
         desk.wm.add(manual.ManualBrowser(desk, arg))

@@ -24,19 +24,27 @@ class Printers(wm.Window):
         self.refresh()
 
     def refresh(self):
-        items = [{"label": "Add Printer", "icon": "addprinter", "data": None}]
+        items = [
+            {"label": "Configure Physical Printers", "icon": "addprinter", "data": "cups-setup"},
+            {"label": "Print to Folder", "icon": "printer", "data": None},
+        ]
         items += [{"label": item["name"], "icon": "printer", "data": item}
                   for item in nostalgia.printers()]
         self.grid.set_items(items)
         self.invalidate()
 
     def _activate(self, item):
-        if item["data"] is None:
+        if item["data"] == "cups-setup":
             self._add()
+        elif item["data"] is None:
+            self._add_virtual()
         else:
             self.desk.wm.add(PrintQueue(self.desk, item["data"]))
 
     def _add(self):
+        self.desk.shell.open_device_settings("printers")
+
+    def _add_virtual(self):
         def named(name):
             if not name:
                 return
@@ -45,16 +53,16 @@ class Printers(wm.Window):
                 try:
                     nostalgia.add_virtual_printer(name, path)
                     self.refresh()
-                    wm.msgbox(self.desk, "Add Printer Wizard",
+                    wm.msgbox(self.desk, "Print to Folder",
                               f"'{name}' is ready. Jobs are written to:\n"
                               f"{os.path.abspath(os.path.expanduser(path))}",
                               icon="printer")
                 except (OSError, ValueError) as error:
-                    wm.msgbox(self.desk, "Add Printer Wizard", str(error),
+                    wm.msgbox(self.desk, "Print to Folder", str(error),
                               icon="error")
-            wm.inputbox(self.desk, "Add Printer Wizard", "Output folder:",
+            wm.inputbox(self.desk, "Print to Folder", "Output folder:",
                         default, cb=pathed, icon="printer")
-        wm.inputbox(self.desk, "Add Printer Wizard", "Printer name:",
+        wm.inputbox(self.desk, "Print to Folder", "Printer name:",
                     "My Printer", cb=named, icon="printer")
 
     def _file_menu(self):
@@ -62,14 +70,16 @@ class Printers(wm.Window):
         return [W.MenuItem("Open", enabled=bool(selected),
                            action=lambda: selected and self._activate(selected[0])),
                 W.MenuItem("Add Printer…", icon="addprinter", action=self._add),
+                W.MenuItem("Print to Folder…", icon="printer", action=self._add_virtual),
+                W.MenuItem("Refresh", action=self.refresh),
                 W.sep(), W.MenuItem("Close", action=self.close)]
 
     def _help_menu(self):
         return [W.MenuItem("About Printers…", icon="printer",
                            action=lambda: wm.msgbox(
                                self.desk, "Printers",
-                               "CUPS queues are discovered read-only. Add Printer "
-                               "creates a safe print-to-folder destination.",
+                               "Configure physical printers through the system "
+                               "printer manager, or create a print-to-folder destination.",
                                icon="printer"))]
 
     def on_resize(self):
@@ -80,7 +90,7 @@ class Printers(wm.Window):
     def draw_client(self, d, img):
         cw, ch = self.client_size()
         T.sunken(d, 2, ch - 21, cw - 3, ch - 3, fill=T.FACE)
-        d.text((8, ch - 18), f"{len(self.grid.items) - 1} printer(s)",
+        d.text((8, ch - 18), f"{len(self.grid.items) - 2} printer(s)",
                font=T.FONT, fill=T.TEXT)
 
 

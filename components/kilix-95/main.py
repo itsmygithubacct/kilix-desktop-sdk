@@ -123,14 +123,15 @@ try:
     from kilix_sdk import require_compatible as require_kilix_sdk
 except ImportError as exc:
     raise RuntimeError(
-        "Kilix 95 requires kilix_sdk 1.14; update the Kilix host checkout "
+        "Kilix 95 requires kilix_sdk 1.16; update the Kilix host checkout "
         "and initialize its submodules"
     ) from exc
+require_kilix_sdk("1.16")
 from kilix_sdk import graphics as kilix_graphics
 from kilix_sdk import settings as shared_settings
+from kilix_sdk.clipboard import CLEARED, Content
 from kilix_sdk import state as kilix_state
 from kilix_sdk import term as kilix_term
-require_kilix_sdk("1.14")
 try:
     shared_settings.ensure_file()
 except OSError as exc:
@@ -198,10 +199,12 @@ class DeskTerm(kilix_term.Term):
         # the Start menu (_parse_csi tags every key event with its type;
         # _norm_key drops the releases).
         self.write("\x1b[?1049h\x1b[2J\x1b[?25l\x1b[?7l\x1b[>15u"
-                   "\x1b[?1003h\x1b[?1006h\x1b[?1016h\x1b[?2004h"
+                   "\x1b[?1003h\x1b[?1006h\x1b[?1016h\x1b[?2004h\x1b[?1004h"
                    f"\x1b]2;{T.PRODUCT_NAME}\x07")
 
     def _parse_csi(self, params, final):
+        if not params and final in ('I', 'O'):
+            return {'kind': 'focus', 'focused': final == 'I'}
         # tag key events with the kitty event type (1 press, 2 repeat,
         # 3 release) — browse drops it; the switcher needs it
         ev = super()._parse_csi(params, final)
@@ -230,16 +233,47 @@ class DeskTerm(kilix_term.Term):
             delete = "\x1b_Ga=d,d=A\x1b\\"
             if os.environ.get("KILIX_STREAM") == "1" and os.environ.get("TMUX"):
                 delete = kilix_graphics.wrap_tmux_passthrough(delete)
-            self.write("\x1b[<u\x1b[?1003l\x1b[?1006l\x1b[?1016l\x1b[?2004l"
+            self.write("\x1b[<u\x1b[?1003l\x1b[?1006l\x1b[?1016l\x1b[?2004l\x1b[?1004l"
                        "\x1b[?7h" + delete + "\x1b[?25h\x1b[?1049l")
         finally:
             import termios
             termios.tcsetattr(self.fd, termios.TCSADRAIN, self.saved)
 
 
+CRASH_LOG_LIMIT = 1024 * 1024
+
+
+def crash_report(text):
+    """Keep a fault's traceback in the provider's private crash log.
+
+    stderr is the terminal the desktop itself draws into, so a report written
+    there would be painted over the desktop. The log keeps its newest megabyte."""
+    path = storage.state_dir("crash.log")
+    try:
+        os.makedirs(os.path.dirname(path), mode=0o700, exist_ok=True)
+        stamp = time.strftime("%Y-%m-%d %H:%M:%S")
+        entry = ("=== %s pid %d\n%s\n" % (stamp, os.getpid(), text)).encode(
+            "utf-8", "replace")
+        try:
+            with open(path, "rb") as fh:
+                old = fh.read()
+        except OSError:
+            old = b""
+        data = (old + entry)[-CRASH_LOG_LIMIT:]
+        fd = os.open(path + ".tmp", os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+        with os.fdopen(fd, "wb") as fh:
+            fh.write(data)
+        os.replace(path + ".tmp", path)
+    except OSError:
+        pass
+
+
 class Desk:
     def __init__(self, term=None, size=None, draw_cursor=False):
         self.term = term
+        self.frontend_focused = term is None
+        self.accessibility = None
+        self.directory_monitor = None
         if term:
             self.w = int(term.cols * term.cell_w)
             self.h = int(term.rows * term.cell_h)
@@ -249,6 +283,12 @@ class Desk:
         self.dirty = True
         self.running = True
         self.clipboard = ""
+        self.clipboard_content = Content({})
+        self.clipboard_revision = 0
+        self.clipboard_read_revision = None
+        self.clipboard_read_source = None
+        self._clipboard_pending_sinks = []
+        self._content_sinks = []
         self._clip_sinks = []         # realms that mirror the hub (XPanes, host)
         self.clip_host = None         # host-X CLIPBOARD bridge (set up in run())
         self.draw_cursor = draw_cursor
@@ -260,6 +300,9 @@ class Desk:
         self.password_nag = False      # default-password tray reminder (armed in run)
         self.fd_hooks = {}            # fd -> callback (XPane video feeds etc.)
         self.tick_hooks = []          # callables(now), each loop pass
+        if term is not None:
+            self.tick_hooks.append(self.shell.poll_applications)
+            self.shell.poll_applications()
         self.mouse_owner = None
         self._owner_btn = 0           # button that captured mouse_owner/drag
         self._buttons = 0
@@ -271,6 +314,8 @@ class Desk:
         self.img_id = 1 + ((int(wid) if wid.isdigit() else os.getpid())
                            % 4000)
         self.seq = 0
+        self._last_blit = 0.0
+        self._last_full_blit = 0.0
         self._frame_dir = None
         self._frame_dir_fd = None       # lifetime flock identifies a live owner
         # WM/loop polish state
@@ -311,6 +356,52 @@ class Desk:
     def quit(self):
         self.running = False
 
+    #: Exit status that asks the launcher's supervisor for an immediate restart.
+    RESTART_STATUS = 75
+
+    RESTORE_NOTICE = "restore-notice.txt"
+
+    def restart_after_restore(self, message):
+        """Reload restored settings: stop saving the replaced state, then restart.
+
+        The restart does not wait for the user: a dismissed or closed message
+        box would otherwise leave a desktop that silently drops every later
+        setting. The message is shown by the restarted desktop instead. Under
+        the launcher's supervisor the desktop exits with RESTART_STATUS and
+        comes straight back in the same tab; otherwise it relaunches itself in a
+        new tab, and if that fails it keeps running and says so."""
+        self.shell.state_frozen = True
+        notice = storage.state_dir(self.RESTORE_NOTICE)
+        try:
+            with open(notice, "w", encoding="utf-8") as fh:
+                fh.write(message)
+        except OSError:
+            pass
+        if os.environ.get("KILIX_DESKTOP_SUPERVISED") == "1":
+            self.exit_status = self.RESTART_STATUS
+            self.quit()
+            return
+        if not self.shell._restart_desktop():
+            self.shell.state_frozen = False
+            try:
+                os.unlink(notice)
+            except OSError:
+                pass
+            wm_mod.msgbox(self, "Restore", message + "\n\nThe desktop could not restart "
+                          "itself; log out and back in to load the restored settings.",
+                          icon="warn")
+
+    def _show_restore_notice(self):
+        notice = storage.state_dir(self.RESTORE_NOTICE)
+        try:
+            with open(notice, encoding="utf-8") as fh:
+                message = fh.read()
+            os.unlink(notice)
+        except OSError:
+            return
+        wm_mod.msgbox(self, "Restore", message + "\n\nThe restored desktop settings "
+                      "are loaded.", icon="info")
+
     def add_clip_sink(self, sink):
         """Register a realm (an XPane's Xvfb, the host X) that should mirror
         the clipboard hub. `sink` is a callable(text)."""
@@ -320,23 +411,64 @@ class Desk:
         if sink in self._clip_sinks:
             self._clip_sinks.remove(sink)
 
+    def add_content_sink(self, sink):
+        self._content_sinks.append(sink)
+
+    def remove_content_sink(self, sink):
+        if sink in self._content_sinks:
+            self._content_sinks.remove(sink)
+
+    def begin_clipboard_read(self, source=None):
+        self.clipboard_revision += 1
+        self.clipboard_read_revision = self.clipboard_revision
+        self.clipboard_read_source = source
+        for callback in tuple(self._clipboard_pending_sinks):
+            callback()
+        return self.clipboard_revision
+
+    def add_pending_sink(self, callback):
+        self._clipboard_pending_sinks.append(callback)
+
+    def remove_pending_sink(self, callback):
+        if callback in self._clipboard_pending_sinks:
+            self._clipboard_pending_sinks.remove(callback)
+
+    def end_clipboard_read(self, revision):
+        if self.clipboard_read_revision == revision:
+            self.clipboard_read_revision = None
+            self.clipboard_read_source = None
+
     def set_clipboard(self, text, source=None):
-        """Publish `text` as the one clipboard. `source`, when given, is the
-        sink the copy came from — it is skipped in the fan-out so a read from
-        one realm never echoes straight back into it."""
-        self.clipboard = text
-        # OSC 52 mirrors to the host terminal/tabs — but only when no host X
-        # bridge is active, or the two would fight over the host CLIPBOARD
-        if self.term and self.clip_host is None:
-            b64 = base64.b64encode(text.encode()).decode()
+        self.set_clipboard_content(Content.from_text(text), source=source)
+
+    def set_clipboard_content(self, content, source=None):
+        """Publish one clipboard with byte-preserving alternate formats."""
+        self.clipboard_revision += 1
+        self.clipboard_read_revision = None
+        self.clipboard_read_source = None
+        self.clipboard_content = content
+        self.clipboard = content.text
+        has_text = any(content.get(name) is not None for name in
+                       ("UTF8_STRING", "text/plain;charset=utf-8", "text/plain", "STRING"))
+        if self.term and self.clip_host is None and (has_text or content is CLEARED):
+            # An explicit source clear (CLEARED: a password manager's
+            # auto-clear) must reach the outer terminal's clipboard too; an
+            # empty OSC 52 payload clears it, as an empty copy does. An app
+            # exiting is not a clear, so the outer copy survives it.
+            b64 = base64.b64encode(content.text.encode()).decode()
             self.term.write(f"\x1b]52;c;{b64}\x07")
+        for sink in list(self._content_sinks):
+            if sink != source:
+                try:
+                    sink(content)
+                except Exception:
+                    pass
         for sink in list(self._clip_sinks):
-            if sink is source:
-                continue
-            try:
-                sink(text)
-            except Exception:
-                pass
+            if sink != source:
+                try:
+                    sink(content.text)
+                except Exception:
+                    pass
 
     def play_sound(self, name):
         """Fire-and-forget UI sound. No-op headless (term is None) or when the
@@ -366,10 +498,14 @@ class Desk:
         fb = self.fb
         d = W.drawer(fb)
         self.shell.draw(fb, d)
-        for win in self.wm.windows:
+        for win in list(self.wm.windows):
             if win.minimized:
                 continue
-            surf = win.render()
+            try:
+                surf = win.render()
+            except Exception:
+                self.window_fault(win, "drawing")
+                continue
             fb.paste(surf, (win.x, win.y), win.compose_mask)
         self.taskbar.draw(fb, d)
         self.menus.draw(fb, d)
@@ -785,6 +921,7 @@ class Desk:
             kilix_graphics.blit_direct(
                 self.term, rgb, self.w, self.h, self.term.cols,
                 self.term.rows, self.img_id, in_tmux=in_tmux)
+            self._last_full_blit = self._last_blit
             return
         # kitty may still be opening a previously announced t=t path after a
         # later frame is ready.  Never recycle a filename: truncating a path
@@ -802,6 +939,14 @@ class Desk:
             f"\x1b[H\x1b_Ga=T,i={self.img_id},p=1,z=-1,t=t,f=24,"
             f"s={self.w},v={self.h},c={self.term.cols},r={self.term.rows},"
             f"q=2,C=1,N=1;{payload}\x1b\\")
+        self._last_full_blit = self._last_blit
+
+    def _keepalive(self, now, started):
+        # Band edits need an existing image. Their activity must not postpone
+        # full placements forever after a frontend loses its graphics state.
+        if ((now - started < 5 and now - self._last_blit >= 0.5)
+                or now - self._last_full_blit >= 10):
+            self.blit(force_full=True)
 
     def _frame_path(self, kind, sequence):
         if self._frame_dir is None:
@@ -994,7 +1139,7 @@ class Desk:
                     self.wm.activate(win)
                 self.mouse_owner = self._route_window(win)
                 self._owner_btn = ev.btn
-            win.on_mouse(ev)
+            self._guarded(win, "a mouse event", win.on_mouse, ev)
             if self.wm.drag:
                 self.mouse_owner = self._route_drag
             return
@@ -1012,7 +1157,7 @@ class Desk:
             if self.wm.drag:
                 self._route_drag(ev)
             else:
-                win.on_mouse(ev)
+                self._guarded(win, "a mouse event", win.on_mouse, ev)
         return route
 
     def _route_drag(self, ev):
@@ -1076,7 +1221,8 @@ class Desk:
             if self.wm.active:
                 self.wm.active.request_close()
             return
-        if self.wm.active and self.wm.active.on_key(ev):
+        active = self.wm.active
+        if active and self._guarded(active, "a key press", active.on_key, ev):
             return
         if not self.wm.active or self.wm.modal_top() is None:
             self.shell.on_key(ev)
@@ -1088,10 +1234,12 @@ class Desk:
             return
         win = self.wm.active
         if win and isinstance(win.focus, (W.TextField, W.TextArea)):
-            win.focus.insert(text)
-            if isinstance(win.focus, W.TextArea):
-                win.focus._reveal()
-            win.invalidate()
+            def paste():
+                win.focus.insert(text)
+                if isinstance(win.focus, W.TextArea):
+                    win.focus._reveal()
+                win.invalidate()
+            self._guarded(win, "a paste", paste)
 
     # ── resize ──────────────────────────────────────────────────────────────
     def do_resize(self):
@@ -1118,6 +1266,105 @@ class Desk:
                 win.y = max(0, min(win.y, self.h - T.TASKBAR_H - 20))
             win.dirty = True
         self.dirty = True
+
+    def _start_system_voice(self):
+        try:
+            from system_voice import controller
+            controller(self).startup()
+        except Exception as error:
+            wm_mod.msgbox(self, "System voice", str(error), icon="error")
+
+    def _start_dictation_offer(self):
+        try:
+            from dictation_offer import controller
+            controller(self).startup()
+        except Exception as error:
+            wm_mod.msgbox(self, "Dictation", str(error), icon="error")
+
+    def _start_workflows_offer(self):
+        try:
+            from workflows_offer import controller
+            controller(self).startup()
+        except Exception as error:
+            wm_mod.msgbox(self, "Kilix Workflows", str(error), icon="error")
+
+    def _start_document_recovery(self):
+        """Checkpoint unsaved documents each pass; offer any a crash left behind."""
+        try:
+            import doc_recovery
+            self.tick_hooks.append(lambda now: doc_recovery.tick(self, now))
+            reason = None
+            if (os.environ.get("KILIX_DESKTOP_RESTARTED")
+                    and os.environ.get("KILIX_DESKTOP_LAST_STATUS")
+                    != str(self.RESTART_STATUS)):
+                reason = ("The desktop restarted after it stopped unexpectedly.\n"
+                          "These documents had unsaved changes:")
+            doc_recovery.offer(self, reason=reason)
+            self._show_restore_notice()
+        except Exception as error:
+            wm_mod.msgbox(self, "Document Recovery", str(error), icon="error")
+
+    def window_fault(self, win, where):
+        """Close one failing window instead of letting it end the desktop.
+
+        Its unsaved document is checkpointed first and kept for restore."""
+        import traceback
+        import doc_recovery
+        crash_report("%s failed during %s; it was closed\n%s"
+                     % (type(win).__name__, where, traceback.format_exc()))
+        kept = False
+        try:
+            kept = doc_recovery.write(win)
+        except Exception:
+            pass
+        win._recovery_fault = True
+        try:
+            self.wm.close(win)
+        except Exception:
+            if win in self.wm.windows:
+                self.wm.windows.remove(win)
+            if self.wm.active is win:
+                self.wm.active = None
+        self.mouse_owner = None
+        self.dirty = True
+        title = (getattr(win, "title", "") or type(win).__name__).lstrip("*")
+        text = f"{title}\n\nstopped because of an internal error and was closed."
+        token = getattr(win, "_recovery_token", None)
+        if kept and token:
+            def answer(ans, token=token):
+                if ans == "Reopen":
+                    for t, record in doc_recovery.pending():
+                        if t == token:
+                            doc_recovery.restore(self, t, record)
+            wm_mod.msgbox(self, "Program Error",
+                      text + "\n\nIts unsaved changes were kept.",
+                      icon="error", buttons=("Reopen", "Later"), cb=answer)
+        else:
+            wm_mod.msgbox(self, "Program Error", text, icon="error")
+
+    def _guarded(self, win, where, fn, *args):
+        try:
+            return fn(*args)
+        except Exception:
+            self.window_fault(win, where)
+            return True
+
+    def _loop_fault(self):
+        import traceback
+        import doc_recovery
+        crash_report("event loop fault\n" + traceback.format_exc())
+        for win in list(self.wm.windows):
+            try:
+                doc_recovery.write(win)
+            except Exception:
+                pass
+        now = time.monotonic()
+        recent = [t for t in getattr(self, "_loop_faults", []) if now - t < 10.0]
+        recent.append(now)
+        self._loop_faults = recent
+        self.dirty = True
+        if len(recent) > 5:
+            raise
 
     def _first_run_help(self):
         """First launch: open the Help book so a new user (e.g. a fresh
@@ -1189,7 +1436,20 @@ class Desk:
             try:
                 self._cleanup_windows()
             finally:
-                self._restore_and_cleanup(self.term)
+                try:
+                    self._cleanup_controllers()
+                finally:
+                    self._restore_and_cleanup(self.term)
+
+    def _cleanup_controllers(self):
+        try:
+            workflows = getattr(self, 'workflows_offer', None)
+            if workflows is not None:
+                workflows.close()
+        finally:
+            voice = getattr(self, 'system_voice', None)
+            if voice is not None:
+                voice.close()
 
     def _restore_and_cleanup(self, term):
         # A dead Kitty/X connection can make restore raise.  Cleanup must not
@@ -1197,7 +1457,22 @@ class Desk:
         try:
             term.restore()
         finally:
-            self.cleanup_shm()
+            try:
+                try:
+                    monitor, self.directory_monitor = getattr(self, 'directory_monitor', None), None
+                    if monitor is not None:
+                        monitor.close()
+                finally:
+                    try:
+                        accessibility, self.accessibility = self.accessibility, None
+                        if accessibility is not None:
+                            accessibility.close()
+                    finally:
+                        self.cleanup_shm()
+            finally:
+                bridge, self.clip_host = self.clip_host, None
+                if bridge is not None:
+                    bridge.close()
 
     def _run(self):
         term = self.term
@@ -1207,6 +1482,8 @@ class Desk:
             signal.signal(s, lambda *a: sys.exit(0))
         os.set_blocking(term.fd, False)
         term.enter()
+        from directory_monitor import DirectoryMonitor
+        self.directory_monitor = DirectoryMonitor(self)
         # one clipboard across tabs/panes/windows: bridge the host X CLIPBOARD
         # (where the terminal and its tabs live) into the hub. Best-effort — with
         # no reachable host X (remote/nested share) OSC 52 stays the fallback.
@@ -1215,7 +1492,8 @@ class Desk:
             try:
                 import clipboard as clip_mod
                 self.clip_host = clip_mod.SelectionBridge(
-                    self, os.environ["DISPLAY"])
+                    self, os.environ.get("PLEB_DESKTOP_DISPLAY") or os.environ["DISPLAY"],
+                    os.environ.get("PLEB_DESKTOP_XAUTHORITY"), read_existing=True)
             except Exception:
                 self.clip_host = None
         try:
@@ -1234,77 +1512,106 @@ class Desk:
             except Exception:
                 self.hardware_signature = ()
         self._first_run_help()
+        try:
+            from apps.modelwizard import startup
+            startup(self)
+        except Exception as error:
+            wm_mod.msgbox(self, "Model setup", str(error), icon="error")
         self._first_run_password_nag()    # …and pop the change-password bubble
+        self._start_document_recovery()
+        # The helper owns the D-Bus loop; the desktop retains all widget actions.
+        if os.environ.get('DBUS_SESSION_BUS_ADDRESS') and os.isatty(term.fd):
+            try:
+                from kilix_sdk import panes
+                workspace = panes.snapshot(timeout=0.3)
+                mine, focused = workspace.me(), workspace.focused()
+                self.frontend_focused = mine is not None and focused is not None and mine.id == focused.id
+            except Exception:
+                # Subsequent terminal focus reports remain authoritative.
+                self.frontend_focused = False
+            try:
+                from accessibility import Controller
+                self.accessibility = Controller(self)
+            except (OSError, ValueError):
+                self.accessibility = None
         last_blink = time.time()
         self._last_blit = 0.0
+        self._last_full_blit = 0.0
         start = time.time()
         try:
             self.render()
             while self.running:
-                rlist = [term.fd] + list(self.fd_hooks)
-                r, _, _ = select.select(rlist, [], [], 0.25)
-                for fd in r:
-                    if fd == term.fd:
-                        continue
-                    cb = self.fd_hooks.get(fd)
-                    if cb:
-                        cb()
-                if term.fd in r:
-                    for raw in term.read_input():
-                        self._last_input = time.time()
-                        if self.saving:
-                            self._wake_saver()   # any input exits; swallow it
+                try:
+                    rlist = [term.fd] + list(self.fd_hooks)
+                    r, _, _ = select.select(rlist, [], [], 0.25)
+                    for fd in r:
+                        if fd == term.fd:
                             continue
-                        if raw["kind"] == "key":
-                            ev = self._norm_key(raw)
-                            if ev:
-                                self.dispatch_key(ev)
-                        elif raw["kind"] == "mouse":
-                            ev = self._norm_mouse(raw)
-                            if ev:
-                                self.dispatch_mouse(ev)
-                        elif raw["kind"] == "paste":
-                            self.dispatch_paste(raw["text"])
-                if resized[0]:
-                    resized[0] = False
-                    self.do_resize()
-                now = time.time()
-                self.taskbar.tick(now)
-                self._hardware_tick(now)
-                self._tick_animation(now)
-                for hook in list(self.tick_hooks):
-                    hook(now)
-                if now - last_blink >= 0.53:
-                    last_blink = now
-                    self.wm.blink()
-                # idle screensaver: while engaged, step and blit each pass
-                # (this doubles as the keepalive) and skip the desktop render
-                self.maybe_start_saver(now)
-                if self.saving:
-                    self.blit(self.saver.step(now - self._saver_last))
-                    self._saver_last = now
-                    continue
-                # hover-dwell tooltip
-                if self.switcher is None and not self.menus.active:
-                    if self.mouse_pos != self._hover_pos:
-                        self._hover_pos = self.mouse_pos
-                        self._hover_since = now
-                        self._hide_tooltip()
-                    elif self._tooltip is None and now - self._hover_since >= 0.7:
-                        txt = self._tooltip_query(*self.mouse_pos)
-                        if txt:
-                            self._tooltip = txt
-                            self._tooltip_pos = self.mouse_pos
-                            self.dirty = True
-                # keepalive re-blits: kitty drops graphics sent while the
-                # window is still settling (tab bar / pane title bar appear
-                # right after startup and clear placements), and rendering is
-                # otherwise damage-driven — so repeat the frame aggressively
-                # for the first seconds and slowly forever after
-                age = now - self._last_blit
-                if age >= 0.5 and now - start < 5 or age >= 10:
-                    self.blit(force_full=True)   # heal dropped placements
-                self.render()
+                        cb = self.fd_hooks.get(fd)
+                        if cb:
+                            cb()
+                    if term.fd in r:
+                        for raw in term.read_input():
+                            if raw['kind'] == 'focus':
+                                self.frontend_focused = raw['focused']
+                                continue
+                            self._last_input = time.time()
+                            if self.saving:
+                                self._wake_saver()   # any input exits; swallow it
+                                continue
+                            if raw["kind"] == "key":
+                                ev = self._norm_key(raw)
+                                if ev:
+                                    self.dispatch_key(ev)
+                            elif raw["kind"] == "mouse":
+                                ev = self._norm_mouse(raw)
+                                if ev:
+                                    self.dispatch_mouse(ev)
+                            elif raw["kind"] == "paste":
+                                self.dispatch_paste(raw["text"])
+                    if resized[0]:
+                        resized[0] = False
+                        self.do_resize()
+                    now = time.time()
+                    self.taskbar.tick(now)
+                    self._hardware_tick(now)
+                    self._tick_animation(now)
+                    for hook in list(self.tick_hooks):
+                        hook(now)
+                    if now - last_blink >= 0.53:
+                        last_blink = now
+                        self.wm.blink()
+                    # idle screensaver: while engaged, step and blit each pass
+                    # (this doubles as the keepalive) and skip the desktop render
+                    self.maybe_start_saver(now)
+                    if self.saving:
+                        self.blit(self.saver.step(now - self._saver_last))
+                        self._saver_last = now
+                        continue
+                    # hover-dwell tooltip
+                    if self.switcher is None and not self.menus.active:
+                        if self.mouse_pos != self._hover_pos:
+                            self._hover_pos = self.mouse_pos
+                            self._hover_since = now
+                            self._hide_tooltip()
+                        elif self._tooltip is None and now - self._hover_since >= 0.7:
+                            txt = self._tooltip_query(*self.mouse_pos)
+                            if txt:
+                                self._tooltip = txt
+                                self._tooltip_pos = self.mouse_pos
+                                self.dirty = True
+                    # keepalive re-blits: kitty drops graphics sent while the
+                    # window is still settling (tab bar / pane title bar appear
+                    # right after startup and clear placements), and rendering is
+                    # otherwise damage-driven — so repeat the frame aggressively
+                    # for the first seconds and slowly forever after
+                    self._keepalive(now, start)
+                    self.render()
+                except Exception:
+                    # One bad pass (a window, a tick hook, a device callback)
+                    # must not end the desktop and every open document with
+                    # it; repeated faults still exit so the launcher restarts.
+                    self._loop_fault()
         except KeyboardInterrupt:
             pass
         finally:
@@ -1398,6 +1705,9 @@ def main():
         return
     desk = Desk(term=DeskTerm(), draw_cursor=a.cursor)
     desk.run()
+    status = getattr(desk, "exit_status", 0)
+    if status:
+        raise SystemExit(status)
 
 
 if __name__ == "__main__":

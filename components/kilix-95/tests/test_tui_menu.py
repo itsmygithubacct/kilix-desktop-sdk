@@ -8,8 +8,11 @@ desktop must not change the session's provider.
 """
 import os
 import shutil
+import tempfile
+from unittest.mock import patch
 
 import harness as H
+import games
 
 
 def _find(items, label):
@@ -35,12 +38,14 @@ assert entry.icon == "terminal", entry.icon
 
 # The entry opens a tab rather than doing anything itself.
 opened = []
+original_tab = d.shell._tab
 d.shell._tab = lambda argv, title, cwd=None, env=None: opened.append(
-    (list(argv), title))
+    (list(argv), title, env))
 entry.action()
 assert len(opened) == 1, opened
-argv, title = opened[0]
+argv, title, environment = opened[0]
 assert title == "Kilix TUI", title
+assert environment == {"KILIX_CONTENT_ROOT": os.path.normpath(games.APPS_DIR)}
 
 # Exactly two branches, the same two the Kilix CLI resolves: an installed
 # command wins, and otherwise the Kilix launcher prepares the pinned desktop.
@@ -54,7 +59,9 @@ try:
     shutil.which = lambda name: None
     target = d.shell.kilix_tui_target()
     assert target is not None, "no fallback at all"
-    assert target[-1] == "kilix-tui" and target[0].endswith("kilix"), target
+    assert target[0].endswith("kilix"), target
+    assert target[1:] == ["kilix-tui", "--content-root",
+                          os.path.normpath(games.APPS_DIR)], target
 
     # Even with a source checkout present, it must not win.
     source_home = os.environ.get("GPU_TERMINAL_SOURCE_HOME") or \
@@ -65,5 +72,45 @@ try:
         assert checkout not in target, target
 finally:
     shutil.which = saved_which
+
+# An installed command and a host fallback both receive the actual 95 root,
+# including distinct stores with spaces/quotes and lexical normalization.
+# Neither planning nor constructing the real remote-launch argv installs or
+# creates the missing content root, and inherited authority is not mutated.
+with tempfile.TemporaryDirectory(prefix="kilix95-tui-roots-") as temporary:
+    for name in ("store one", "store 'two'"):
+        selected = os.path.join(temporary, name)
+        raw = os.path.join(temporary, "unused", "..", name)
+        for installed in (True, False):
+            with patch.object(games, "APPS_DIR", raw), \
+                    patch.dict(os.environ, {"KILIX_CONTENT_ROOT": "/stale/receipts"}), \
+                    patch.object(shutil, "which", side_effect=lambda value:
+                                 "/opt/bin/kilix-tui" if installed and value == "kilix-tui" else None):
+                opened.clear()
+                entry.action()
+                assert len(opened) == 1, opened
+                target, title, environment = opened[0]
+                assert environment == {"KILIX_CONTENT_ROOT": selected}, environment
+                if installed:
+                    assert target == ["/opt/bin/kilix-tui"], target
+                else:
+                    assert target == [os.path.join(H.KILIX_HOME, "kilix"),
+                                      "kilix-tui", "--content-root", selected], target
+                assert not os.path.exists(selected), selected
+                assert os.environ["KILIX_CONTENT_ROOT"] == "/stale/receipts"
+
+                commands = []
+                with patch.object(d.shell, "_kitten", return_value="/fixture/kitten"), \
+                        patch.object(d.shell, "_resolve_program", side_effect=lambda value: value), \
+                        patch.object(d.shell, "_popen", side_effect=lambda argv: commands.append(argv) or True), \
+                        patch.dict(os.environ, {"KITTY_LISTEN_ON": "unix:/fixture/not-contacted"}):
+                    assert original_tab(target, title, env=environment)
+                assert len(commands) == 1
+                command = commands[0]
+                root_argument = "KILIX_CONTENT_ROOT=" + selected
+                assert command.count(root_argument) == 1, command
+                assert command[command.index(root_argument) - 1] == "--env", command
+                assert command[command.index("--") + 1:] == target, command
+                assert not os.path.exists(selected), selected
 
 print("ok")

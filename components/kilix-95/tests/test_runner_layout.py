@@ -31,4 +31,23 @@ source_home, kilix_home = runner.resolve_source_layout(
 assert source_home == "/workspace/gpu-terminal"
 assert kilix_home == "/workspace/gpu-terminal/kilix"
 
+# A test subprocess must not inherit anything that could decide its outcome.
+# BASH_FUNC_* is the one that hides: it carries *exported shell functions*, so
+# `command -v` inside a test would resolve the operator's shell function and
+# report a tool as installed when the sandbox has no such thing.
+dirty = {
+    "PATH": "/usr/bin:/bin",
+    "KILIX_STORAGE_HOME": "/live/storage",
+    "GPU_TERMINAL_HOME": "/live/data",
+    "KITTY_WINDOW_ID": "3",
+    "BASH_FUNC_chromium%%": "() { echo ambient; }",
+}
+kept = runner.parent_env_without_stack_vars(dirty)
+assert kept == {"PATH": "/usr/bin:/bin"}, kept
+
+# The control: the same filter must keep an ordinary variable whose name merely
+# resembles one of the stripped families, or "stripped" would be indiscernible
+# from "dropped everything".
+assert runner.parent_env_without_stack_vars({"KITTYCAT": "1"}) == {"KITTYCAT": "1"}
+
 print("ok")

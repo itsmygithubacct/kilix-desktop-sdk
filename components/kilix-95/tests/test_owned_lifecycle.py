@@ -7,12 +7,15 @@ from pathlib import Path
 import signal
 import subprocess
 import sys
+import tempfile
 from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 import owned_job as jobs
+import model_discovery as discovery
+import workflows_offer
 
 
 def load_class(file, name, **namespace):
@@ -39,7 +42,7 @@ for exited_before in (False, True):
         assert job.poll() == (0 if exited_before else None)
         process.poll.assert_not_called()
         process.wait.assert_not_called()
-        job.stop()
+        workflows_offer.stop(job)
         job.stop()
         assert events == [signal.SIGTERM, 'grace', signal.SIGKILL, 'reap']
         assert all(call.args[2] & os.WNOWAIT for call in waitid.call_args_list)
@@ -131,3 +134,84 @@ else:
     raise AssertionError('spawn failure hidden')
 log.close.assert_called_once()
 factory.side_effect = None
+
+Wizard = load_class('apps/modelwizard.py', 'ModelWizard',
+    wm=SimpleNamespace(Window=Window), W=Mock(), Discovery=Mock(),
+    backend=SimpleNamespace(read_json=lambda path: {}, state_root=lambda: Path("/unused")))
+for desktop_exit in (False, True):
+    desk = SimpleNamespace(tick_hooks=[])
+    window = Wizard(desk)
+    future = window.future
+    future.reset_mock()
+    future.done.return_value = False
+    window.refresh(0)
+    future.result.assert_not_called()
+    if desktop_exit:
+        desk.wm = SimpleNamespace(windows=[window])
+        Desk._cleanup_windows(desk)
+    else:
+        window.close()
+    window.cleanup()
+    window.refresh(0)
+    assert window._closed and window.future is None
+    assert window.refresh not in desk.tick_hooks
+    future.close.assert_called_once()
+    future.result.assert_not_called()  # No page handling once cancelled.
+
+# Discovery output handling and cleanup, including invalid results and spawn failure.
+for payload, code, expected in [(b'[{"id":"fixture"}]', 0, True), (b'invalid', 0, False), (b'', 1, False)]:
+    output = io.BytesIO(payload)
+    process = Mock(returncode=code)
+    process.poll.return_value = code
+    with tempfile.TemporaryDirectory() as directory, \
+         patch.object(discovery.tempfile, 'TemporaryFile', return_value=output), \
+         patch.object(discovery, 'OwnedJob', return_value=process):
+        task = discovery.Discovery(directory)
+        try:
+            result = task.result()
+            assert expected and result == [{'id': 'fixture'}]
+        except (ValueError, RuntimeError):
+            assert not expected
+        assert output.closed
+        process.stop.assert_called_once()
+output = io.BytesIO()
+with tempfile.TemporaryDirectory() as directory, \
+         patch.object(discovery.tempfile, 'TemporaryFile', return_value=output), \
+     patch.object(discovery, 'OwnedJob', side_effect=OSError('spawn failed')):
+    try:
+        discovery.Discovery(directory)
+    except OSError:
+        pass
+    assert output.closed
+
+# Worker entry point uses the selected backend and separates notices from JSON.
+backend = Mock()
+def pages(**kwargs):
+    assert kwargs == {'ensure_sizer': True}
+    print('fixture notice')
+    return [{'id': 'fixture'}]
+backend.pages.side_effect = pages
+with patch.dict(sys.modules, model_wizard=backend), \
+     patch.object(sys, 'stdout', io.StringIO()) as out, \
+     patch.object(sys, 'stderr', io.StringIO()) as err:
+    discovery.discover()
+    assert json.loads(out.getvalue()) == [{'id': 'fixture'}]
+    assert 'fixture notice' in err.getvalue()
+
+# Terminal cleanup still releases its descriptor if group stopping raises.
+Terminal = load_class('apps/licenseterminal.py', 'LicenceTerminal',
+                      wm=SimpleNamespace(Window=Window), os=Mock())
+window = Terminal.__new__(Terminal)
+window.desk = SimpleNamespace(tick_hooks=[window.tick], remove_fd=Mock())
+window.process = Mock()
+window.finished = True
+window.master = 9876
+with patch.object(workflows_offer, 'stop', side_effect=RuntimeError('stop failed')):
+    try:
+        window.cleanup()
+    except RuntimeError:
+        pass
+assert window.master is None and not window.desk.tick_hooks
+window.desk.remove_fd.assert_called_once_with(9876)
+Terminal.cleanup.__globals__['os'].close.assert_called_once_with(9876)
+print('owned lifecycle: OK (mock workers only)')

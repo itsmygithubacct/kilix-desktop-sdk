@@ -5,6 +5,7 @@ import tempfile
 
 import harness as H
 from apps import amp
+import games
 import storage
 
 
@@ -14,11 +15,33 @@ assert env == {
     "XDG_DATA_HOME": storage.data_dir("app-state"),
     "XDG_STATE_HOME": storage.state_dir("app-state"),
     "XDG_CACHE_HOME": storage.cache_dir("app-state"),
+    "KILIX_CONTENT_ROOT": os.path.normpath(games.APPS_DIR),
 }
 assert all(path.startswith(storage.storage_home() + os.sep)
            for path in env.values())
 assert all(stat.S_IMODE(os.stat(path).st_mode) == 0o700
-           for path in env.values())
+           for name, path in env.items() if name.startswith("XDG_"))
+
+# Receipt authority belongs to the installer, not an inherited value or the
+# private XDG app-state directory. Merely planning launch creates no catalog.
+old_apps = games.APPS_DIR
+old_content = os.environ.get("KILIX_CONTENT_ROOT")
+try:
+    with tempfile.TemporaryDirectory() as temporary:
+        games.APPS_DIR = os.path.join(temporary, "unused", "..", "quoted 'apps'")
+        os.environ["KILIX_CONTENT_ROOT"] = "/stale/receipts"
+        selected = amp._runtime_env()["KILIX_CONTENT_ROOT"]
+        assert selected == os.path.join(temporary, "quoted 'apps'")
+        assert not os.path.exists(selected)
+        assert os.environ["KILIX_CONTENT_ROOT"] == "/stale/receipts"
+        installer = games.kilix_content.Installer(games.APPS_DIR)
+        assert selected == installer.root
+finally:
+    games.APPS_DIR = old_apps
+    if old_content is None:
+        os.environ.pop("KILIX_CONTENT_ROOT", None)
+    else:
+        os.environ["KILIX_CONTENT_ROOT"] = old_content
 
 
 class FakeWM:

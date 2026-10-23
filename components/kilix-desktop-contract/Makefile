@@ -3,10 +3,10 @@
 UV ?= uv
 
 test:
-	$(UV) run --locked python validate_contract.py --self-test
+	$(UV) run --locked --with setuptools==80.9.0 --with wheel==0.45.1 python validate_contract.py --self-test
 
 test-offline:
-	$(UV) run --locked --offline python validate_contract.py --self-test
+	$(UV) run --locked --offline --with setuptools==80.9.0 --with wheel==0.45.1 python validate_contract.py --self-test
 
 launcher-consumer-readiness:
 	$(UV) run --locked --offline python -m kilix_desktop_contract.readiness --self-test

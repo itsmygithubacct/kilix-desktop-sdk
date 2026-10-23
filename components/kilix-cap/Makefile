@@ -163,7 +163,7 @@ test-code: $(BIN)
 	echo "determinism + golden digests: ok"
 
 # Asset validation and exact RGB render structure join the logic gates.
-test: test-code check-headers forbidden-check validate-audio validate-visual test-render
+test: test-code check-headers forbidden-check validate-audio validate-visual test-render test-laptop-repairs
 
 test-render: $(BIN)
 	@set -e; \
@@ -222,3 +222,7 @@ clean:
 # House convention: sibling 0.2.1 repositories are gated by `make check`.
 .PHONY: check
 check: test
+
+.PHONY: test-laptop-repairs
+test-laptop-repairs:
+	python3 tests/laptop_repairs.py

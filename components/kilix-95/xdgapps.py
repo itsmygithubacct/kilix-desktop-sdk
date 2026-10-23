@@ -8,6 +8,8 @@ $XDG_DATA_HOME / $XDG_DATA_DIRS (spec defaults when unset); nothing about the
 host machine is hardcoded.
 """
 import shlex
+from pathlib import Path
+import icons
 
 import host as kilix_host
 
@@ -43,6 +45,24 @@ _BUCKET_ICONS = {
 
 
 def icon_for(entry):
+    name = entry.get("icon", "")
+    if name in icons.ICONS:
+        return name
+    if name and Path(name).is_absolute() and Path(name).is_file():
+        return name
+    if name and "/" not in name:
+        # Prefer the application's own raster artwork when the icon theme
+        # supplies it; category icons remain the fallback for SVG-only themes.
+        for apps in app_dirs():
+            base = Path(apps).parent
+            for size in ("32x32", "48x48", "64x64", "16x16", "128x128"):
+                path = base / "icons/hicolor" / size / "apps" / (name + ".png")
+                if path.is_file():
+                    return str(path)
+            for suffix in ("", ".png", ".xpm"):
+                path = base / "pixmaps" / (name + suffix)
+                if path.is_file():
+                    return str(path)
     return _BUCKET_ICONS.get(bucket(entry), "app")
 
 

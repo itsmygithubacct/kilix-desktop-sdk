@@ -407,6 +407,8 @@ class WM:
             self.desk.play_sound("close")
         if win in self.windows:
             self.windows.remove(win)
+        import doc_recovery           # a deliberate close drops its checkpoint
+        doc_recovery.closed(win)
         if win.on_close:
             win.on_close()
         if self.active is win:

@@ -40,6 +40,16 @@ APPEARANCE = [
      ["block", "beam", "underline"]),
     ("tab_bar_style", "Tab bar style", "choice",
      ["fade", "separator", "powerline", "slant", "hidden"]),
+    # A shared SDK key rather than a kitty.conf one. It is persisted by
+    # membership in shared_settings.MANAGED_KEYS, not by which group it appears
+    # in, so it belongs wherever a user would look for it -- and someone after
+    # the tab bar's options should find both of them together.
+    (
+        shared_settings.TAB_BAR_EDGE_KEY,
+        "Tab bar edge",
+        "choice",
+        list(shared_settings.TAB_BAR_EDGE_CHOICES),
+    ),
 ]
 BEHAVIOR = [
     ("scrollback_lines", "Scrollback lines", "text", None),
@@ -51,6 +61,8 @@ BEHAVIOR = [
 ]
 TOP_BAR = [
     ("KILIX_CHROME_TEMPERATURE", "Thermal status", "bool", "0"),
+    (shared_settings.TEMPERATURE_UNIT_KEY, "Temperature units", "choice",
+     list(shared_settings.TEMPERATURE_UNIT_CHOICES)),
     ("KILIX_CHROME_VOLUME", "Volume", "bool", "1"),
     ("KILIX_CHROME_NETWORK", "Network / Wi-Fi", "bool", "1"),
     ("KILIX_CHROME_CALENDAR", "Calendar", "bool", "1"),
@@ -74,6 +86,7 @@ PANE_BUTTONS = [
         "choice",
         list(shared_settings.PANE_MEMORY_MODE_CHOICES),
     ),
+    ("KILIX_CHROME_BUTTON_LOG", "Open pane session log", "bool", "1"),
     ("KILIX_CHROME_BUTTON_SYNCHRONIZE_INPUT", "Synchronize keyboard input", "bool", "1"),
     ("KILIX_CHROME_BUTTON_FONT_INCREASE", "Increase text size", "bool", "1"),
     ("KILIX_CHROME_BUTTON_FONT_DECREASE", "Decrease text size", "bool", "1"),
@@ -400,6 +413,10 @@ class SettingsWin(wm.Window):
         self.voice_model_button = self.add(W.Button(
             18, 280, 142, 24, "Install + use model",
             cb=self._install_voice_model))
+        self.system_voice_button = self.add(W.Button(
+            450, 280, 148, 24, "System voice…",
+            cb=lambda: desk.shell.open_app("systemvoice")))
+        self.panels[voice_tab].append(self.system_voice_button)
         self.voice_model_status = self.add(W.Label(
             170, 284, "Uses Kilix's verified lazy installer.",
             font=T.SMALL, color=T.SHADOW))

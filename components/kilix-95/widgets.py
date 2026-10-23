@@ -161,7 +161,8 @@ class Checkbox(Widget):
     focusable = True
 
     def __init__(self, x, y, text, checked=False, cb=None):
-        super().__init__(x, y, 17 + T.text_w(T.FONT, text), 14)
+        # two extra pixels on the right leave room for the focus marquee
+        super().__init__(x, y, 19 + T.text_w(T.FONT, text), 14)
         self.text, self.checked, self.cb = text, checked, cb
 
     def draw(self, d, img):
@@ -178,6 +179,10 @@ class Checkbox(Widget):
                        fill=T.TEXT)
         d.text((self.x + 17, self.y + 1), self.text, font=T.FONT,
                fill=T.TEXT if self.enabled else T.DISABLED)
+        # Win95 draws the keyboard-focus marquee around a checkbox's label.
+        if self.enabled and self.window and self.window.focus is self:
+            T.focus_rect(d, self.x + 15, self.y, self.x + self.w - 1,
+                         self.y + self.h - 1)
 
     def on_mouse(self, ev):
         if ev.press and ev.btn == 1 and self.enabled:
@@ -312,6 +317,12 @@ class TextField(Widget):
         with the real text's indices; only glyphs and pixel widths differ."""
         return ("•" * len(self.text)) if self.mask else self.text
 
+    def text_origin(self):
+        return self.x + 4 - self.scroll, self.y + 2 + (self.h - 4 - 13) // 2
+
+    def text_viewport(self):
+        return self.x + 2, self.y + 2, self.w - 4, self.h - 4
+
     # selection helpers
     def _sel(self):
         if self.anchor is None or self.anchor == self.cur:
@@ -360,24 +371,26 @@ class TextField(Widget):
         T.sunken(d, x0, y0, x1, y1, fill=bg)
         # render into an interior-sized strip so scrolled text can't bleed
         # past the box onto neighbouring widgets
-        iw, ih = self.w - 4, self.h - 4
-        ty = (ih - 13) // 2
+        vx, vy, iw, ih = self.text_viewport()
+        tx, text_y = self.text_origin()
+        ty = text_y - vy
         strip = Image.new("RGB", (iw, ih), bg)
         sd = drawer(strip)
-        ox = 2 - self.scroll                      # x of text[0] within strip
+        ox = tx - vx                              # x of text[0] within strip
         s = self._sel()
         focused = self.window and self.window.focus is self
         disp = self._disp()
         if s and focused:
             sx0 = ox + T.text_w(T.FONT, disp[:s[0]])
             sx1 = ox + T.text_w(T.FONT, disp[:s[1]])
-            sd.rectangle([max(0, sx0), ty - 1, min(iw, sx1), ty + 13],
-                         fill=T.SEL_BG)
+            sx0, sx1 = max(0, sx0), min(iw, sx1)
+            if sx1 >= sx0:        # a selection wholly outside the viewport paints nothing
+                sd.rectangle([sx0, ty - 1, sx1, ty + 13], fill=T.SEL_BG)
         sd.text((ox, ty), disp, font=T.FONT, fill=T.TEXT)
         if s and focused:
             sd.text((ox + T.text_w(T.FONT, disp[:s[0]]), ty),
                     disp[s[0]:s[1]], font=T.FONT, fill=T.SEL_TX)
-        img.paste(strip, (x0 + 2, y0 + 2))
+        img.paste(strip, (vx, vy))
         if focused and self.window.caret_on:
             cx = x0 + self._x_of(self.cur)
             if x0 + 2 <= cx <= x1 - 2:
@@ -498,6 +511,12 @@ class TextArea(Widget):
     def _rows(self):
         return max(1, (self.h - 4) // self.LH)
 
+    def text_origin(self, row=0):
+        return self.x + 4 - self.hx, self.y + 2 + (row - self.sb.pos) * self.LH
+
+    def text_viewport(self):
+        return self.x + 4, self.y + 2, self.w - T.SCROLL_W - 10, self._rows() * self.LH
+
     def _col_at(self, row, px):
         s = self.lines[row]
         for i in range(len(s) + 1):
@@ -558,14 +577,14 @@ class TextArea(Widget):
         self.sb.place(x1 - T.SCROLL_W + 1 - 2, y0 + 2, self.h - 4)
         sel = self._sel()
         focused = self.window and self.window.focus is self
-        tx = x0 + 4
-        maxw = self.w - T.SCROLL_W - 10
+        tx, _, maxw, _ = self.text_viewport()
         W = T.text_w
         for i in range(self._rows()):
             row = self.sb.pos + i
             if row >= len(self.lines):
                 break
-            yy = y0 + 3 + i * self.LH
+            _, line_y = self.text_origin(row)
+            yy = line_y + 1
             s = self.lines[row]
             a, b = self._span(s, maxw)            # visible pixel window slice
             sel_row = None
@@ -702,9 +721,10 @@ class TextArea(Widget):
             step = -rows if k == "PageUp" else rows
             self._move(self.cr + step, self.goal_col, ev.shift)
         elif k == "Home":
-            self._move(self.cr, 0, ev.shift)
+            self._move(0 if ev.ctrl else self.cr, 0, ev.shift)
         elif k == "End":
-            self._move(self.cr, len(self.lines[self.cr]), ev.shift)
+            row = len(self.lines) - 1 if ev.ctrl else self.cr
+            self._move(row, len(self.lines[row]), ev.shift)
         elif ev.ctrl and k == "a":
             self.anchor = (0, 0)
             self.cr = len(self.lines) - 1
@@ -883,12 +903,34 @@ class IconGrid(Widget):
         self.sb = VScroll()
         self.band = None              # rubber band (x0, y0, x1, y1)
         self._press_item = None
+        self._keyboard_item = None
+        self._selection_anchor = None
         self.label_fg = T.LIGHT if desktop else T.TEXT
         self.bg = None if desktop else T.WINDOW_BG
 
-    def set_items(self, items):
+    def set_items(self, items, preserve=False):
+        old = self.items
+        if preserve:
+            def key(item):
+                return item.get('_entry_key', ('builtin', repr(item.get('data'))))
+            selected = {key(old[i]) for i in self.sel if 0 <= i < len(old)}
+            keyboard = key(old[self._keyboard_item]) if self._keyboard_item is not None and 0 <= self._keyboard_item < len(old) else None
+            anchor = key(old[self._selection_anchor]) if self._selection_anchor is not None and 0 <= self._selection_anchor < len(old) else None
+            _, columns = self._grid()
+            top_index = self.sb.pos * columns if columns else len(old)
+            top = key(old[top_index]) if top_index < len(old) else None
+            previous = {key(item): item for item in old}
+            items = [previous[key(item)] if key(item) in previous and previous[key(item)] == item else item for item in items]
+            indices = {key(item): i for i, item in enumerate(items)}
+            self.sel = {indices[k] for k in selected if k in indices}
+            self._keyboard_item = indices.get(keyboard)
+            self._selection_anchor = indices.get(anchor)
+            if columns and top in indices:
+                self.sb.pos = indices[top] // columns
+        else:
+            self.sel.clear()
+            self._keyboard_item = self._selection_anchor = None
         self.items = items
-        self.sel.clear()
         self.invalidate()
 
     # layout
@@ -1028,9 +1070,11 @@ class IconGrid(Widget):
                 elif i not in self.sel:
                     self.sel = {i}
                 self._press_item = i
+                self._keyboard_item = self._selection_anchor = i
             else:
                 if not ev.ctrl:
                     self.sel.clear()
+                    self._keyboard_item = self._selection_anchor = None
                 if ev.btn == 1:
                     self.band = (ev.x, ev.y, ev.x, ev.y)
             self.invalidate()
@@ -1065,6 +1109,61 @@ class IconGrid(Widget):
                 if 0 <= i < len(self.items)]
 
     def on_key(self, ev):
+        navigation = {"Home": "Home", "End": "End", "ArrowLeft": "Left",
+                      "ArrowRight": "Right", "ArrowUp": "Up",
+                      "ArrowDown": "Down"}.get(ev.key)
+        if navigation is not None:
+            if ev.alt or ev.ctrl:
+                return False
+            if not self.items:
+                return True
+            current = self._keyboard_item
+            if current is None or not 0 <= current < len(self.items):
+                current = min(self.sel) if self.sel else None
+            if navigation == "End":
+                target = len(self.items) - 1
+            elif navigation == "Home" or current is None:
+                target = 0
+            else:
+                per_col, per_row = self._grid()
+                if self.desktop:
+                    step = {"Up": -1, "Down": 1,
+                            "Left": -per_col, "Right": per_col}[navigation]
+                    if (navigation == "Up" and current % per_col == 0
+                            or navigation == "Down" and current % per_col == per_col - 1
+                            or navigation == "Left" and current < per_col
+                            or navigation == "Right" and current // per_col == (len(self.items) - 1) // per_col):
+                        step = 0
+                else:
+                    step = {"Left": -1, "Right": 1,
+                            "Up": -per_row, "Down": per_row}[navigation]
+                    if (navigation == "Left" and current % per_row == 0
+                            or navigation == "Right" and current % per_row == per_row - 1
+                            or navigation == "Up" and current < per_row
+                            or navigation == "Down" and current // per_row == (len(self.items) - 1) // per_row):
+                        step = 0
+                target = max(0, min(len(self.items) - 1, current + step))
+            if ev.shift:
+                if self._selection_anchor is None:
+                    self._selection_anchor = current if current is not None else target
+                lo, hi = sorted((self._selection_anchor, target))
+                self.sel = set(range(lo, hi + 1))
+            else:
+                self.sel = {target}
+                self._selection_anchor = target
+            self._keyboard_item = target
+            if not self.desktop:
+                _, per_row = self._grid()
+                self.sb.total = self._rows_total()
+                self.sb.page = max(1, (self.h - 8) // T.CELL_H)
+                row = target // per_row
+                if row < self.sb.pos:
+                    self.sb.pos = row
+                elif row >= self.sb.pos + self.sb.page:
+                    self.sb.pos = row - self.sb.page + 1
+                self.sb.clamp()
+            self.invalidate()
+            return True
         if ev.key == "Enter" and self.sel and self.on_activate:
             self.on_activate(self.items[sorted(self.sel)[0]])
             return True
@@ -1078,6 +1177,7 @@ class IconGrid(Widget):
 # ── tabs ────────────────────────────────────────────────────────────────────
 
 class TabBar(Widget):
+    focusable = True
     H = 21
     PAD = 18          # roomy default: 9px of air either side of the label
     MIN_PAD = 6       # below this the labels start to touch their borders
@@ -1137,6 +1237,9 @@ class TabBar(Widget):
             d.text((tx + (tw - T.text_w(T.FONT, label)) // 2,
                     self.y + (4 if not sel else 3)), label,
                    font=T.FONT, fill=T.TEXT)
+            if sel and self.window and self.window.focus is self:
+                T.focus_rect(d, tx + 3, self.y + 3, tx + tw - 4,
+                             self.y + self.H - 4)
             tx += tw
 
     def _tab_at(self, px):
@@ -1155,6 +1258,20 @@ class TabBar(Widget):
                 self.invalidate()
                 if self.cb:
                     self.cb(i)
+        return True
+
+    def on_key(self, ev):
+        if ev.ctrl or ev.alt or not self.tabs:
+            return False
+        if ev.key not in ('ArrowLeft', 'ArrowRight', 'Home', 'End'):
+            return False
+        target = (0 if ev.key == 'Home' else len(self.tabs) - 1 if ev.key == 'End'
+                  else (self.active + (-1 if ev.key == 'ArrowLeft' else 1)) % len(self.tabs))
+        if target != self.active:
+            self.active = target
+            self.invalidate()
+            if self.cb:
+                self.cb(target)
         return True
 
 
@@ -1630,6 +1747,8 @@ class Dropdown(Widget):
         cx, cy = (bx + x1 - 2) // 2, (y0 + y1) // 2
         d.polygon([(cx - 3, cy - 1), (cx + 4, cy - 1), (cx, cy + 3)],
                   fill=T.TEXT)
+        if self.window and self.window.focus is self:
+            T.focus_rect(d, x0 + 3, y0 + 3, bx - 2, y1 - 3)
 
     def on_mouse(self, ev):
         if ev.press and ev.btn == 1:
@@ -1647,3 +1766,19 @@ class Dropdown(Widget):
         self.invalidate()
         if self.cb:
             self.cb(self.options[i])
+
+    def on_key(self, ev):
+        if not self.options or ev.ctrl:
+            return False
+        if ev.key in ('Enter', ' ') or ev.alt and ev.key == 'ArrowDown':
+            self.on_mouse(Ev(kind='mouse', press=True, btn=1))
+            self.desk.menus.stack[-1].move_hot(1, start=-1)
+            return True
+        if ev.alt or ev.key not in ('ArrowUp', 'ArrowDown', 'Home', 'End'):
+            return False
+        target = (0 if ev.key == 'Home' else len(self.options) - 1 if ev.key == 'End'
+                  else max(0, min(len(self.options) - 1,
+                                  self.index + (-1 if ev.key == 'ArrowUp' else 1))))
+        if target != self.index:
+            self._pick(target)
+        return True

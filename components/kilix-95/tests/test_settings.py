@@ -175,6 +175,7 @@ with conf("font_size 12\n") as path:
         assert key in win.fields, f"Kilix 95 Settings is missing {key}"
     _, volume = win.fields["KILIX_CHROME_VOLUME"]
     _, thermal = win.fields["KILIX_CHROME_TEMPERATURE"]
+    _, temperature_unit = win.fields[settings.shared_settings.TEMPERATURE_UNIT_KEY]
     _, network = win.fields["KILIX_CHROME_NETWORK"]
     _, synchronize = win.fields["KILIX_CHROME_BUTTON_SYNCHRONIZE_INPUT"]
     _, cpu_mode = win.fields["KILIX_CHROME_PANE_CPU_MODE"]
@@ -184,6 +185,8 @@ with conf("font_size 12\n") as path:
     _, lights = win.fields["KILIX_GAME_KILIX_LIGHTS"]
     _, super_kilix = win.fields["KILIX_GAME_SUPER_KILIX"]
     assert not thermal.checked, "thermal widget should be disabled by default"
+    assert temperature_unit.value == "fahrenheit"
+    temperature_unit.index = temperature_unit.options.index("celsius")
     assert synchronize.checked, "synchronized-input button should default on"
     assert cpu_mode.value == "auto", "pane CPU load should default to auto"
     assert memory_mode.value == "auto", "pane memory chip should default to auto"
@@ -201,6 +204,7 @@ with conf("font_size 12\n") as path:
 
     shared_text = read(win.shared_path)
     assert "KILIX_CHROME_TEMPERATURE=1" in shared_text
+    assert "KILIX_TEMPERATURE_UNIT=celsius" in shared_text
     assert "KILIX_CHROME_VOLUME=0" in shared_text
     assert "KILIX_CHROME_NETWORK=0" in shared_text
     assert "KILIX_CHROME_BUTTON_SYNCHRONIZE_INPUT=0" in shared_text

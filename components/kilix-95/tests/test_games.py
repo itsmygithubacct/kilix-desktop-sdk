@@ -2,6 +2,7 @@
 and an installer error that isn't RuntimeError/OSError must be shown, not
 leaked out of main() with the tab (F36). No network: conf files + stubs only."""
 import builtins
+import hashlib
 import io
 import os
 import subprocess
@@ -134,7 +135,7 @@ assert "kilix-lights" in games.GAMES
 assert games.GAMES["kilix-lights"]["label"] == "Kilix Lights"
 assert games.GAMES["kilix-lights"]["icon"] == "lights"
 lights_spec = games.CONTENT_CATALOG.require("kilix-lights")
-assert lights_spec.binary == "bin/kilix-lights"
+assert lights_spec.binary == "kilix-lights/bin/kilix-lights"
 write("")
 assert games.game_ready("kilix-lights") is None
 assert "lights" in icons.ICONS
@@ -142,7 +143,9 @@ icons.get("lights", 16)
 icons.get("lights", 32)
 
 external_lights = os.path.join(tmp, "external-lights")
-lights_exe = os.path.join(external_lights, "bin", "kilix-lights")
+# The configured directory is the content root; the catalog names the
+# executable below it (kilix-lights/bin/kilix-lights in the games monorepo).
+lights_exe = os.path.join(external_lights, *lights_spec.binary.split("/"))
 os.makedirs(os.path.dirname(lights_exe))
 with open(lights_exe, "w") as f:
     f.write("#!/bin/sh\nexit 0\n")
@@ -364,9 +367,14 @@ try:
     games._fetch("file://" + src, dst, lambda _msg: None,
                  sha256="0" * 64)
     assert False, "checksum mismatch was accepted"
-except RuntimeError as e:
-    assert "sha256 mismatch" in str(e)
+except games.kilix_content.InstallError as e:
+    # The desktop wrapper sanitizes mirror failures before showing them.
+    assert src not in str(e)
 assert not os.path.exists(dst), "bad artifact must be removed"
+games._fetch("file://" + src, dst, lambda _msg: None,
+             sha256=hashlib.sha256(b"not the expected artifact").hexdigest())
+with open(dst, "rb") as f:
+    assert f.read() == b"not the expected artifact", "verified artifact was not published"
 
 
 # F36: main() catches installer errors that don't subclass RuntimeError/OSError

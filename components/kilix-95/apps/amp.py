@@ -14,14 +14,18 @@ from . import xpane
 
 
 def _runtime_env():
-    """Private persistent XDG roots for the desktop-managed player."""
+    """Private app state, with receipts resolved at the desktop installer root."""
+    import games
+
     roots = {
         "XDG_CONFIG_HOME": storage.config_dir("app-state"),
         "XDG_DATA_HOME": storage.data_dir("app-state"),
         "XDG_STATE_HOME": storage.state_dir("app-state"),
         "XDG_CACHE_HOME": storage.cache_dir("app-state"),
     }
-    return {name: storage.private_dir(path) for name, path in roots.items()}
+    environment = {name: storage.private_dir(path) for name, path in roots.items()}
+    environment["KILIX_CONTENT_ROOT"] = os.path.normpath(games.APPS_DIR)
+    return environment
 
 
 def open_amp(desk, path=None):

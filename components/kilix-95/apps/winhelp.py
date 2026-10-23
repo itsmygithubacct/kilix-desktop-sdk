@@ -66,8 +66,8 @@ def build_book():
                   "and the MS-DOS Prompt caller."),
             ("b", "Documents lists files you opened recently."),
             ("b", "Settings adjusts the desktop's look and behaviour."),
-            ("b", "Help opens this guide, project how-tos, and the System "
-                  "Manual browser for installed man pages."),
+            ("b", "Help opens this guide, Help Search for Kilix documentation, "
+                  "and the System Manual browser for installed man pages."),
             ("b", "Live links in Help open with the system default browser in a "
                   "new tab, not with the Kilix browser renderer."),
             ("b", "Run launches a command; Shut Down ends the session."),
@@ -184,6 +184,18 @@ def build_book():
             ("b", "Use the mouse wheel, Page Up, Page Down, Home, and End to "
                   "read long pages."),
             ("l", "Linux man-pages project", LINUX_MANPAGES),
+        ]),
+        ("helpsearch", "Searching Kilix help", [
+            ("h", "Searching Kilix help"),
+            ("p", "Start > Help > Help Search finds original documentation "
+                  "passages for Kilix, kitty, Pleb, and Plebian-OS."),
+            ("b", "Ask a question and press Enter or click Search."),
+            ("b", "Select a result to read its original text, source path, "
+                  "passage ID, and source commit."),
+            ("b", "Search retrieves source excerpts; it does not generate "
+                  "an answer or inspect the current state of your machine."),
+            ("b", "From a terminal, use `kilix help-search QUESTION` for "
+                  "the same lookup."),
         ]),
         ("kilix", "Using Kilix", [
             ("h", "Using Kilix"),

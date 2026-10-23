@@ -9,6 +9,8 @@ import os
 import re
 import subprocess
 import sys
+import tempfile
+from pathlib import Path
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 
@@ -23,11 +25,34 @@ def main() -> int:
     failed = []
     skipped = {}
     for name in names:
-        env = dict(os.environ, PYTHONDONTWRITEBYTECODE="1")
-        result = subprocess.run(
-            [sys.executable, os.path.join(HERE, name), "-v"],
-            capture_output=True, text=True, env=env,
-        )
+        # Tests must not discover the operator's agents, launch preferences,
+        # live sockets or storage. Keep explicit host/native dependency paths.
+        env = {key: value for key, value in os.environ.items()
+               if not key.startswith(("KILIX", "KITTY_", "GPU_TERMINAL_",
+                                      "XDG_", "BASH_FUNC_", "CODEX_"))}
+        for key in ("KILIX_HOME", "GPU_TERMINAL_SOURCE_HOME"):
+            if key in os.environ:
+                env[key] = os.environ[key]
+        # Unix socket names have a small fixed limit; the runner's inherited
+        # TMPDIR can already be longer than that limit before a fixture starts.
+        with tempfile.TemporaryDirectory(
+                prefix="kt-", dir="/tmp" if os.name == "posix" else None) as tmp:
+            root = Path(tmp)
+            for key, leaf in {
+                "HOME": "home", "TMPDIR": "tmp",
+                "XDG_CONFIG_HOME": "config", "XDG_CACHE_HOME": "cache",
+                "XDG_DATA_HOME": "data", "XDG_STATE_HOME": "state",
+                "XDG_RUNTIME_DIR": "run", "GPU_TERMINAL_HOME": "storage",
+                "KILIX_STORAGE_HOME": "storage/kilix",
+            }.items():
+                path = root / leaf
+                path.mkdir(mode=0o700, parents=True, exist_ok=True)
+                env[key] = str(path)
+            env["PYTHONDONTWRITEBYTECODE"] = "1"
+            result = subprocess.run(
+                [sys.executable, os.path.join(HERE, name), "-v"],
+                capture_output=True, text=True, env=env,
+            )
         output = result.stdout + result.stderr
         # A skipped test is a test that did not run. Reporting it as a plain
         # PASS makes a conditional gate indistinguishable from a green one,

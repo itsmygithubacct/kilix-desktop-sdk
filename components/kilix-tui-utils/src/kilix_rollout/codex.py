@@ -13,6 +13,23 @@ _UUID = re.compile(
     r"([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})",
     re.I,
 )
+_TURN_STARTED = frozenset({"task_started", "turn_started"})
+_TURN_COMPLETE = frozenset({
+    "task_complete", "turn_complete", "turn_completed",
+})
+_APPROVAL_REQUESTED = frozenset({
+    "exec_approval_request", "apply_patch_approval_request",
+})
+_APPROVAL_RESOLVED = frozenset({
+    # Rollouts do not append a separate approval-response event. An accepted
+    # request is followed by its operation; a denied/aborted request is
+    # eventually closed by the turn boundary.
+    "exec_command_begin", "exec_command_end",
+    "patch_apply_begin", "patch_apply_end",
+    "turn_aborted", "task_aborted",
+}) | _TURN_STARTED | _TURN_COMPLETE
+
+
 def home() -> str:
     return os.environ.get("CODEX_HOME") or os.path.join(
         os.path.expanduser("~"), ".codex")
@@ -47,6 +64,18 @@ def _message_text(value) -> str:
     return ""
 
 
+def _operator_message(value) -> str:
+    """Return operator text, excluding context records injected by Codex."""
+    text = _message_text(value)
+    lowered = text.lstrip().casefold()
+    if lowered.startswith((
+        "<codex_internal_context", "<environment_context",
+        "<permissions instructions>", "<skills_instructions>",
+    )):
+        return ""
+    return text
+
+
 def _first_meta(path: str) -> dict[str, object]:
     for record in jsonl.head_records(path, 256):
         if record.get("type") != "session_meta":
@@ -57,13 +86,31 @@ def _first_meta(path: str) -> dict[str, object]:
     return {}
 
 
-def _inspect(path: str) -> dict[str, object]:
+def _inspect(
+    path: str,
+    *,
+    include_agent_message: bool = True,
+) -> dict[str, object]:
     """Return the latest cwd, messages, and explicit turn boundary."""
     cwd = ""
     prompt = ""
     agent_message = ""
     turn_event = ""
-    for record in jsonl.tail_records(path, None):
+    pending_tool = ""
+    approval_decided = False
+    for record in jsonl.tail_records_matching(
+        path,
+        (
+            b'"turn_context"', b'"event_msg"',
+            b'"exec_approval_request"', b'"apply_patch_approval_request"',
+            b'"exec_command_begin"', b'"exec_command_end"',
+            b'"patch_apply_begin"', b'"patch_apply_end"',
+            b'"turn_aborted"', b'"task_aborted"',
+            b'"role":"user"', b'"role": "user"',
+            b'"role":"assistant"', b'"role": "assistant"',
+        ),
+        None,
+    ):
         kind = record.get("type")
         payload = record.get("payload")
         payload = payload if isinstance(payload, dict) else {}
@@ -73,19 +120,34 @@ def _inspect(path: str) -> dict[str, object]:
                 cwd = value
         elif kind == "event_msg":
             event = payload.get("type")
-            if not turn_event and event in ("task_started", "task_complete"):
+            if not approval_decided and event in _APPROVAL_REQUESTED:
+                pending_tool = "command approval" if event == "exec_approval_request" \
+                    else "file-change approval"
+                approval_decided = True
+            elif not approval_decided and event in _APPROVAL_RESOLVED:
+                approval_decided = True
+            if not turn_event and event in (_TURN_STARTED | _TURN_COMPLETE):
                 turn_event = str(event)
             if not prompt and event == "user_message":
-                prompt = _message_text(payload.get("message") or payload.get("text"))
+                prompt = _operator_message(
+                    payload.get("message") or payload.get("text"))
             if not agent_message and event == "agent_message":
                 agent_message = _message_text(payload.get("message"))
-        if cwd and prompt and agent_message and turn_event:
+        elif kind == "response_item" and payload.get("type") == "message":
+            role = payload.get("role")
+            if not prompt and role == "user":
+                prompt = _operator_message(payload.get("content"))
+            elif not agent_message and role == "assistant":
+                agent_message = _message_text(payload.get("content"))
+        if (cwd and prompt and turn_event
+                and (agent_message or not include_agent_message)):
             break
     return {
         "cwd": cwd,
         "prompt": prompt,
         "agent_message": agent_message,
         "turn_event": turn_event,
+        "pending_tool": pending_tool,
     }
 
 
@@ -124,6 +186,88 @@ def _matches_selector(
                 or absolute == expanded):
             return True
     return False
+
+
+def _session_record(
+    path: str,
+    *,
+    updated: float,
+    archived: bool,
+    pids: tuple[int, ...],
+    cached_meta: dict[str, object] | None = None,
+    include_agent_message: bool = True,
+) -> Session:
+    """Build one record without walking the rest of the Codex history."""
+    meta = cached_meta or _first_meta(path)
+    session_id = _session_id(path, meta)
+    display_id = session_id or Path(path).stem
+    details = _inspect(path, include_agent_message=include_agent_message)
+    event = str(details["turn_event"])
+    owners = tuple(sorted(set(int(pid) for pid in pids if int(pid) > 0)))
+    state = (
+        "invalid" if not session_id else
+        "live" if owners else
+        "cut-off" if event in _TURN_STARTED else
+        "idle"
+    )
+    live_status = (
+        "waiting" if owners and details["pending_tool"] else
+        "idle" if owners and event in _TURN_COMPLETE else
+        "working" if owners and event in _TURN_STARTED else
+        "unknown" if owners else
+        ""
+    )
+    original_cwd = (
+        str(meta.get("cwd")) if isinstance(meta.get("cwd"), str) else "")
+    cwd = str(details["cwd"]) or original_cwd
+    return Session(
+        provider="codex",
+        session_id=display_id,
+        path=path,
+        cwd=cwd,
+        original_cwd=original_cwd,
+        title=str(details["prompt"]),
+        updated=updated,
+        state=state,
+        pids=owners,
+        live_status=live_status,
+        started=_timestamp(meta.get("timestamp")),
+        last_user_message=str(details["prompt"]),
+        last_agent_message=str(details["agent_message"]),
+        last_turn_event=event,
+        pending_tool=str(details["pending_tool"]),
+        version=str(meta.get("cli_version") or ""),
+        entrypoint=str(meta.get("source") or ""),
+        archived=archived,
+        invalid_reason=(
+            "no session ID was found in metadata or the filename"
+            if not session_id else ""),
+    )
+
+
+def session_from_path(
+    path: str,
+    *,
+    pids: tuple[int, ...] = (),
+    archived: bool = False,
+) -> Session | None:
+    """Inspect one known rollout, for pane dashboards and targeted tooling.
+
+    Discovery intentionally walks all recent rollouts. A live pane already
+    tells us the exact file through ``/proc/<pid>/fd``; reparsing the entire
+    Codex history for that case turns a refresh into needless disk work.
+    """
+    try:
+        updated = os.stat(path).st_mtime
+    except OSError:
+        return None
+    return _session_record(
+        path,
+        updated=updated,
+        archived=archived,
+        pids=pids,
+        include_agent_message=False,
+    )
 
 
 def discover(
@@ -176,41 +320,13 @@ def discover(
         [path for path, _, _, _ in candidates], proc_root=proc_root)
     sessions: list[Session] = []
     for path, updated, archived, cached_meta in candidates:
-        meta = cached_meta or _first_meta(path)
-        session_id = _session_id(path, meta)
-        display_id = session_id or Path(path).stem
-        details = _inspect(path)
         pids = owners.get(path, ())
-        event = str(details["turn_event"])
-        state = (
-            "invalid" if not session_id else
-            "live" if pids else
-            "cut-off" if event == "task_started" else
-            "idle"
-        )
-        original_cwd = (
-            str(meta.get("cwd")) if isinstance(meta.get("cwd"), str) else "")
-        cwd = str(details["cwd"]) or original_cwd
-        sessions.append(Session(
-            provider="codex",
-            session_id=display_id,
-            path=path,
-            cwd=cwd,
-            original_cwd=original_cwd,
-            title=str(details["prompt"]),
+        sessions.append(_session_record(
+            path,
             updated=updated,
-            state=state,
-            pids=pids,
-            started=_timestamp(meta.get("timestamp")),
-            last_user_message=str(details["prompt"]),
-            last_agent_message=str(details["agent_message"]),
-            last_turn_event=event,
-            version=str(meta.get("cli_version") or ""),
-            entrypoint=str(meta.get("source") or ""),
             archived=archived,
-            invalid_reason=(
-                "no session ID was found in metadata or the filename"
-                if not session_id else ""),
+            pids=pids,
+            cached_meta=cached_meta,
         ))
     return sessions
 

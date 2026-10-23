@@ -13,7 +13,7 @@ builder, and the builder may not grade it.
 ```text
 kilix-desktop-sdk/
 ├── README.md
-├── LICENSES/                  MIT and CC BY-NC-SA 4.0 full texts
+├── LICENSES/                  MIT, GPL-3.0 and CC BY-NC-SA 4.0 full texts
 ├── .reuse/dep5                per-path licence declarations
 ├── manifest.toml              component identities, edges, schema surface
 ├── components/
@@ -44,6 +44,7 @@ NonCommercial-licensed content.
 | --- | --- |
 | `components/kilix-land-desktop/assets/**` | CC BY-NC-SA 4.0 |
 | `components/kilix-cap/assets/**` | see `components/kilix-cap/COPYING-ASSETS.md` |
+| `components/kilix-95/**` | GPL-3.0-only (selected standalone source) |
 | everything else authored here | MIT |
 | `components/*/third_party/**` | upstream submodules, retained as gitlinks, under their own licences |
 
@@ -70,7 +71,9 @@ unadopted was silently merged into a component tree.
 
 ```sh
 python3 tools/verify-provenance.py     # 398 commits: identity, parents, trees
-python3 tools/verify-layout.py         # component trees == their source revisions
+python3 tools/verify-layout.py         # historical import plus declared changes
+# Resolve each refresh_revision in supplied local source repositories:
+python3 tools/verify-refresh.py --source kilix-95=/path/to/kilix-95 ...
 ```
 
 Both run offline against this repository alone.

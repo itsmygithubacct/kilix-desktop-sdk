@@ -129,7 +129,7 @@ class Taskbar:
         pass
 
     def tick(self, now):
-        m = time.strftime("%H:%M", time.localtime(now))
+        m = time.strftime("%I:%M %p", time.localtime(now))
         if m != self._minute:
             self._minute = m
             self.invalidate()
@@ -166,7 +166,7 @@ class Taskbar:
         self._draw_tray(fb, d)
         cx0, cy0, cx1, cy1 = self._clock_rect()
         T.sunken(d, cx0, cy0, cx1, cy1, fill=getattr(T, "TRAY_BG", T.FACE))
-        clock = self._minute or time.strftime("%H:%M")
+        clock = self._minute or time.strftime("%I:%M %p")
         d.text((cx1 - 7 - T.text_w(T.FONT, clock), cy0 + 3), clock,
                font=T.FONT, fill=T.TEXT)
 
@@ -520,6 +520,13 @@ class Taskbar:
                 MI("Games", icon="games", submenu=games()),
                 MI("Kilix Applications", icon="folder",
                    submenu=shell.catalog_application_menu_items()),
+                MI("Installed Kilix Applications", icon="folder",
+                   submenu=shell.installed_application_menu_items() or [
+                       MI("(No installed applications or models found)", enabled=False)]),
+                MI("Model Setup…", icon="settings",
+                   action=lambda: shell.open_app("modelwizard")),
+                MI("Kilix Workflows…", icon="terminal",
+                   action=lambda: shell.open_app("workflows")),
                 sub(),
                 MI("File Manager", icon="folder_open",
                    action=lambda: shell.open_app("filemgr")),
@@ -533,6 +540,10 @@ class Taskbar:
                    action=shell.open_tmux_manager),
                 MI("Kilix TUI", icon="terminal",
                    action=shell.open_kilix_tui),
+                MI("System Voice", icon="speak",
+                   action=lambda: shell.open_app("systemvoice")),
+                MI("Document Reader", icon="speak",
+                   action=lambda: shell.open_app("documentreader")),
                 MI("Read Aloud Settings", icon="speak",
                    action=shell.open_kilix_tts),
                 MI("Dictation Settings", icon="microphone",
@@ -657,6 +668,10 @@ class Taskbar:
                action=lambda: shell.open_app("controlpanel")),
             MI("kilix Settings", icon="settings",
                action=lambda: shell.open_app("settings")),
+            MI("Model Setup…", icon="settings",
+               action=lambda: shell.open_app("modelwizard")),
+            MI("Kilix Workflows…", icon="terminal",
+               action=lambda: shell.open_app("workflows")),
             MI("Display…", icon="display", action=shell.display_properties),
             MI("Sounds…", icon="soundcp",
                action=lambda: shell.open_app("soundcp")),
@@ -676,6 +691,8 @@ class Taskbar:
                 sub(),
             ]
         help_sub += [
+            MI("Help Search", icon="help",
+               action=lambda: shell.open_app("helpsearch")),
             MI("System Manual", icon="help",
                action=lambda: shell.open_app("manual", "search")),
             MI("List", icon="doc_text",
@@ -720,6 +737,8 @@ class Taskbar:
             MI("Create Launcher…", icon="exe",
                action=lambda: shell.create_launcher_dialog()),
             MI("Run…", icon="run", action=shell.run_dialog),
+            MI("Ask Kilix by voice…", icon="microphone",
+               action=shell.ask_voice),
             MI("BSOD", icon="error", action=shell.show_bsod),
             sub(),
             MI("Shut Down…", icon="shutdown", action=shell.shutdown_dialog),
@@ -886,6 +905,6 @@ class _ClockPopup(_Popup):
                 else:
                     d.text((tx, ry), s, font=T.FONT, fill=T.TEXT)
             ry += 14
-        tstr = time.strftime("%H:%M:%S", now)
+        tstr = time.strftime("%I:%M:%S %p", now)
         d.text(((w - T.text_w(T.FONT, tstr)) // 2, h - 16), tstr,
                font=T.FONT, fill=T.TEXT)

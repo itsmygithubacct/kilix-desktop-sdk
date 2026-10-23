@@ -102,6 +102,16 @@ class SchemaTests(unittest.TestCase):
                         errors_for(kind, document, self.available), []
                     )
 
+    def test_action_accepts_extensions_but_still_validates_core(self) -> None:
+        action = {"schema_version": 1, "verb": "url.open",
+                  "payload": "https://example.invalid/", "trace_id": "local-test"}
+        self.assertEqual(errors_for("action", action, self.available), [])
+        for field, invalid in (("verb", "unknown.action"),
+                               ("payload", "http://example.invalid/"),
+                               ("schema_version", 2)):
+            with self.subTest(field=field):
+                self.assertTrue(errors_for("action", {**action, field: invalid}, self.available))
+
     def test_semantic_status_and_authority_rules(self) -> None:
         check = load_json(
             ROOT / "fixtures" / "invalid" / "provider-check-inconsistent.json"

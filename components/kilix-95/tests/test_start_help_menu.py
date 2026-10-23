@@ -21,6 +21,7 @@ top = d.menus.stack[0].items
 help_item = _find(top, "Help")
 assert help_item is not None and help_item.submenu, _labels(top)
 help_sub = help_item.submenu
+assert "Help Search" in _labels(help_sub), _labels(help_sub)
 assert "System Manual" in _labels(help_sub), _labels(help_sub)
 assert "List" in _labels(help_sub), _labels(help_sub)
 assert "Pleb Recovery Guide" in _labels(help_sub), _labels(help_sub)
@@ -32,11 +33,12 @@ seen = []
 d.shell.open_app = lambda name, arg=None: seen.append((name, arg))
 d.shell.open_pleb_recovery = lambda: seen.append(("pleb-recovery", None))
 
+_find(help_sub, "Help Search").action()
 _find(help_sub, "System Manual").action()
 _find(help_sub, "List").action()
 _find(help_sub, "Pleb Recovery Guide").action()
 _find(help_sub, "Help Topics").action()
-assert seen == [("manual", "search"), ("manual", "list"),
+assert seen == [("helpsearch", None), ("manual", "search"), ("manual", "list"),
                 ("pleb-recovery", None), ("winhelp", None)], seen
 
 seen.clear()

@@ -166,6 +166,39 @@ def test_properties_reports_size():
     assert "2.0 KB" in captured["text"], captured["text"]
 
 
+def test_standard_uri_clipboard_pastes_external_files_and_text_replaces_it():
+    from clipboard import Content
+    from pathlib import Path
+    d=H.make_desk()
+    with tempfile.TemporaryDirectory() as root:
+        src=Path(root)/'external white space.txt'
+        src.write_text('external data')
+        target=Path(root)/'destination';target.mkdir()
+        win=_win(d,str(target))
+        d.set_clipboard_content(Content({'text/uri-list':(src.as_uri()+'\r\n').encode()}))
+        win._paste()
+        assert (target/src.name).read_text()=='external data'
+        d.set_clipboard('copied text')
+        win._paste()
+        assert not (target/'external white space - Copy.txt').exists()
+
+
+def test_failed_cut_retains_the_source_in_shared_clipboard():
+    from clipboard import Content
+    from pathlib import Path
+    from unittest import mock
+    d=H.make_desk()
+    with tempfile.TemporaryDirectory() as root:
+        src=Path(root)/'retained.txt';src.write_text('retained')
+        target=Path(root)/'destination';target.mkdir()
+        win=_win(d,str(target))
+        d.set_clipboard_content(Content.from_files([src],cut=True))
+        with mock.patch.object(filemgr.shutil,'move',side_effect=OSError('fixture refusal')):
+            win._paste()
+        assert src.exists()
+        assert d.clipboard_content.files==('cut',(str(src),))
+
+
 if __name__ == "__main__":
     for _name, _fn in sorted(list(globals().items())):
         if _name.startswith("test_") and callable(_fn):

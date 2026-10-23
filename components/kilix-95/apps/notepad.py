@@ -117,6 +117,19 @@ class Notepad(wm.Window):
     def request_close(self):
         self._if_saved(self.close)
 
+    # ── crash recovery (doc_recovery) ───────────────────────────────────────
+    recovery_app = "notepad"
+
+    def recovery_snapshot(self):
+        return {"format": "text", "text": self.ta.text()}
+
+    def recovery_restore(self, record):
+        """Show a checkpointed document as unsaved, bound to its original file."""
+        self.ta.set_text(record["snapshot"]["text"])
+        self.path = record.get("path")
+        self.modified = True
+        self._retitle()
+
     # ── menus ───────────────────────────────────────────────────────────────
     def _file_menu(self):
         MI, sep = W.MenuItem, W.sep

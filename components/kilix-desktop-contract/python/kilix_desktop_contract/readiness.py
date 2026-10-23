@@ -12,9 +12,10 @@ from typing import Any, Callable
 from .jsonio import DocumentError, canonical_bytes, exact_json_equal, load_json
 from .conformance import ConformanceError, MatrixProvider, verify_matrix_provider
 from .persistence import MIGRATION_ORDER, SEPARATE_CONSUMERS
+from .resources import RESOURCE_ROOT
 
 
-ROOT = Path(__file__).resolve().parents[2]
+ROOT = RESOURCE_ROOT
 DEFAULT_REQUIREMENTS = (
     ROOT / "contracts" / "trusted-launcher-consumer-requirements-v1.json"
 )

@@ -93,8 +93,9 @@ static bool transient_status_success;
 static struct {
     bool open;
     int pressed_row; /* -1 = none */
+    int page;
     LaptopList profiles;
-} laptop_menu = {false, -1, {0, {{0}}}};
+} laptop_menu = {false, -1, 0, {0, {{0}}}};
 static bool laptop_menu_request_pending;
 static bool laptop_launch_pending;
 static char pending_laptop_profile[LAPTOP_ID_MAX];
@@ -132,6 +133,7 @@ enum {
 };
 
 enum {
+    LAPTOP_MENU_PAGE_SIZE = 6,
     LAPTOP_MENU_W = 792,
     LAPTOP_MENU_HEADER_H = 90,
     LAPTOP_MENU_ROW_H = 72,
@@ -597,6 +599,7 @@ static void reset_world(SceneId destination)
      * game catalog does; only the transient chooser state clears. */
     laptop_menu.open = false;
     laptop_menu.pressed_row = -1;
+    laptop_menu.page = 0;
     laptop_menu_request_pending = false;
     laptop_launch_pending = false;
     power_menu.open = false;
@@ -651,6 +654,7 @@ void scene_goto(SceneId id)
     panel_close(false);
     laptop_menu.open = false;
     laptop_menu.pressed_row = -1;
+    laptop_menu.page = 0;
     power_menu.open = false;
     power_menu.pressed_row = -1;
     power_menu.armed_row = -1;
@@ -783,6 +787,8 @@ bool scene_take_laptop_menu_request(void)
 
 void scene_set_laptop_profiles(const LaptopList *profiles)
 {
+    laptop_menu.page = 0;
+    laptop_menu.pressed_row = -1;
     if (profiles == NULL || profiles->count < 0 ||
         profiles->count > LAPTOP_PROFILES_MAX) {
         memset(&laptop_menu.profiles, 0, sizeof laptop_menu.profiles);
@@ -798,6 +804,7 @@ void scene_open_laptop_menu(void)
     panel_close(false);
     laptop_menu.open = true;
     laptop_menu.pressed_row = -1;
+    laptop_menu.page = 0;
 }
 
 bool scene_laptop_menu_open(void) { return laptop_menu.open; }
@@ -828,11 +835,27 @@ bool scene_take_laptop_close_request(const char **profile_id)
     return true;
 }
 
-/* Chooser card layout. Row 0..count-1 are profiles; row count is Close.
- * An empty scan keeps only the Close row under a hint line. */
+/* Six profiles per page plus Next page and Close fit the content viewport.
+ * Logical row ids stay stable across drawing, press/release and requests. */
+static int laptop_menu_visible_profiles(void)
+{
+    int count = laptop_menu.profiles.count - laptop_menu.page * LAPTOP_MENU_PAGE_SIZE;
+    return count < LAPTOP_MENU_PAGE_SIZE ? count : LAPTOP_MENU_PAGE_SIZE;
+}
+
 static int laptop_menu_rows(void)
 {
-    return laptop_menu.profiles.count + 1;
+    return laptop_menu_visible_profiles() + 1 +
+           (laptop_menu.profiles.count > LAPTOP_MENU_PAGE_SIZE);
+}
+
+static int laptop_menu_logical_row(int slot)
+{
+    int visible = laptop_menu_visible_profiles();
+    if (slot < visible) return laptop_menu.page * LAPTOP_MENU_PAGE_SIZE + slot;
+    if (slot == visible && laptop_menu.profiles.count > LAPTOP_MENU_PAGE_SIZE)
+        return laptop_menu.profiles.count + 1; /* Next page */
+    return laptop_menu.profiles.count; /* Close */
 }
 
 /* An empty scan grows the header by one hint line above the Close row. */
@@ -994,12 +1017,19 @@ static int laptop_menu_row_at(int x, int y)
     row = (y - card.y - header) / LAPTOP_MENU_ROW_H;
     if (y < card.y + header || row < 0 || row >= laptop_menu_rows())
         return -1;
-    return row;
+    return laptop_menu_logical_row(row);
 }
 
 static void laptop_menu_choose(int row)
 {
-    if (row < 0 || row >= laptop_menu_rows()) return;
+    if (row < 0 || row > laptop_menu.profiles.count + 1) return;
+    if (row == laptop_menu.profiles.count + 1) {
+        int pages = (laptop_menu.profiles.count + LAPTOP_MENU_PAGE_SIZE - 1) /
+                    LAPTOP_MENU_PAGE_SIZE;
+        if (pages > 0) laptop_menu.page = (laptop_menu.page + 1) % pages;
+        laptop_menu.pressed_row = -1;
+        return;
+    }
     if (row == laptop_menu.profiles.count) {
         laptop_menu.open = false;
         sound_play(SOUND_DISMISS);
@@ -1067,13 +1097,20 @@ static void draw_laptop_menu(Canvas *c)
     draw_rect(c, card.x + 6, card.y + 6, card.w - 12, 9, UI_TEAL);
     draw_text_center(c, card.x + card.w / 2, card.y + 27,
                      "LAPTOP - OPEN A SESSION", UI_NAVY);
-    for (int row = 0; row < rows; row++) {
+    for (int slot = 0; slot < rows; slot++) {
+        int row = laptop_menu_logical_row(slot);
         int row_y = card.y + laptop_menu_header_height() +
-                    row * LAPTOP_MENU_ROW_H;
+                    slot * LAPTOP_MENU_ROW_H;
         bool close_row = row == laptop_menu.profiles.count;
         char row_text[LAPTOP_ID_MAX + 24];
         const char *text;
-        if (close_row) {
+        if (row == laptop_menu.profiles.count + 1) {
+            (void)snprintf(row_text, sizeof row_text, "Next page (%d/%d)",
+                           laptop_menu.page + 1,
+                           (laptop_menu.profiles.count + LAPTOP_MENU_PAGE_SIZE - 1) /
+                           LAPTOP_MENU_PAGE_SIZE);
+            text = row_text;
+        } else if (close_row) {
             text = "Close";
         } else if (laptop_menu_running[row]) {
             /* The row is honest about what a touch does. */
@@ -1968,6 +2005,7 @@ uint32_t scene_digest(void)
     h = fnv1a(h, (uint32_t)pending_game_kind);
     h = fnv1a(h, laptop_menu.open ? 1u : 0u);
     h = fnv1a(h, (uint32_t)(laptop_menu.pressed_row + 1));
+    if (laptop_menu.page != 0) h = fnv1a(h, (uint32_t)laptop_menu.page);
     h = fnv1a(h, (uint32_t)laptop_menu.profiles.count);
     for (int i = 0; i < laptop_menu.profiles.count; i++)
         h = fnv1a_text(h, laptop_menu.profiles.ids[i]);

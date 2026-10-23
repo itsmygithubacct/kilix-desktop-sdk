@@ -6,8 +6,10 @@ import signal
 import stat
 import subprocess
 import tempfile
+from types import SimpleNamespace
 
 import harness as H          # noqa: sets up sys.path for the imports below
+from kilix_sdk import xapp as shared_xapp
 import theme as T
 from apps import xpane
 from Xlib import X
@@ -16,9 +18,15 @@ from Xlib import X
 class FakeStdout:
     def __init__(self, fd):
         self._fd = fd
+        self.closed = False
 
     def fileno(self):
         return self._fd
+
+    def close(self):
+        if not self.closed:
+            self.closed = True
+            os.close(self._fd)
 
 
 class FakeProc:
@@ -28,6 +36,15 @@ class FakeProc:
         self.stdout = FakeStdout(fd) if fd is not None else None
 
     def poll(self):
+        return self._rc
+
+    def terminate(self):
+        self._rc = -15
+
+    def kill(self):
+        self._rc = -9
+
+    def wait(self, timeout=None):
         return self._rc
 
 
@@ -223,6 +240,7 @@ class AuthFakeSup:
         self.session = session
         self.xauth = "/tmp/kilix-private-xauth"
         self.spawns = {}
+        self.commands = {}
         self.fds = []
         AuthFakeSup.instances.append(self)
 
@@ -234,6 +252,7 @@ class AuthFakeSup:
 
     def spawn(self, name, _cmd, **kwargs):
         self.spawns[name] = kwargs
+        self.commands[name] = _cmd
         if name == "cap":
             rfd, wfd = os.pipe()
             self.fds.extend((rfd, wfd))
@@ -256,12 +275,34 @@ orig_injector = xpane.xinject.Injector
 orig_paint = xpane.XPane._paint_root_chroma
 orig_bridge = xpane.clipboard.SelectionBridge
 orig_damage = xpane.xcapture.XDamageCapture
+orig_bus = shared_xapp.PrivateBus
 old_wm = os.environ.get("KILIX_XPANE_WM")
 xpane.stream.StreamSupervisor = AuthFakeSup
-xpane.xdisplay.Display = lambda *_args: object()
-xpane.xinject.Injector = lambda *_args: object()
+xpane.xdisplay.Display = lambda *_args: SimpleNamespace(close=lambda: None)
+xpane.xinject.Injector = lambda *_args: SimpleNamespace(release_all=lambda: None)
 xpane.XPane._paint_root_chroma = lambda self: None
 xpane.clipboard.SelectionBridge = lambda *_args: None
+
+
+class FakePrivateBus:
+    """Exercise XPane routing; the host tests the real supervisor separately."""
+    def __init__(self, supervisor, env):
+        self.closed = False
+
+    def environment(self, env):
+        return dict(env, DBUS_SESSION_BUS_ADDRESS="unix:path=/owned/test-bus")
+
+    def launch_primary(self, argv, env, cwd, pass_fds):
+        return FakeProc()
+
+    def bind(self, process):
+        self.process = process
+
+    def close(self):
+        self.closed = True
+
+
+shared_xapp.PrivateBus = FakePrivateBus
 
 
 def unavailable_damage(*_args, **_kwargs):
@@ -276,6 +317,8 @@ try:
     calls = AuthFakeSup.instances[-1].spawns
     assert calls["app"]["env"]["DISPLAY"] == ":77"
     assert calls["app"]["env"]["XAUTHORITY"] == "/tmp/kilix-private-xauth"
+    assert calls["app"]["env"]["DBUS_SESSION_BUS_ADDRESS"] == "unix:path=/owned/test-bus"
+    assert isinstance(calls["app"]["_kilix_remote_launcher"].__self__, FakePrivateBus)
     assert calls["cap"]["env"]["DISPLAY"] == ":77"
     assert calls["cap"]["env"]["XAUTHORITY"] == "/tmp/kilix-private-xauth"
 finally:
@@ -287,6 +330,7 @@ finally:
     xpane.XPane._paint_root_chroma = orig_paint
     xpane.clipboard.SelectionBridge = orig_bridge
     xpane.xcapture.XDamageCapture = orig_damage
+    shared_xapp.PrivateBus = orig_bus
     if old_wm is None:
         os.environ.pop("KILIX_XPANE_WM", None)
     else:

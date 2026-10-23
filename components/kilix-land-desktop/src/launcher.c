@@ -476,23 +476,36 @@ static void reap_pending_children(void)
     for (index = 0u; index < LAUNCH_PENDING_MAX; ++index) {
         pid_t pid = pending_children[index];
         if (pid <= 0) continue;
-        if (waitpid(pid, NULL, WNOHANG) != 0)
+        pid_t reaped = waitpid(pid, NULL, WNOHANG);
+        if (reaped == pid || (reaped < 0 && errno == ECHILD))
             pending_children[index] = 0;
     }
 }
 
-static void track_pending_child(pid_t pid)
+static void cancel_pending_child(pid_t pid)
 {
-    size_t index;
-    for (index = 0u; index < LAUNCH_PENDING_MAX; ++index) {
-        if (pending_children[index] <= 0) {
-            pending_children[index] = pid;
-            return;
-        }
+    pid_t owned = waitpid(pid, NULL, WNOHANG);
+    if (owned == pid || (owned < 0 && errno == ECHILD)) return;
+    if (owned < 0 && errno != EINTR) return;
+    (void)kill(pid, SIGTERM);
+    for (int i = 0; i < 25; i++) {
+        pid_t result = waitpid(pid, NULL, WNOHANG);
+        if (result == pid || (result < 0 && errno == ECHILD)) return;
+        struct timespec delay = {0, 10L * 1000L * 1000L};
+        (void)nanosleep(&delay, NULL);
     }
-    /* Full table: block briefly on the oldest slot rather than leak it. */
-    (void)waitpid(pending_children[0], NULL, 0);
-    pending_children[0] = pid;
+    (void)kill(pid, SIGKILL);
+    reap_pending_children();
+}
+
+/* Launches are serialized on the desktop thread. Reserve capacity before
+ * spawning; a live child must never force a blocking wait or be forgotten. */
+static int available_child_slot(void)
+{
+    reap_pending_children();
+    for (int index = 0; index < LAUNCH_PENDING_MAX; ++index)
+        if (pending_children[index] == 0) return index;
+    return -1;
 }
 
 static bool tab_session_ready(void);
@@ -517,6 +530,8 @@ static bool spawn_detached(const char *const *command, size_t command_count)
     for (index = 0u; index < command_count; ++index)
         argv[index] = (char *)command[index];
     argv[command_count] = NULL;
+    int child_slot = available_child_slot();
+    if (child_slot < 0) return false;
     if (posix_spawn_file_actions_init(&actions) != 0) return false;
     if (posix_spawn_file_actions_addopen(&actions, STDIN_FILENO,
                                          "/dev/null", O_RDONLY, 0) != 0 ||
@@ -535,13 +550,14 @@ static bool spawn_detached(const char *const *command, size_t command_count)
         pid_t reaped = waitpid(pid, &status, WNOHANG);
         if (reaped == pid)
             return WIFEXITED(status) && WEXITSTATUS(status) == 0;
-        if (reaped < 0) return true;
+        if (reaped < 0 && errno == ECHILD) return true;
+        if (reaped < 0) break;
         {
             struct timespec delay = { 0, 10L * 1000L * 1000L };
             (void)nanosleep(&delay, NULL);
         }
     }
-    track_pending_child(pid);
+    pending_children[child_slot] = pid;
     return true;
 }
 
@@ -565,6 +581,8 @@ static bool spawn_tracked(const char *const *command, size_t command_count,
     for (index = 0u; index < command_count; ++index)
         argv[index] = (char *)command[index];
     argv[command_count] = NULL;
+    int child_slot = available_child_slot();
+    if (child_slot < 0) return false;
     if (posix_spawn_file_actions_init(&actions) != 0) return false;
     if (posix_spawn_file_actions_addopen(&actions, STDIN_FILENO,
                                          "/dev/null", O_RDONLY, 0) != 0 ||
@@ -582,13 +600,14 @@ static bool spawn_tracked(const char *const *command, size_t command_count,
         int status = 0;
         pid_t reaped = waitpid(pid, &status, WNOHANG);
         if (reaped == pid) return false; /* the window never came up */
+        if (reaped < 0 && errno == ECHILD) return false;
         if (reaped < 0) break;
         {
             struct timespec delay = { 0, 10L * 1000L * 1000L };
             (void)nanosleep(&delay, NULL);
         }
     }
-    track_pending_child(pid);
+    pending_children[child_slot] = pid;
     *out_pid = pid;
     return true;
 }
@@ -751,12 +770,14 @@ static void service_laptop(desk_launcher *launcher, desk_state *state,
         set_status(launcher, state, "Kilix is required for the laptop");
         return;
     }
-    if (profile.desktop[0] == '\0' &&
-        desk_laptop_run_status(profile.id, NULL) == 1) {
-        (void)snprintf(message, sizeof message, "%s is already running",
-                       profile.name);
-        set_status(launcher, state, message);
-        return;
+    if (profile.desktop[0] == '\0') {
+        int status = desk_laptop_run_status(profile.id, NULL);
+        if (status != 0) {
+            set_status(launcher, state, status == 1 ?
+                       "This session is already running." :
+                       "The session registry cannot be verified.");
+            return;
+        }
     }
     if (laptop_host_verb_available(kilix)) {
         /* The host verb spawns the session and records its pid in the
@@ -816,7 +837,12 @@ static void service_laptop(desk_launcher *launcher, desk_state *state,
          * records the truth; the pending-children reaper collects it. */
         command[command_count++] = "--start-as=fullscreen";
         if (spawn_tracked(command, command_count, &session_pid)) {
-            (void)desk_laptop_run_record(profile.id, (long)session_pid);
+            if (!desk_laptop_run_record(profile.id, (long)session_pid)) {
+                cancel_pending_child(session_pid);
+                set_status(launcher, state,
+                           "The session could not be registered; launch cancelled.");
+                return;
+            }
             state->laptop_on = true;
             (void)snprintf(message, sizeof message, "Opened %s",
                            profile.name);
@@ -835,34 +861,11 @@ static void service_laptop(desk_launcher *launcher, desk_state *state,
     set_status(launcher, state, message);
 }
 
-/* Closing a running session: the host verb owns the registry when it
- * exists (`kilix laptop close` SIGTERMs the recorded pid and clears the
- * file); otherwise this desktop signals the recorded pid itself and the
- * per-second refresh clears the entry once the process is gone. Either
- * way the lid follows the registry, not the click. */
+/* Always validate birth identity locally; an older host verb may only know PIDs. */
 static void service_laptop_close(desk_launcher *launcher, desk_state *state,
                                  const char *profile_id)
 {
-    char kilix_path[LAUNCH_PATH_CAPACITY];
     char message[DESK_TOAST_CAPACITY];
-    const char *kilix;
-
-    kilix = launcher->external_enabled
-                ? resolve_kilix(kilix_path, sizeof kilix_path)
-                : NULL;
-    if (kilix != NULL && laptop_host_verb_available(kilix)) {
-        const char *command[4];
-        command[0] = kilix;
-        command[1] = "laptop";
-        command[2] = "close";
-        command[3] = profile_id;
-        if (spawn_detached(command, 4u)) {
-            (void)snprintf(message, sizeof message, "Closing %s",
-                           profile_id);
-            set_status(launcher, state, message);
-            return;
-        }
-    }
     if (desk_laptop_run_terminate(profile_id))
         (void)snprintf(message, sizeof message, "Closing %s", profile_id);
     else
@@ -939,6 +942,8 @@ bool desk_launcher_password_is_default(void)
     argv[2] = (char *)helper;
     argv[3] = (char *)"check";
     argv[4] = NULL;
+    int child_slot = available_child_slot();
+    if (child_slot < 0) return false;
     if (posix_spawn_file_actions_init(&actions) != 0) return false;
     if (posix_spawn_file_actions_addopen(&actions, STDIN_FILENO,
                                          "/dev/null", O_RDONLY, 0) != 0 ||
@@ -961,10 +966,11 @@ bool desk_launcher_password_is_default(void)
         struct timespec delay = { 0, 10L * 1000L * 1000L };
         if (reaped == pid)
             return WIFEXITED(status) && WEXITSTATUS(status) == 0;
-        if (reaped < 0) return false;
+        if (reaped < 0 && errno == ECHILD) return false;
+        if (reaped < 0) break;
         (void)nanosleep(&delay, NULL);
     }
-    track_pending_child(pid);
+    pending_children[child_slot] = pid;
     return false;
 }
 
@@ -1012,6 +1018,8 @@ static bool spawn_tab(const char *label, const char *cwd,
         argv[argc++] = (char *)command[index];
     argv[argc] = NULL;
 
+    int child_slot = available_child_slot();
+    if (child_slot < 0) return false;
     if (posix_spawn_file_actions_init(&actions) != 0) return false;
     if (posix_spawn_file_actions_addopen(&actions, STDIN_FILENO,
                                          "/dev/null", O_RDONLY, 0) != 0 ||
@@ -1034,11 +1042,12 @@ static bool spawn_tab(const char *label, const char *cwd,
         pid_t reaped = waitpid(pid, &status, WNOHANG);
         if (reaped == pid)
             return WIFEXITED(status) && WEXITSTATUS(status) == 0;
-        if (reaped < 0) return true;
+        if (reaped < 0 && errno == ECHILD) return true;
+        if (reaped < 0) break;
         struct timespec delay = { 0, 10L * 1000L * 1000L };
         (void)nanosleep(&delay, NULL);
     }
-    track_pending_child(pid);
+    pending_children[child_slot] = pid;
     return true;
 }
 

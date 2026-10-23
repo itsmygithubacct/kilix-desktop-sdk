@@ -3,26 +3,17 @@
  *
  * kilix-cap. Owning .c: src/laptop_run.c. Spec: docs/LAPTOP.md.
  *
- * RUN REGISTRY — one contract shared by every laptop surface (this
- * desktop, kilix-land-desktop, `kilix laptop`, and the launcher TUI;
- * spelled out in the kilix checkout's config/laptop.py):
- * <profiles>/run/<id>.pid holds the ASCII decimal pid of a pane
- * profile's live session process, one line plus a trailing newline,
- * written 0600 via a same-directory temp file + rename at spawn time by
- * whichever surface spawned it. Liveness is a real process check —
- * kill(pid, 0), where EPERM still counts as alive and a /proc zombie
- * does not — never the file alone; a stale or unparsable file is
- * deleted by whichever reader notices it. Desktop profiles are never
- * tracked: their wrapper exits once the provider tab exists.
+ * RUN REGISTRY: <profiles>/run/<id>.pid retains the shared decimal PID
+ * line. Cap also writes <id>.pid.identity: "v1 PID START_TICKS BOOT_UUID\n",
+ * both 0600 via same-directory rename, metadata first. Identity comes from
+ * Linux procfs field 22 and boot_id. Missing/mismatched metadata is never
+ * trusted for signaling, and shared records are not deleted during reads.
+ * Other providers must adopt the metadata and stable-handle validation;
+ * see docs/LAPTOP.md for interoperability and migration limitations.
  *
- * Opening and closing PREFER the host's own verb — `kilix laptop
- * open|close <id>` — probed once per process the way the games handoff
- * probes `kilix games play`, so every surface agrees on one registry
- * entry. On a host that predates the verb, the fallback here spawns the
- * generated session UN-detached (a fixed argv, no shell), so the child
- * pid IS the session window and this module records the truth itself.
- * The spawn lives here rather than in launcher.c because the registry
- * owner must know the spawned pid, and a --detach launch hides it. */
+ * Opening prefers the host verb; fallback spawning is un-detached so Cap
+ * owns and tracks the session child. Closing uses a pidfd acquired before
+ * identity validation, with no numeric-signal or legacy-host fallback. */
 #ifndef KILIX_CAP_LAPTOP_RUN_H
 #define KILIX_CAP_LAPTOP_RUN_H
 
@@ -30,10 +21,10 @@
 
 /* The registry directory, <profiles>/run. */
 bool laptop_run_directory(char *path, size_t size);
-/* Records a freshly spawned session's pid. */
+/* Records a freshly spawned session's PID and birth/boot identity. */
 bool laptop_run_record(const char *id, long pid);
-/* 1 = running (pid filled in when asked), 0 = not running (a stale file
- * is cleaned up on the way), -1 = no registry or invalid id. */
+/* 1 = verified running (pid filled in), 0 = absent/dead,
+ * -1 = invalid id, unreadable record, or unverifiable identity. */
 int laptop_run_status(const char *id, long *pid);
 /* True while any profile session is live — the laptop's power light.
  * Never creates the profile directory. */
@@ -44,10 +35,8 @@ bool laptop_run_any(void);
  * failure error holds one short user-facing sentence. */
 bool laptop_run_open(const char *profile_id, char *error,
                      size_t error_size);
-/* Closes a running session: `kilix laptop close` when the verb exists,
- * else SIGTERM to the recorded pid; the registry's stale-cleanup rule
- * clears the file once the process is gone. An already-stopped session
- * counts as closed. */
+/* Closes a verified session using a stable process handle. Unknown identity
+ * or unavailable pidfd support fails closed. Absent/dead counts as closed. */
 bool laptop_run_close(const char *profile_id, char *error,
                       size_t error_size);
 

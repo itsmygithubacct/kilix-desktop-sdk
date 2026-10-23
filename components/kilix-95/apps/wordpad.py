@@ -468,8 +468,12 @@ class RichTextArea(W.Widget):
                     if sb >= sa:
                         sx0 = self._x_of(vl, sa)
                         sx1 = self._x_of(vl, sb) + tail
-                        cd.rectangle([sx0, vy, sx1 - 1, vy + vl["h"] - 1],
-                                     fill=T.SEL_BG)
+                        # A zero-width segment (an empty last line inside the
+                        # selection) has nothing to paint; Pillow rejects the
+                        # inverted rectangle it would otherwise produce.
+                        if sx1 > sx0:
+                            cd.rectangle([sx0, vy, sx1 - 1, vy + vl["h"] - 1],
+                                         fill=T.SEL_BG)
             # runs
             x = 0
             for r, txt in _segments(para, vl["a"], vl["b"]):
@@ -619,9 +623,11 @@ class RichTextArea(W.Widget):
         elif k == "Tab":
             self.insert("    ")
         elif k == "Backspace":
-            self._backspace()
+            if self._backspace():       # an edit: re-lay out, mark modified
+                self._edited()
         elif k == "Delete":
-            self._delete()
+            if self._delete():
+                self._edited()
         elif ev.text and not ev.ctrl and not ev.alt:
             self.insert(ev.text)
         else:
@@ -902,6 +908,20 @@ class WordPad(wm.Window):
 
     def request_close(self):
         self._if_saved(self.close)
+
+    # ── crash recovery (doc_recovery) ────────────────────────────────────────
+    recovery_app = "wordpad"
+
+    def recovery_snapshot(self):
+        return {"format": "krt", "doc": self.rta.to_obj()}
+
+    def recovery_restore(self, record):
+        """Show a checkpointed document as unsaved, bound to its original file."""
+        self.rta.from_obj(record["snapshot"]["doc"])
+        self.path = record.get("path")
+        self.modified = True
+        self._retitle()
+        self._state()
 
     # ── menus ────────────────────────────────────────────────────────────────
     def _file_menu(self):

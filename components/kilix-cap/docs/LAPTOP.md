@@ -110,26 +110,62 @@ Kilix session (the same rule as every app tab).
 
 ## Running sessions and closing
 
-The run registry — `run/<id>.pid` beside the profiles, one ASCII pid per
-file written 0600 at spawn — is one contract shared with
-kilix-land-desktop, `kilix laptop`, and the launcher TUI, so a session
-opened anywhere shows as running everywhere. Liveness is a real check:
-`kill(pid, 0)` (EPERM counts as alive, a /proc zombie does not), never
-the file alone; a stale or garbled entry is deleted by whichever reader
-notices it. Kilix Cap consults the registry about once a second and
-tweens the lid to match.
+The shared `run/<id>.pid` still contains one decimal PID and a newline,
+written 0600. Cap adds `run/<id>.pid.identity`, also 0600, containing exactly:
 
-The chooser marks live sessions (`<id> - running, close`), and touching
-such a row **closes** that session — `kilix laptop close <id>` when the
-host verb exists, a SIGTERM to the recorded pid otherwise — instead of
-opening a duplicate. Walking away just leaves the session running and
-the lid open.
+```text
+v1 PID START_TICKS BOOT_UUID
+```
+
+The line ends with a newline. `START_TICKS` is decimal field 22 of Linux
+`/proc/PID/stat`; `BOOT_UUID` is `/proc/sys/kernel/random/boot_id`. The
+metadata is published before the PID, each by a same-directory rename.
+Readers must compare all three values with the current process. A missing
+or mismatched pair is unverifiable, including a partial publication; Cap
+retains shared files and refuses both closing and duplicate pane launches.
+Absent processes and zombies do not count as running. Cap checks roughly
+once a second and tweens the lid for verified running sessions.
+
+Closing acquires a Linux pidfd **before** checking identity and signals
+that handle. If pidfds or identity data are unavailable, close fails with
+an instruction to close the owning window. Cap does not delegate closing
+to a potentially older PID-only host command.
+
+**Provider integration remains required.** The additive sidecar preserves
+PID-file readability for kilix-land-desktop, the host CLI and launcher TUI;
+it does not fix older consumers' PID-only signaling. Those providers must
+write the same metadata and validate identity with a stable handle before
+signaling. Legacy records cannot safely be upgraded just by observing a
+currently live PID: the originating owner must establish identity. Sessions
+opened by a host that writes only the legacy record remain managed by that
+host; Cap will refuse to trust them. No other provider is modified here.
+Validate both directions of launch/status/close before claiming shared
+registry qualification. Readers should not unlink records during validation,
+which could delete a concurrent provider's replacement.
+
+Fallback launch success requires publishing both records. Failure cancels
+only the newly owned child, waits nonblockingly for up to 250 ms, then sends
+SIGKILL if necessary and retains it for later nonblocking reaping. Tracking
+has space for all 16 profiles plus eight helpers. A full table rejects new
+launches before spawning, with a capacity message.
+
+The chooser displays at most six profiles per page. Next page cycles through
+all pages; Close remains visible on every page. A verified running row says
+`<id> - running, close` and requests closing that session.
 
 ## Testing
 
 `kilix-cap --laptop-test` covers discovery, seeding, strict parsing (the
 rejection catalogue), session emission, provider argv mapping, and the
-run registry's rules (record/read-back, stale cleanup, close semantics);
+run registry's rules (identity read-back, legacy refusal, zombie rejection);
 `--interaction-test` covers the chooser's request/geometry behavior plus
 the lid tween and the running-row close request; `--scene-test`/
 `--selftest` cover the object like any other.
+
+`python3 tests/laptop_repairs.py` builds two small vendor-free tests. Process
+creation, waiting, numeric signals, pidfds, and delays are mocked, with
+synthetic procfs and registry files in a private temporary directory under
+this checkout. It checks capacity rejection, interrupted reaping, registration
+rollback, identity changes, unavailable pidfds, and every chooser profile's
+open/close hit target for counts 0 through 16. Add `--sanitize` for UBSan.
+These checks do not qualify terminal rendering or cross-provider integration.

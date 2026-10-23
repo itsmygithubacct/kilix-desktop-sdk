@@ -19,6 +19,12 @@ License: MIT
 
 Files: components/kilix-95/*
 Copyright: itsmygithubacct
+License: GPL-3.0-only
+
+Files: components/kilix-95/contract_bridge.py
+ components/kilix-95/provider_protocol.py
+ components/kilix-95/tests/test_provider_protocol_v1.py
+Copyright: itsmygithubacct
 License: MIT
 
 Files: components/kilix-tui-utils/*
@@ -62,3 +68,6 @@ License: MIT
 
 License: CC-BY-NC-SA-4.0
  Reproduced in full at LICENSES/CC-BY-NC-SA-4.0.txt.
+
+License: GPL-3.0-only
+ Reproduced in full at LICENSES/GPL-3.0-only.txt.

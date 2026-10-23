@@ -2,16 +2,16 @@
 
 from __future__ import annotations
 
-from pathlib import Path
 from typing import Any
 
 from jsonschema import Draft202012Validator, FormatChecker
 
 from .actions import ActionError, parse_action
 from .jsonio import load_json
+from .resources import RESOURCE_ROOT
 
 
-PACKAGE_ROOT = Path(__file__).resolve().parents[2]
+PACKAGE_ROOT = RESOURCE_ROOT
 SCHEMA_PATHS = {
     "action": PACKAGE_ROOT / "schemas" / "kilix.desktop.action-v1.schema.json",
     "catalog-entry": PACKAGE_ROOT
@@ -84,7 +84,7 @@ def _semantic_errors(kind: str, document: Any) -> list[str]:
     if kind == "action":
         try:
             parsed = parse_action(f"{document['verb']}:{document['payload']}")
-            if parsed.as_dict() != document:
+            if any(document.get(key) != value for key, value in parsed.as_dict().items()):
                 errors.append("action document is not the canonical typed request")
         except (ActionError, KeyError) as error:
             errors.append(f"action semantics: {error}")

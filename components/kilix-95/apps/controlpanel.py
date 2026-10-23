@@ -28,9 +28,17 @@ CONTROL_ITEMS = [
     ("Add New Hardware", "hardware", "hardware", None),
     ("System", "system", "systemprops", None),
     ("PowerToys", "powertoys", "powertoys", None),
+    ("Power", "system", "host-settings", "power"),
+    ("Bluetooth", "network", "host-settings", "bluetooth"),
+    ("Disks", "mycomputer", "host-settings", "storage"),
+    ("Sound Devices", "soundcp", "host-settings", "audio"),
+    ("Input Methods", "keyboard", "host-settings", "input-method"),
+    ("Accessibility", "system", "host-settings", "accessibility"),
+    ("Lock Desktop", "key", "host-settings", "lock"),
+    ("Backup", "floppy", "backup", None),
 ]
 FULL_EXPERIENCE_ITEMS = frozenset({
-    "printers", "networkhood", "dialup", "hardware", "powertoys",
+    "networkhood", "dialup", "hardware", "powertoys",
 })
 
 
@@ -70,7 +78,10 @@ class ControlPanel(wm.Window):
 
     def _activate(self, item):
         app, value = item["data"]
-        self.desk.shell.open_app(app, value)
+        if app == "host-settings":
+            self.desk.shell.open_device_settings(value)
+        else:
+            self.desk.shell.open_app(app, value)
 
     def _file_menu(self):
         selected = self.grid.selected_items()
@@ -231,7 +242,7 @@ class DateTimeProperties(wm.Window):
 
     def _tick(self, now):
         current = self._now()
-        stamp = current.strftime("%H:%M:%S")
+        stamp = current.strftime("%I:%M:%S %p")
         if stamp != self._last:
             self._last = stamp
             self.time_label.set(stamp)
