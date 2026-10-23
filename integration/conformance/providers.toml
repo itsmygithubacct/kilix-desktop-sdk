@@ -17,10 +17,10 @@ command_set_sha256 = "720683885d62ba61737e00350934e608693550a46a13c8de4d97f3fff3
 id = "kilix-95"
 component = "components/kilix-95"
 source_root = "."
-component_tree = "310f77a673b212c79ae92d546fef999aa239f341"
+component_tree = "daa82f7a4a32d1eb7cf052d419a7a641f49cc3de"
 entry_path = "components/kilix-95/main.py"
-source_commit = "0c7fb3f3d2f336de7d480706af81ef4381c44d6c"
-source_tree = "7eaf41f81b440e6c104b961be67086ba4e4059d4"
+source_commit = "d5dc91d3df7afed99a972dbd760d3e5703ba8697"
+source_tree = "dc560c625c2c85c559e66f5e4b1577c3062e15a7"
 entry_sha256 = "8282488fef3e55d02b825905905ace94bafc965f08de4d01ceabaa50a29a2471"
 
 [[provider]]
@@ -29,8 +29,8 @@ component = "components/kilix-cap"
 source_root = "."
 component_tree = "c07d7e5e6f22755b66e97502dab76224ab2fca90"
 entry_path = "components/kilix-cap/bin/kilix-cap"
-source_commit = "0c7fb3f3d2f336de7d480706af81ef4381c44d6c"
-source_tree = "7eaf41f81b440e6c104b961be67086ba4e4059d4"
+source_commit = "d5dc91d3df7afed99a972dbd760d3e5703ba8697"
+source_tree = "dc560c625c2c85c559e66f5e4b1577c3062e15a7"
 entry_sha256 = "26135462d6dfd8cba104b67b388f4c68c55a8d3dc201a6417aa1da23ea06b279"
 
 [[provider]]
@@ -39,8 +39,8 @@ component = "components/kilix-land-desktop"
 source_root = "."
 component_tree = "3f4a7fed79a25e5e899c08265a58f211bf63dafc"
 entry_path = "components/kilix-land-desktop/kilix-land-desktop"
-source_commit = "0c7fb3f3d2f336de7d480706af81ef4381c44d6c"
-source_tree = "7eaf41f81b440e6c104b961be67086ba4e4059d4"
+source_commit = "d5dc91d3df7afed99a972dbd760d3e5703ba8697"
+source_tree = "dc560c625c2c85c559e66f5e4b1577c3062e15a7"
 entry_sha256 = "72ac64bdef06ce26303560ca4db6cd92dafe40d9f8f17b76f61ab2ca1ae800f5"
 
 [[provider]]
@@ -49,8 +49,8 @@ component = "components/kilix-tui-utils"
 source_root = "."
 component_tree = "9102c5da9d4384febcc358f9eac96e40a769e2ec"
 entry_path = "components/kilix-tui-utils/kilix-tui/main.py"
-source_commit = "0c7fb3f3d2f336de7d480706af81ef4381c44d6c"
-source_tree = "7eaf41f81b440e6c104b961be67086ba4e4059d4"
+source_commit = "d5dc91d3df7afed99a972dbd760d3e5703ba8697"
+source_tree = "dc560c625c2c85c559e66f5e4b1577c3062e15a7"
 entry_sha256 = "f5ba3c88b4a3460a101f2c86c46bd88c4c69494b6ab7ebb9cb4ea372269529f6"
 
 [[provider]]
