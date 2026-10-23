@@ -1,3 +1,37 @@
+# 0.2.2 refresh conformance snapshot
+
+The current binding is `providers.toml`; `providers-import.toml` preserves the
+historical import campaign. The developer matrix passed **5/5 providers,
+2 passes, 10 invocations and 90 ordered checks** against SDK implementation
+`0c7fb3f3d2f336de7d480706af81ef4381c44d6c` and external IceWM
+`70ae6952fd3f28133b1ac027dcd558ba166b580b`. The TUI mirror is based on reviewed
+`14d981c7f5d96621b6ec784f750f49c2c5b56521` with only the declared SDK adaptations.
+
+Each provider was bound to its exact clean repository root and entry digest.
+For in-tree providers, the source root is the SDK root and the entry path is
+relative to that root. This uses the existing matrix API without omitting
+source identity or pretending the component directory is a Git root. The API
+checks each binding before the matrix and before/after each invocation: 25
+source checks and 25 entry checks. The binding names the implementation commit
+that was tested; this later metadata commit changes no component bytes.
+
+Version, metadata, configuration, screenshot availability, migration dry-run
+and read-only behavior are covered. Cap and IceWM truthfully report headless
+screenshot unavailable; the other three providers produce an image. Land's
+entry hash identifies the actual tested build and remains build-path dependent.
+The full SDK gate, installed-wheel and runtime packaging, 398 historical import
+identities, exact refresh sources, and all 19 recursive dependency pins were
+also checked. This is developer qualification, not release acceptance.
+
+The frozen contract and historical requirements are not rewritten to assert
+acceptance. Installed/outer-launcher acceptance, peer-coupling removal, live
+Grok and delivery behavior, physical desktop/audio/display, and ISO
+boot/install/upgrade/rollback remain outside this return. Read the following
+historical findings as the import campaign's measurements, not as claims about
+the current source-bound snapshot.
+
+---
+
 # Conformance status — what is proven here and what is not
 
 **This repository grades nothing.** The numbers below are what the builder

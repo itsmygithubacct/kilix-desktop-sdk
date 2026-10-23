@@ -8,7 +8,7 @@ source repository per component and checks Git blob identities, modes and
 submodule pins at those immutable revisions. It does not trust the source's
 working files or current branch, and missing sources are unresolved, not passes.
 
-The selected Kilix 95 and TUI sources supply current settings, version and game
+The selected Kilix 95 source and reviewed TUI source supply current settings, version and game
 catalog compatibility, XPane test ownership, accessibility, document recovery,
 workflow lifecycle, music controls and pane tools. The SDK's provider protocol
 and persistence adapters remain. Kilix 95's selected source declares
@@ -41,6 +41,8 @@ The host companion is based on the selected 0.2.2 host. Other host workstreams
 must merge their changes with it, then rerun the provider and registry checks.
 The selected Python provider requires host SDK 1.16. The external IceWM source
 is separately bound by its reviewed candidate revision; it is not imported.
+The reviewed TUI source is `14d981c7f5d96621b6ec784f750f49c2c5b56521`;
+the separately reviewed IceWM source is `70ae6952fd3f28133b1ac027dcd558ba166b580b`.
 Exact integration revisions and qualification commands are recorded in the
 worker report; no shared release manifest or installed desktop is changed here.
 
