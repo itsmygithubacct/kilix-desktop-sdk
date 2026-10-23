@@ -3,9 +3,13 @@
 The current binding is `providers.toml`; `providers-import.toml` preserves the
 historical import campaign. The developer matrix passed **5/5 providers,
 2 passes, 10 invocations and 90 ordered checks** against SDK implementation
-`083641bc48f6eca6cea8d8fa87dfa82ba60cf25d` and external IceWM
+`1455e9e9836d26265dec418bbf727e6dfd98b5a7` and external IceWM
 `70ae6952fd3f28133b1ac027dcd558ba166b580b`. The TUI mirror is based on reviewed
 `14d981c7f5d96621b6ec784f750f49c2c5b56521` with only the declared SDK adaptations.
+
+The matrix used coordinated host
+`8441922b01a6f67e1d775e44a848ff0c28253b99`, including the test-fixture
+readiness and process-exit cleanup repairs.
 
 Each provider was bound to its exact clean repository root and entry digest.
 For in-tree providers, the source root is the SDK root and the entry path is
