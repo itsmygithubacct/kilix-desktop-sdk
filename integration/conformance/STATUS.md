@@ -3,7 +3,7 @@
 The current binding is `providers.toml`; `providers-import.toml` preserves the
 historical import campaign. The developer matrix passed **5/5 providers,
 2 passes, 10 invocations and 90 ordered checks** against SDK implementation
-`d5dc91d3df7afed99a972dbd760d3e5703ba8697` and external IceWM
+`083641bc48f6eca6cea8d8fa87dfa82ba60cf25d` and external IceWM
 `70ae6952fd3f28133b1ac027dcd558ba166b580b`. The TUI mirror is based on reviewed
 `14d981c7f5d96621b6ec784f750f49c2c5b56521` with only the declared SDK adaptations.
 
@@ -21,8 +21,10 @@ screenshot unavailable; the other three providers produce an image. Land's
 entry hash identifies the actual tested build and remains build-path dependent.
 The full SDK gate, installed-wheel and runtime packaging, 398 historical import
 identities, exact refresh sources, and all 19 recursive dependency pins were
-also checked. The full root gate was rerun after the read-only version and
-real-startup bootstrap test repairs; K95 passed 97/97 and TUI 30/30 modules.
+also checked. The full root gate passed with the reviewed PTY desktop refresh;
+K95 passed 104/104 and TUI 30/30 modules. Supplemental runs supplied the
+catalog, pinned source games and native SDK fixtures, closing their optional
+fixture skips. All five refresh sources passed exact provenance validation.
 This is developer qualification, not release acceptance.
 
 The frozen contract and historical requirements are not rewritten to assert
