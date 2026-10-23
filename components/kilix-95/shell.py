@@ -941,12 +941,12 @@ class Shell:
         if target is not None:
             return self._tab(
                 target,
-                "PTY Sessions",
+                "PTY Sessions (Terminal)",
                 os.path.expanduser("~"),
                 env={"KITTY_PTY_BROKER_BYPASS": "1"},
             )
         wm.msgbox(
-            self.desk, "PTY Sessions",
+            self.desk, "PTY Sessions (Terminal)",
             "The Kilix persistent-session manager could not be found.",
             icon="error")
         return False

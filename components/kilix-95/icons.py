@@ -734,6 +734,19 @@ def _taskmgr(p):
         p.hline(3, 8, y, G)
 
 
+def _ptysessions(p):
+    p.rect(5, 1, 14, 9, fill=S, outline=K)         # a second, detached window
+    p.rect(5, 1, 14, 2, fill=G)                    # its dimmed title bar
+    p.rect(1, 5, 11, 14, fill=K, outline=K)        # front terminal, on top
+    p.rect(1, 5, 11, 6, fill=DB)                   # active title bar
+    p.px(3, 9, N)                                  # prompt chevron
+    p.px(4, 10, N)
+    p.px(3, 11, N)
+    p.hline(6, 8, 11, N)                           # cursor bar
+    p.px(13, 12, DN)                               # live-session lamp
+    p.px(13, 14, G)                                # detached-session lamp
+
+
 def _app(p):
     p.rect(2, 2, 13, 13, fill=S, outline=K)        # window shell
     p.rect(3, 3, 12, 5, fill=DB)                    # navy title bar
@@ -912,6 +925,7 @@ ICONS = {
     "mines": _mines, "paint": _paint, "wordpad": _wordpad,
     "recyclebin_empty": _recyclebin_empty, "recyclebin_full": _recyclebin_full,
     "find": _find, "taskmgr": _taskmgr, "soundcp": _soundcp,
+    "ptysessions": _ptysessions,
     "app": _app,
     "controlpanel": _controlpanel, "theme": _theme,
     "network": _network, "dialup": _dialup, "newconnection": _dialup,

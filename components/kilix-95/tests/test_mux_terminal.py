@@ -156,7 +156,7 @@ def test_pty_manager_uses_kilix_without_brokering_itself():
     assert d.shell.open_pty_manager()
     assert os.path.basename(seen["argv"][0]) == "kilix"
     assert seen["argv"][1:] == ["pty"]
-    assert seen["title"] == "PTY Sessions"
+    assert seen["title"] == "PTY Sessions (Terminal)"
     assert seen["cwd"] == os.path.expanduser("~")
     assert seen["env"] == {"KITTY_PTY_BROKER_BYPASS": "1"}
 
@@ -196,7 +196,7 @@ def test_start_menu_names_tmux_manager():
         item for item in programs.submenu if item.label == "Tmux Manager")
     manager.action()
     pty = next(
-        item for item in programs.submenu if item.label == "PTY Sessions")
+        item for item in programs.submenu if item.label == "PTY Sessions (Terminal)")
     pty.action()
     assert seen == [True, "pty"]
     assert any(item.label == "Kilix Memory" for item in programs.submenu)

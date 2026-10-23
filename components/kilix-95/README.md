@@ -742,10 +742,13 @@ the normal case — the first screen prices each model and offers to fetch one.
 One of them is the dictation engine, and both it and Dictation read the same
 copy.
 
-Start ▸ Programs ▸ **PTY Sessions** opens Kilix's persistent-pane TUI in an
-unbrokered manager tab, so the manager does not list or attach to itself. It can
-attach detached panes, refresh their status, or terminate one after explicit
-confirmation.
+Start ▸ Programs ▸ **PTY Sessions** opens the graphical persistent-pane manager.
+It lists attached, detached and unreachable sessions, previews output read-only,
+shows archived journals, and ends a selected session after confirmation with an
+identity-bound receipt. Calls run off the UI thread with bounded waits.
+**PTY Sessions (Terminal)** remains available under Tools and opens the existing
+unbrokered terminal manager. These manage terminal processes; `kilix session`
+is the separate managed coding-run launcher.
 
 The Tools tab reports whether tmux-cli's `tb` command is available and offers
 an **Install / repair tb** action. It opens Kilix's immutable tmux-tui/tmux-cli

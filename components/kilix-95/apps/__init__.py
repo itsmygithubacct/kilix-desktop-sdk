@@ -119,6 +119,13 @@ def open(desk, name, arg=None):
                 desk.wm.activate(w)
                 return
         desk.wm.add(taskmgr.TaskManager(desk))
+    elif name == "ptysessions":
+        from . import ptysessions
+        for w in desk.wm.windows:
+            if isinstance(w, ptysessions.PtySessions):
+                desk.wm.activate(w)
+                return
+        desk.wm.add(ptysessions.PtySessions(desk))
     elif name == "controlpanel":
         from . import controlpanel
         for win in desk.wm.windows:

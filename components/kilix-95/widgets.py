@@ -483,6 +483,7 @@ class TextArea(Widget):
     """Multi-line editor: mono font, selection, clipboard, scrollbar."""
     focusable = True
     LH = 15                       # line height
+    read_only = False             # True: navigate, select and copy; never edit
 
     def __init__(self, x, y, w, h, text=""):
         super().__init__(x, y, w, h)
@@ -622,7 +623,7 @@ class TextArea(Widget):
     # editing ops
     def _del_sel(self):
         sel = self._sel()
-        if not sel:
+        if not sel or self.read_only:
             return False
         (ar, ac), (br, bc) = sel
         self.lines[ar:br + 1] = [self.lines[ar][:ac] + self.lines[br][bc:]]
@@ -641,6 +642,8 @@ class TextArea(Widget):
         return "\n".join([self.lines[ar][ac:]] + mid + [self.lines[br][:bc]])
 
     def insert(self, s):
+        if self.read_only:            # also reached by paste and accessibility
+            return
         self._del_sel()
         s = s.replace("\r\n", "\n").replace("\r", "\n").replace("\t", "    ")
         parts = s.split("\n")
@@ -704,6 +707,13 @@ class TextArea(Widget):
     def on_key(self, ev):
         k = ev.key
         rows = self._rows()
+        if self.read_only:
+            if ev.ctrl and k == "x":          # cutting a read-only text copies
+                k = "c"
+            elif ((ev.ctrl and k == "v") or k in ("Enter", "Tab", "Backspace",
+                                                  "Delete")
+                  or (ev.text and not ev.ctrl and not ev.alt)):
+                return False
         if k == "ArrowLeft":
             if self.cc > 0:
                 self._move(self.cr, self.cc - 1, ev.shift)

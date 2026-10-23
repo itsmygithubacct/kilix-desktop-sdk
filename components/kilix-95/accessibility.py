@@ -26,6 +26,10 @@ def clean_name(text):
 
 
 
+# Edits a read-only text widget refuses; caret, selection and copy still work.
+READ_ONLY_REFUSED = frozenset({'set_text', 'insert_text', 'delete_text',
+                               'cut_text', 'paste_text'})
+
 GEOMETRY_INTERVAL = .25
 GEOMETRY_MAX_BACKOFF = 30.0
 GEOMETRY_WANTED_SECONDS = 30.0
@@ -225,9 +229,12 @@ class Tree:
             if showing:
                 self.queries[key] = lambda kind, args: TextGeometry(widget, origin).query(kind, args)
             states += ['selectable-text', 'single-line' if isinstance(widget, W.TextField) else 'multi-line']
+            read_only = getattr(widget, 'read_only', False)
             if enabled:
-                states.append('editable')
+                states.append('read-only' if read_only else 'editable')
                 for kind in ('set_text', 'insert_text', 'delete_text', 'caret', 'selection', 'copy_text', 'cut_text', 'paste_text'):
+                    if read_only and kind in READ_ONLY_REFUSED:
+                        continue
                     if role != 'password text' or kind not in ('copy_text', 'cut_text'):
                         self.handlers[(key, kind)] = lambda args, kind=kind: self.edit(widget, kind, args)
             else:
@@ -464,6 +471,8 @@ class Tree:
         return before.count('\n'), len(before.rsplit('\n', 1)[-1])
 
     def edit(self, widget, kind, args):
+        if getattr(widget, 'read_only', False) and kind in READ_ONLY_REFUSED:
+            return False
         text = widget.text if isinstance(widget, W.TextField) else widget.text()
         if kind == 'set_text':
             if len(args) != 1 or not isinstance(args[0], str):

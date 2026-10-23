@@ -36,6 +36,7 @@ CONTROL_ITEMS = [
     ("Accessibility", "system", "host-settings", "accessibility"),
     ("Lock Desktop", "key", "host-settings", "lock"),
     ("Backup", "floppy", "backup", None),
+    ("PTY Sessions", "ptysessions", "ptysessions", None),
 ]
 FULL_EXPERIENCE_ITEMS = frozenset({
     "networkhood", "dialup", "hardware", "powertoys",

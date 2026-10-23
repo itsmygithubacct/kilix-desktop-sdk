@@ -129,6 +129,8 @@ def _run_man(page):
 
 
 class _ReadOnlyTextArea(W.TextArea):
+    read_only = True
+
     def on_key(self, ev):
         rows = self._rows()
         if ev.key == "ArrowUp":
@@ -144,7 +146,7 @@ class _ReadOnlyTextArea(W.TextArea):
         elif ev.key == "End":
             self.sb.pos = max(0, len(self.lines) - rows)
         else:
-            return False
+            return super().on_key(ev)
         self.sb.total, self.sb.page = len(self.lines), rows
         self.sb.clamp()
         self.invalidate()

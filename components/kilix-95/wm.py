@@ -573,6 +573,17 @@ def _wrap_text(text, font, maxw):
     for para in text.split("\n"):
         line = ""
         for word in para.split(" "):
+            while T.text_w(font, word) > maxw and len(word) > 1:
+                # a word wider than a line (an ID, a path) is split by
+                # characters instead of running off the dialog
+                cut = max(1, len(word) * maxw // max(1, T.text_w(font, word)))
+                while cut > 1 and T.text_w(font, word[:cut]) > maxw:
+                    cut -= 1
+                if line:
+                    out.append(line)
+                    line = ""
+                out.append(word[:cut])
+                word = word[cut:]
             cand = (line + " " + word).strip()
             if T.text_w(font, cand) <= maxw or not line:
                 line = cand
@@ -595,9 +606,13 @@ def msgbox(desk, title, text, icon="info", buttons=("OK",), cb=None,
     win = Window(desk, title, w, h, icon=win_icon or icon, resizable=False,
                  modal=True)
 
-    class _Body(W.Widget):
+    class _Body(W.Label):
+        """The message, drawn with its icon. A Label so the accessibility
+        tree carries the whole text (it names the node), not just pixels."""
+
         def __init__(self):
-            super().__init__(0, 0, w, h)
+            super().__init__(0, 0, text)
+            self.w, self.h = w, h
 
         def draw(self, d, img):
             icons.paint(img, icon, 14, 14, 32)
