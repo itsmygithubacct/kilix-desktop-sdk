@@ -1,12 +1,19 @@
 # kilix-desktop-sdk
 
-The Kilix desktop domain monorepo: one frozen provider contract and the four
+The Kilix desktop domain monorepo: a shared provider contract and the four
 desktop components that implement it, assembled with their histories preserved.
 
-**Status: BUILT — AWAITING INDEPENDENT ACCEPTANCE.** Nothing here is accepted.
-This branch is a reviewable candidate published under `work/*`; it is not a
-release, not a tag, and not a pin. It carries no acceptance grade from its
-builder, and the builder may not grade it.
+The reviewed source refresh is integrated into the Plebian-OS 0.2.2 candidate.
+It includes the current desktop, TUI agent-state and provider lifecycle repairs,
+with exact standalone revisions and local adaptations recorded in
+[`manifest.toml`](manifest.toml). IceWM remains a separate consumer.
+
+Source integration and developer conformance do not establish installed release
+acceptance. Contract freeze, outer-launcher qualification, remaining peer
+couplings and final artifact/physical acceptance are tracked in
+[`integration/conformance/STATUS.md`](integration/conformance/STATUS.md).
+The source-bound matrix records the snapshot actually tested; later binding or
+documentation commits do not silently claim a new acceptance run.
 
 ## Layout
 
@@ -17,7 +24,7 @@ kilix-desktop-sdk/
 ├── .reuse/dep5                per-path licence declarations
 ├── manifest.toml              component identities, edges, schema surface
 ├── components/
-│   ├── kilix-desktop-contract/  the frozen contract: schemas, C11 header, Python package
+│   ├── kilix-desktop-contract/  schemas, C11 header, Python package
 │   ├── kilix-95/
 │   ├── kilix-cap/
 │   ├── kilix-land-desktop/
@@ -76,4 +83,8 @@ python3 tools/verify-layout.py         # historical import plus declared changes
 python3 tools/verify-refresh.py --source kilix-95=/path/to/kilix-95 ...
 ```
 
-Both run offline against this repository alone.
+The provenance and layout checks run offline against this repository alone.
+Refresh verification also needs the selected standalone source repositories.
+Run `make check` for the complete component gate; native components require
+their pinned submodules and build dependencies. Supply the source-game and
+catalog fixtures when qualifying optional integration checks, and record skips.

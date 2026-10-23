@@ -22,8 +22,16 @@ Quit through Start -> Shut Down..., or press `Ctrl+Alt+Q`.
 
 ## Release 0.2.2 — in development
 
-Prepared for the coordinated Plebian-OS 0.2.2 candidate, upgrading from 0.2.1.
-Image, upgrade and final human acceptance remain pending.
+The reviewed source integration is selected for the coordinated Plebian-OS
+0.2.2 candidate. Image, upgrade, rollback and final installed acceptance remain
+pending; use the [OS upgrade policy](https://github.com/itsmygithubacct/plebian-os/blob/main/UPGRADING.md)
+for supported release paths.
+
+The PTY session manager uses the matching host's structured session interface
+and cleans up its owned helper processes when the window closes. The desktop
+SDK mirrors this provider with declared storage and provider adaptations;
+its [manifest](https://github.com/itsmygithubacct/kilix-desktop-sdk/blob/main/manifest.toml)
+records the exact standalone source revision and adaptation paths.
 
 The RC5 desktop-completion candidate gives XPane applications their own
 singleton bus and uses the matching Kilix SDK's portal relay to reach physical
