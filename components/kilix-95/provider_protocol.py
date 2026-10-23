@@ -204,6 +204,9 @@ def dispatch(argv: list[str]) -> list[str] | None:
     ``None`` means the argv is not a protocol command.  A returned list
     replaces the executable's argv; completed metadata endpoints exit here.
     """
+    if argv == ["--version"]:
+        print(f"kilix-95 {_version()}")
+        raise SystemExit(0)
     if not argv or argv[0] != "provider":
         return None
     if contract_bridge.required() and not contract_bridge.available():

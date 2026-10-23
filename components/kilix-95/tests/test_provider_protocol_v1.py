@@ -16,6 +16,20 @@ ENTRY = ROOT / "main.py"
 
 
 class ProviderProtocolV1Tests(unittest.TestCase):
+    def test_version_needs_no_host_storage_or_contract_process(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            storage = Path(temporary) / "must-not-exist"
+            result = self.run_provider("--version", env={
+                "KILIX_HOME": str(Path(temporary) / "missing-host"),
+                "KILIX95_STORAGE_HOME": str(storage),
+                "KILIX_DESKTOP_CONTRACT_COMMAND": "/missing-contract",
+            })
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual(result.stderr, "")
+            self.assertEqual(result.stdout, "kilix-95 " +
+                             (ROOT / "VERSION").read_text().strip() + "\n")
+            self.assertFalse(storage.exists())
+
     def run_provider(self, *arguments: str, env: dict[str, str] | None = None):
         selected = dict(os.environ)
         selected["PYTHONDONTWRITEBYTECODE"] = "1"
