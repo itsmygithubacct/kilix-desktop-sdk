@@ -1159,6 +1159,22 @@ class Desk:
             pass
 
     # ── main loop ───────────────────────────────────────────────────────────
+    def _cleanup_windows(self):
+        # Exit bypasses individual close() guards for busy setup windows.
+        wm = getattr(self, 'wm', None)
+        if wm is None:
+            return
+        for window in list(wm.windows):
+            callback = getattr(window, 'on_close', None)
+            window.on_close = None
+            if window in wm.windows:
+                wm.windows.remove(window)
+            try:
+                if callback is not None:
+                    callback()
+            except Exception:
+                pass  # Continue stopping other owned workers and restore tty.
+
     def run(self):
         # Startup screens run after the terminal enters raw/alternate-screen
         # mode but before _run's main-loop finally block. SIGTERM, SIGHUP, or
@@ -1170,7 +1186,10 @@ class Desk:
         except KeyboardInterrupt:
             pass
         finally:
-            self._restore_and_cleanup(self.term)
+            try:
+                self._cleanup_windows()
+            finally:
+                self._restore_and_cleanup(self.term)
 
     def _restore_and_cleanup(self, term):
         # A dead Kitty/X connection can make restore raise.  Cleanup must not

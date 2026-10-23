@@ -464,6 +464,9 @@ class FakeInstallProc:
 
 orig_popen = xpane.subprocess.Popen
 orig_killpg = xpane.os.killpg
+orig_waitid = xpane.os.waitid
+import owned_job
+orig_sleep = owned_job.time.sleep
 seen = {"signals": []}
 fake_proc = FakeInstallProc()
 
@@ -477,6 +480,8 @@ def fake_killpg(pid, sig):
 d = H.make_desk()
 xpane.subprocess.Popen = fake_popen
 xpane.os.killpg = fake_killpg
+xpane.os.waitid = lambda *args: None
+owned_job.time.sleep = lambda seconds: None
 try:
     installer = xpane.InstallerWindow(d, "amp", "Media Player")
     log_path = installer.log.name
@@ -485,13 +490,16 @@ try:
     assert stat.S_IMODE(os.stat(log_path).st_mode) == 0o600
     assert installer._tick in d.tick_hooks
     installer.request_close()
-    assert seen["signals"] == [(fake_proc.pid, signal.SIGTERM)]
+    assert seen["signals"] == [(fake_proc.pid, signal.SIGTERM),
+                               (fake_proc.pid, signal.SIGKILL)]
     assert fake_proc.waits == 1
     assert installer._tick not in d.tick_hooks
     assert not os.path.exists(log_path)
 finally:
     xpane.subprocess.Popen = orig_popen
     xpane.os.killpg = orig_killpg
+    xpane.os.waitid = orig_waitid
+    owned_job.time.sleep = orig_sleep
 
 
 print("test_xpane OK")

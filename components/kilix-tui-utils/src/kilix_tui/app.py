@@ -136,11 +136,12 @@ def run(
     render: Callable[[Any, Any], None],
     state: Any,
     *,
-    handle: Callable[[int, Any], bool] | None = None,
+    handle: Callable[[int | str, Any], bool] | None = None,
     tick_ms: int | None = None,
     on_tick: Callable[[Any], None] | None = None,
     mouse: bool = False,
     help_key: bool = True,
+    unicode_input: bool = False,
 ) -> int:
     """Run a tool interactively until it quits.
 
@@ -180,7 +181,15 @@ def run(
             if showing_help:
                 help_overlay(stdscr, mouse=mouse)
             stdscr.refresh()
-            key = stdscr.getch()
+            if unicode_input:
+                try:
+                    key = stdscr.get_wch()
+                except curses.error:
+                    key = -1       # wide input raises on a timeout
+                if isinstance(key, str) and ord(key) < 128:
+                    key = ord(key)
+            else:
+                key = stdscr.getch()
             if key == -1:
                 if on_tick is not None:
                     on_tick(state)

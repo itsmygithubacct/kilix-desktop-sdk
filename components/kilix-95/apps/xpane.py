@@ -9,7 +9,6 @@ down. Also here: InstallerWindow, a small log-tailing window that runs
 `games.py <target> --setup-only` and fires a callback on success.
 """
 import os
-import signal
 import subprocess
 import tempfile
 import time
@@ -20,6 +19,7 @@ import theme as T
 import widgets as W
 import wm
 import storage
+from owned_job import OwnedJob
 
 import clipboard                  # one shared clipboard across panes/windows
 import stream                     # from config/ (main.py puts it on the path)
@@ -515,11 +515,16 @@ class InstallerWindow(wm.Window):
         self.log = tempfile.NamedTemporaryFile(
             mode="w+", prefix=f"kilix-install-{target}-", suffix=".log",
             dir=log_dir)
-        self.proc = subprocess.Popen(
-            ["python3", os.path.join(_here, "games.py"), target,
-             "--setup-only"],
-            stdout=self.log, stderr=subprocess.STDOUT,
-            stdin=subprocess.DEVNULL, start_new_session=True)
+        try:
+            self.proc = OwnedJob(
+                ["python3", os.path.join(_here, "games.py"), target,
+                 "--setup-only"],
+                stdout=self.log, stderr=subprocess.STDOUT,
+                stdin=subprocess.DEVNULL)
+        except BaseException:
+            self.log.close()
+            raise
+        self.on_close = self.cleanup
         self._done = False
         self._log_len = 0
         desk.tick_hooks.append(self._tick)
@@ -558,30 +563,20 @@ class InstallerWindow(wm.Window):
             self.title = "Install failed"
             self.invalidate()
 
+    def cleanup(self):
+        self._done = True
+        if self._tick in self.desk.tick_hooks:
+            self.desk.tick_hooks.remove(self._tick)
+        try:
+            self.proc.stop()
+        finally:
+            log, self.log = self.log, None
+            if log is not None:
+                log.close()
+
     def close(self):
-        # The log exists only while its installer window is live. Closing it
-        # unlinks the private NamedTemporaryFile immediately instead of
-        # waiting for cyclic window references to be garbage-collected.
-        log = getattr(self, "log", None)
-        if log is not None:
-            self.log = None
-            log.close()
+        self.cleanup()
         super().close()
 
     def request_close(self):
-        if self._tick in self.desk.tick_hooks:
-            self.desk.tick_hooks.remove(self._tick)
-        if self.proc.poll() is None:
-            try:
-                os.killpg(self.proc.pid, signal.SIGTERM)
-                self.proc.wait(timeout=3)
-            except Exception:
-                try:
-                    os.killpg(self.proc.pid, signal.SIGKILL)
-                except Exception:
-                    pass
-                try:
-                    self.proc.wait(timeout=1)
-                except Exception:
-                    pass
         self.close()
