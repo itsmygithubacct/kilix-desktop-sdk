@@ -41,8 +41,8 @@ The host companion is based on the selected 0.2.2 host. Other host workstreams
 must merge their changes with it, then rerun the provider and registry checks.
 The selected Python provider requires host SDK 1.16. The external IceWM source
 is separately bound by its reviewed candidate revision; it is not imported.
-The reviewed TUI source is `14d981c7f5d96621b6ec784f750f49c2c5b56521`;
-the separately reviewed IceWM source is `70ae6952fd3f28133b1ac027dcd558ba166b580b`.
+The reviewed TUI source is `3cad13ef9fe863c9c3bdaa1f212e46e14db15eb7`;
+the separately reviewed IceWM source is `f6f52b044538c47fcac85d734a6862bb702f43d0`.
 Exact integration revisions and qualification commands are recorded in the
 worker report; no shared release manifest or installed desktop is changed here.
 

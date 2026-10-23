@@ -1,3 +1,35 @@
+# Published-stack staged qualification
+
+The current `providers.toml` binds SDK implementation
+`906e4345d8fecaf652a3c4a2a6f392f5433e174b`, host companion
+`4e6db8d0c9cf4c1733553477c5bb828a4969b02d`, and separate IceWM
+`f6f52b044538c47fcac85d734a6862bb702f43d0`. The exact-source matrix passes
+5/5 providers, two passes, ten invocations and 90 ordered checks. TUI mirrors
+standalone `3cad13ef9fe863c9c3bdaa1f212e46e14db15eb7`; all five refresh
+sources retain their exact declared adaptations and licence maps.
+
+Fresh staged public-launcher runs on an owned Xvfb display and private bus
+exercise all five providers, including the native IceWM session. Each starts,
+closes, and preserves a configured value across a fresh process launch. K95,
+Cap, Land and TUI also pass existing-window selection without creating a
+second provider. This tests configuration persistence, not restoration of
+unsaved application documents. Two host fixes are required: packaged Land
+sources must not require Git metadata, and private Xvfb must survive the pane's
+process-group hangup until its owner closes it. App cleanup also continues
+after terminal restoration errors. The display-lifetime regression fails on
+the baseline and passes with the companion fix.
+
+These runs bind the actual compiled provider entries. Land remains dependent
+on its build path. The nested terminal uses an independently identified
+installed binary; matching its source to the selected host/terminal revision
+is not claimed. The public desktop command has preparation diagnostics and
+side effects and is not the trusted conformance outer launcher. Formal E1/E3,
+independent outer-launcher acceptance, the four peer-coupling removals, guest
+installation and physical desktop acceptance remain open. Earlier campaigns
+below remain historical evidence and have not been regraded.
+
+---
+
 # 0.2.2 refresh conformance snapshot
 
 The current binding is `providers.toml`; `providers-import.toml` preserves the
