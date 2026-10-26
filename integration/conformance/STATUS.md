@@ -1,3 +1,20 @@
+# Coordinated host pairing refresh
+
+The Kilix 95 mirror now follows standalone
+`caf8921492d6e038e47f14d1c51f4a6226331a42`. Relative to the earlier refresh
+source `ca4c0403a7067a1a123cfecfa084cd53f828bdb8`, that source changes only
+`.github/workflows/test.yml`: its required CI pairs with coordinated host
+`f5334e1c8c2076a21b3ac1800c4ea0b0bf489263`, which contains the host companion
+`4e6db8d0c9cf4c1733553477c5bb828a4969b02d`. Provider, protocol, persistence
+and test bytes are unchanged, so every entry hash below is unchanged. The
+`providers.toml` binding still names the tested implementation
+`906e4345d8fecaf652a3c4a2a6f392f5433e174b`; this refresh was not a new
+conformance run and does not regrade any result. Formal E1/E3, independent
+outer-launcher acceptance, the four peer-coupling removals, guest installation
+and physical desktop acceptance remain open.
+
+---
+
 # Published-stack staged qualification
 
 The current `providers.toml` binds SDK implementation

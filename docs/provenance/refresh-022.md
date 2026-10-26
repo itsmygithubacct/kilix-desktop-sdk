@@ -43,6 +43,9 @@ The selected Python provider requires host SDK 1.16. The external IceWM source
 is separately bound by its reviewed candidate revision; it is not imported.
 The reviewed TUI source is `3cad13ef9fe863c9c3bdaa1f212e46e14db15eb7`;
 the separately reviewed IceWM source is `f6f52b044538c47fcac85d734a6862bb702f43d0`.
+The Kilix 95 mirror follows `caf8921492d6e038e47f14d1c51f4a6226331a42`, whose
+only change from `ca4c0403a7067a1a123cfecfa084cd53f828bdb8` pairs its required
+CI with coordinated host `f5334e1c8c2076a21b3ac1800c4ea0b0bf489263`.
 Exact integration revisions and qualification commands are recorded in the
 worker report; no shared release manifest or installed desktop is changed here.
 
