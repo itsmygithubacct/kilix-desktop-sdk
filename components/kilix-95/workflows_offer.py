@@ -35,6 +35,11 @@ def read_status(output, code):
     return record
 
 
+def ready_detail(record):
+    detail = record.get('detail')
+    return detail[:180] if isinstance(detail, str) and detail else 'Kilix Workflows is ready.'
+
+
 def stop(process):
     """Only terminate the process group created for this owned probe."""
     from owned_job import OwnedJob
@@ -197,7 +202,7 @@ class Controller:
             if record['ready']:
                 self.save(answer='yes')
                 self.ready = True
-                self.status = 'Kilix Workflows is enabled. Local models are ready.'
+                self.status = ready_detail(record)
             else:
                 # Only an already opted-in startup or an explicit Enable click
                 # reaches this path. The terminal still owns licence consent.
@@ -216,7 +221,7 @@ class Controller:
             read_status(json.dumps(report).encode('utf-8'), code)
             self.save(answer='yes')
             self.ready = True
-            self.status = 'Kilix Workflows is enabled. Local models are ready.'
+            self.status = ready_detail(report)
         else:
             self.ready = False
             self.status = 'Setup was cancelled or failed. Choose Enable to retry.'

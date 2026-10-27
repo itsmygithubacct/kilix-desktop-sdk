@@ -1,3 +1,25 @@
+# Merged Ask readiness refresh
+
+The Kilix 95 mirror now follows standalone
+`657f0d39350ac92ef851dba0b6d2cb5a560d7602`. Relative to the previous refresh
+source `e22950d76b411cafddaf688da029c8b9abaf2528`, that source merges main
+`b1f71aa6959943e0e9934d8f753c10b01808eab8` and pairs its required CI with
+merged host `b80a543638301615f80c9794cdd98a587afb39b0`. Four mirrored paths
+change: `.github/workflows/test.yml`, `apps/workflows.py`,
+`workflows_offer.py` and `tests/test_workflows_offer.py`. The Workflows
+window and readiness status now name the Ask backend selected in Model Setup.
+The provider entry `main.py`, the protocol and persistence adapters, and every
+declared adaptation are unchanged, so every entry hash below is unchanged.
+Unlike the earlier pairing refreshes, provider runtime bytes do change. The
+`providers.toml` binding still names the tested implementation
+`906e4345d8fecaf652a3c4a2a6f392f5433e174b`; that conformance run does not
+cover the two changed runtime files, and this refresh does not regrade any
+result. Formal E1/E3, independent outer-launcher acceptance, the four
+peer-coupling removals, guest installation and physical desktop acceptance
+remain open.
+
+---
+
 # Coordinated host repairs pairing refresh
 
 The Kilix 95 mirror now follows standalone

@@ -48,6 +48,10 @@ only change from `ca4c0403a7067a1a123cfecfa084cd53f828bdb8` pairs its required
 CI with coordinated host `f5334e1c8c2076a21b3ac1800c4ea0b0bf489263`. It now follows `e22950d76b411cafddaf688da029c8b9abaf2528`,
 whose only change from that source pairs the same CI with the coordinated host
 repairs `3fdc6dbb78b70e23b488b2d3cbc52d209c3ede87`.
+It now follows `657f0d39350ac92ef851dba0b6d2cb5a560d7602`, which merges main's
+`b1f71aa6959943e0e9934d8f753c10b01808eab8` (workflow readiness names the selected
+Ask backend) and pairs the same CI with merged host
+`b80a543638301615f80c9794cdd98a587afb39b0`.
 Exact integration revisions and qualification commands are recorded in the
 worker report; no shared release manifest or installed desktop is changed here.
 

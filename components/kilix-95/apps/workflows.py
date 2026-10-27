@@ -12,9 +12,9 @@ class WorkflowsOffer(wm.Window):
         busy = bool(self.offer.job or self.offer.probe)
         enabled = (self.offer.state.get('answer') == 'yes'
                    or bool(self.offer.ready))
-        self.add(W.Label(16, 16, 'Enable local models for Kilix workflows that use them.'))
+        self.add(W.Label(16, 16, 'Uses the Ask model selected in Model Setup.'))
         self.add(W.Label(16, 40, 'Grammar and direct actions work without downloads.'))
-        self.add(W.Label(16, 64, 'Verified model files already here are reused.'))
+        self.add(W.Label(16, 64, 'LFM2 is the default; Needle3 and grammar are choices.'))
         self.add(W.Label(16, 88, 'Setup shows licences before fetching missing models.'))
         self.add(W.Label(16, 106, 'Missing models are offered again after updates.'))
         self.status = self.add(W.Label(16, 137, self.offer.status[:68]))

@@ -46,6 +46,13 @@ with H.desktop_dir(), mock.patch.dict(os.environ, {'KILIX_WORKFLOWS_OFFER': '1'}
         finish_probe(offer, READY, 0)
         setup.assert_not_called()
     assert offer.state['answer'] == 'yes' and offer.ready
+    grammar = dict(READY, backend='grammar', detail='Ask grammar is ready; no model download is needed.')
+    with mock.patch.object(offer, 'begin_setup') as setup:
+        finish_probe(offer, grammar, 0)
+        setup.assert_not_called()
+    assert offer.status == grammar['detail']
+    offer.finish_setup({'exit_code': 0, 'report': grammar})
+    assert offer.status == grammar['detail']
     later = W.Controller(desk)
     with mock.patch.object(later, 'enable') as enable:
         later.startup()
