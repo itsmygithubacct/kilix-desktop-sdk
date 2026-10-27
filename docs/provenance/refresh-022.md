@@ -52,6 +52,9 @@ It now follows `657f0d39350ac92ef851dba0b6d2cb5a560d7602`, which merges main's
 `b1f71aa6959943e0e9934d8f753c10b01808eab8` (workflow readiness names the selected
 Ask backend) and pairs the same CI with merged host
 `b80a543638301615f80c9794cdd98a587afb39b0`.
+It now follows `39d1daf4d7bba57c09889759b81540d8dc7fa248`, whose only change pairs the same
+CI with host `7a1c3622a83c486fb19ca0dc14bef09b89f46e0c`, which keeps the Qwen
+provider's Content authority on the merged Content.
 Exact integration revisions and qualification commands are recorded in the
 worker report; no shared release manifest or installed desktop is changed here.
 

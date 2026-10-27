@@ -1,3 +1,18 @@
+# Repaired merged host pairing refresh
+
+The Kilix 95 mirror now follows standalone
+`39d1daf4d7bba57c09889759b81540d8dc7fa248`. Relative to the previous refresh
+source `657f0d39350ac92ef851dba0b6d2cb5a560d7602`, that source changes only
+`.github/workflows/test.yml`: its required CI pairs with host
+`7a1c3622a83c486fb19ca0dc14bef09b89f46e0c`, whose only change from
+`b80a543638301615f80c9794cdd98a587afb39b0` keeps the Qwen provider's Content
+authority on the host's merged Content. Provider, protocol, persistence and
+test bytes are unchanged from the previous refresh, so every entry hash below
+is unchanged. The conformance binding and the limits recorded in the previous
+section are unchanged.
+
+---
+
 # Merged Ask readiness refresh
 
 The Kilix 95 mirror now follows standalone
