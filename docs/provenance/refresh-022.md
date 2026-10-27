@@ -45,7 +45,9 @@ The reviewed TUI source is `3cad13ef9fe863c9c3bdaa1f212e46e14db15eb7`;
 the separately reviewed IceWM source is `f6f52b044538c47fcac85d734a6862bb702f43d0`.
 The Kilix 95 mirror follows `caf8921492d6e038e47f14d1c51f4a6226331a42`, whose
 only change from `ca4c0403a7067a1a123cfecfa084cd53f828bdb8` pairs its required
-CI with coordinated host `f5334e1c8c2076a21b3ac1800c4ea0b0bf489263`.
+CI with coordinated host `f5334e1c8c2076a21b3ac1800c4ea0b0bf489263`. It now follows `e22950d76b411cafddaf688da029c8b9abaf2528`,
+whose only change from that source pairs the same CI with the coordinated host
+repairs `3fdc6dbb78b70e23b488b2d3cbc52d209c3ede87`.
 Exact integration revisions and qualification commands are recorded in the
 worker report; no shared release manifest or installed desktop is changed here.
 
