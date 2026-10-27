@@ -55,6 +55,9 @@ Ask backend) and pairs the same CI with merged host
 It now follows `39d1daf4d7bba57c09889759b81540d8dc7fa248`, whose only change pairs the same
 CI with host `7a1c3622a83c486fb19ca0dc14bef09b89f46e0c`, which keeps the Qwen
 provider's Content authority on the merged Content.
+It now follows `13740a44c68409dfe2b67e8fec041c630d1143de`, which names the checked Ask backend
+before setup, marks its saved answers as Ask answers, and pairs the same CI
+with host `99ad9cb877466d416ffd41fb2ce0dcdf8fecced9`.
 Exact integration revisions and qualification commands are recorded in the
 worker report; no shared release manifest or installed desktop is changed here.
 

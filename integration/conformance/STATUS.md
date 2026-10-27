@@ -1,3 +1,22 @@
+# Ask backend status refresh
+
+The Kilix 95 mirror now follows standalone
+`13740a44c68409dfe2b67e8fec041c630d1143de`. Relative to the previous refresh
+source `39d1daf4d7bba57c09889759b81540d8dc7fa248`, that source changes
+`.github/workflows/test.yml`, `workflows_offer.py` and
+`tests/test_workflows_offer.py`. Before setup, the Workflows window names the
+checked Ask backend and that it is not ready, and the answers it saves carry an
+Ask scope marker that Model Setup reads. Its required CI pairs with host
+`99ad9cb877466d416ffd41fb2ce0dcdf8fecced9`. The provider entry `main.py`, the protocol and persistence adapters, and
+every declared adaptation are unchanged, so every entry hash below is
+unchanged. Provider runtime bytes change again in `workflows_offer.py`; the
+`providers.toml` binding still names the tested implementation
+`906e4345d8fecaf652a3c4a2a6f392f5433e174b`, which does not cover the changed
+runtime files, and this refresh does not regrade any result. The open
+acceptance limits recorded below remain.
+
+---
+
 # Repaired merged host pairing refresh
 
 The Kilix 95 mirror now follows standalone

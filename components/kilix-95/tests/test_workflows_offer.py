@@ -39,6 +39,8 @@ with H.desktop_dir(), mock.patch.dict(os.environ, {'KILIX_WORKFLOWS_OFFER': '1'}
         later.startup()
         enable.assert_not_called()
     assert later.state['answer'] == 'no'
+    # Model Setup reads this marker to file the answer under Ask, not Needle2.
+    assert later.state['scope'] == 'ask'
     later.close()
     # Changing the choice is possible through the persistent menu, and already
     # verified models never open an acquisition terminal.
@@ -46,6 +48,7 @@ with H.desktop_dir(), mock.patch.dict(os.environ, {'KILIX_WORKFLOWS_OFFER': '1'}
         finish_probe(offer, READY, 0)
         setup.assert_not_called()
     assert offer.state['answer'] == 'yes' and offer.ready
+    assert offer.store.load_dict() == {'answer': 'yes', 'scope': 'ask'}
     grammar = dict(READY, backend='grammar', detail='Ask grammar is ready; no model download is needed.')
     with mock.patch.object(offer, 'begin_setup') as setup:
         finish_probe(offer, grammar, 0)
@@ -74,6 +77,19 @@ with H.desktop_dir(), mock.patch.dict(os.environ, {'KILIX_WORKFLOWS_OFFER': '1'}
         Path(offer.job[1]).write_text(json.dumps({'exit_code': 0, 'report': READY}))
         offer.tick(0)
         assert offer.ready and offer.state['answer'] == 'yes'
+    # Before setup, the window names the checked backend and that it is not
+    # ready; an unknown or malformed value is never echoed. Nothing is saved.
+    for backend, shown in (('needle3', 'needle3'), ('lfm2', 'lfm2'), ('grammar', 'grammar'),
+                           ('x' * 500, 'model'), (None, 'model'), (['lfm2'], 'model')):
+        offer.ready = False
+        report = dict(MISSING) if backend is None else dict(MISSING, backend=backend)
+        saved = offer.store.load_dict()
+        with mock.patch.object(desk.shell, '_tab', return_value=True):
+            finish_probe(offer, report, 1)
+        assert offer.job and offer.status == f'Ask {shown} is not ready. Finish setup in the terminal.', offer.status
+        assert len(offer.status) <= 68 and offer.store.load_dict() == saved and not offer.ready
+        offer.job[0].cleanup()
+        offer.job = None
     offer.close()
 
 with H.desktop_dir(), mock.patch.dict(os.environ, {'KILIX_WORKFLOWS_OFFER': '0'}):

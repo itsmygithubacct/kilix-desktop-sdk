@@ -9,6 +9,7 @@ import tempfile
 import time
 
 SCHEMA = 'kilix.workflows/v1'
+ASK_BACKENDS = ('lfm2', 'needle3', 'grammar')
 MAX_OUTPUT = 65536
 CHECK_TIMEOUT = 90
 SETUP_TIMEOUT = 3600
@@ -38,6 +39,13 @@ def read_status(output, code):
 def ready_detail(record):
     detail = record.get('detail')
     return detail[:180] if isinstance(detail, str) and detail else 'Kilix Workflows is ready.'
+
+
+def not_ready_status(record):
+    """Name the checked Ask backend before setup; never echo an unknown value."""
+    backend = record.get('backend')
+    name = backend if backend in ASK_BACKENDS else 'model'
+    return f'Ask {name} is not ready. Finish setup in the terminal.'
 
 
 def stop(process):
@@ -123,7 +131,9 @@ class Controller:
         desk.tick_hooks.append(self.tick)
 
     def save(self, **changes):
-        state = dict(self.state, **changes)
+        # Every answer here is about the selected Ask backend; Model Setup keeps
+        # unmarked answers from before 0.2.2 on its legacy Needle2 page.
+        state = dict(self.state, **changes, scope='ask')
         self.store.save_dict(state)
         self.state = state
 
@@ -208,6 +218,7 @@ class Controller:
                 # reaches this path. The terminal still owns licence consent.
                 self.open()
                 self.begin_setup(target)
+                self.status = not_ready_status(record)
         except (OSError, ValueError) as error:
             self.status = str(error)[:180]
             self.open()
