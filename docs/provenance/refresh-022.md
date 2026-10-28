@@ -58,6 +58,10 @@ provider's Content authority on the merged Content.
 It now follows `13740a44c68409dfe2b67e8fec041c630d1143de`, which names the checked Ask backend
 before setup, marks its saved answers as Ask answers, and pairs the same CI
 with host `99ad9cb877466d416ffd41fb2ce0dcdf8fecced9`.
+It now follows `6f9f07059d70b5fe82f5326c98b6bbf1dfb29017`, which exposes the shared coding-session
+grid preference in Settings, keeps its choices out of kitty.conf, and pairs CI
+with host `3ca4e9c73917392062f65b5ed5eb51f5aecbb060`. The Tools tab keeps both
+coding controls and their explanations above the action buttons.
 Exact integration revisions and qualification commands are recorded in the
 worker report; no shared release manifest or installed desktop is changed here.
 

@@ -337,19 +337,31 @@ with conf("font_size 12\n"):
     yolo = win.fields[yolo_key][1]
     assert yolo.options == ["off", "on"], yolo.options
     assert yolo.value == "off", yolo.value
+    grid_key = settings.shared_settings.CODING_SESSION_GRID_KEY
+    grid = win.fields[grid_key][1]
+    assert grid.options == ["on", "off"], grid.options
+    assert grid.value == "on", grid.value
     assert win.coding_title.y > win.tools_note.y + win.tools_note.h
     assert yolo.y > win.coding_title.y + win.coding_title.h
-    assert all(note.y > yolo.y + yolo.h for note in win.coding_notes)
+    assert grid.y > yolo.y + yolo.h
+    assert all(note.y > grid.y + grid.h for note in win.coding_notes)
+    assert all(note.y + note.h < win.b_apply.y for note in win.coding_notes)
     called = []
     d.shell.install_tb_alias = lambda: called.append(True) or True
     win._install_tb_alias()
     assert called == [True]
     assert "new tab" in win.tb_alias_status.text
     yolo.index = yolo.options.index("on")
+    grid.index = grid.options.index("off")
     win._apply()
     assert settings.shared_settings.coding_yolo(win.shared_path)
+    assert not settings.shared_settings.coding_session_grid(win.shared_path)
     assert yolo_key not in read(win.path), \
         "shared coding policy reached kitty.conf"
+    assert grid_key not in read(win.path), \
+        "shared session grid preference reached kitty.conf"
+    reopened = settings.SettingsWin(d)
+    assert reopened.fields[grid_key][1].value == "off"
 
 
 # Session logs edits the same shared document as the kilix CLI and TUI, and

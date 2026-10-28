@@ -1,3 +1,22 @@
+# Session-grid settings refresh
+
+The Kilix 95 mirror now follows standalone
+`6f9f07059d70b5fe82f5326c98b6bbf1dfb29017` and pairs its required CI with host
+`3ca4e9c73917392062f65b5ed5eb51f5aecbb060`. Settings exposes the shared
+coding-session grid preference, defaults to on, and persists the selection in
+the shared settings document. Its controls and explanatory text fit above the
+Tools tab action buttons. The changed paths are `apps/settings.py`,
+`tests/test_settings.py`, and `.github/workflows/test.yml`; no declared SDK
+adaptation changes.
+
+The provider entry, protocol and persistence adapters, and prior conformance
+bindings are unchanged. This refresh changes Settings runtime bytes and does
+not regrade historical conformance or establish native, outer-launcher, guest
+or physical acceptance. Current pairing checks are recorded separately by the
+Plebian-OS release coordinator. All open acceptance limits below remain.
+
+---
+
 # Ask backend status refresh
 
 The Kilix 95 mirror now follows standalone

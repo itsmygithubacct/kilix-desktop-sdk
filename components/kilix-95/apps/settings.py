@@ -211,6 +211,12 @@ CODING = [
         "choice",
         list(shared_settings.CODING_YOLO_CHOICES),
     ),
+    (
+        shared_settings.CODING_SESSION_GRID_KEY,
+        "Coding sessions in a grid",
+        "choice",
+        list(shared_settings.CODING_SESSION_GRID_CHOICES),
+    ),
 ]
 TOOLS = CODING
 FORM_PAGES = [
@@ -387,12 +393,11 @@ class SettingsWin(wm.Window):
         self.panels[tools_tab].append(self.coding_title)
         self.coding_notes = []
         for offset, text in enumerate((
-            "Applies to sessions resumed with kilix-rollout-resume.",
-            "'on' starts Claude Code with --dangerously-skip-permissions and",
-            "Codex and Kimi Code with --yolo, so the agent runs commands",
-            "without asking. Leave it off unless this machine is disposable.",
+            "Grid on groups new coding sessions into two rows, up to 12 panes.",
+            "Skip approvals applies to sessions resumed with kilix-rollout-resume.",
+            "Skip approvals on lets the agent run commands without asking.",
         )):
-            note = self.add(W.Label(18, 280 + offset * 18, text,
+            note = self.add(W.Label(18, 310 + offset * 18, text,
                                     font=T.SMALL, color=T.SHADOW))
             self.panels[tools_tab].append(note)
             self.coding_notes.append(note)
