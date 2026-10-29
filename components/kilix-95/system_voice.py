@@ -24,8 +24,12 @@ class Controller:
         import durable_state
         self.desk = desk
         self.store = durable_state.JsonState('system-voice.state')
-        self.state = {'offered': False, 'enabled': False, 'greeting': 'hello'}
+        self.state = {'offered': False, 'enabled': False, 'greeting': 'hello', 'volume': 20}
         self.state.update(self.store.load_dict())
+        try:
+            self.state['volume'] = max(0, min(20, int(self.state['volume'])))
+        except (ValueError, TypeError):
+            self.state['volume'] = 20
         try:
             self.state['greeting'] = greeting(self.state['greeting'])
         except ValueError:
@@ -53,13 +57,21 @@ class Controller:
         from apps.systemvoice import open_window
         return open_window(self.desk)
 
-    def enable(self, message):
+    def enable(self, message, volume=None):
         message = greeting(message)
         if self.job:
             raise ValueError('Setup is already open. Complete or close its terminal first.')
+        changed_volume = volume is not None and volume != self.state['volume']
+        if volume is not None:
+            if type(volume) is not int or not 0 <= volume <= 20:
+                raise ValueError('System voice volume must be between 0 and 20 percent.')
+            self.save(volume=volume)
         if self.state['enabled'] is True:
             self.save(greeting=message, offered=True)
-            if self.process is None:
+            if changed_volume and self.process is not None:
+                self.stop()
+                self.start(silent=True)
+            elif self.process is None:
                 self.start()
             return
         target = self.desk.shell.kilix_tts_target()
@@ -82,7 +94,7 @@ class Controller:
         self.stop()
         self.status = 'System voice is off.'
 
-    def start(self):
+    def start(self, silent=False):
         if self.process is not None:
             return
         target = self.desk.shell.kilix_tts_target()
@@ -94,7 +106,8 @@ class Controller:
         self.log = open(Path(self.directory.name)/'session.log', 'w+b')
         try:
             self.process = subprocess.Popen(
-                [*target, '--system-voice', '--speak=' + self.state['greeting']],
+                [*target, '--system-voice', '--system-volume=' + str(self.state['volume']),
+                 '--speak=' + ('' if silent else self.state['greeting'])],
                 stdin=subprocess.PIPE, stdout=self.log, stderr=self.log)
         except OSError as error:
             self.stop()

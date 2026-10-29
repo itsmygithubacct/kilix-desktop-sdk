@@ -26,7 +26,7 @@ _BASE_METRICS = {
     "ICON_S": 16,               # small icon size (title bars, menus, lists)
     "CELL_W": 75, "CELL_H": 66, # desktop / file-manager icon grid cell
     "START_W": 58,
-    "WALL_IMAGE": None,
+    "WALL_IMAGE": "assets/wallpapers/kilix-firekitten-dusk.png",
 }
 
 _FLAVORS = {
@@ -96,7 +96,7 @@ _FLAVORS = {
         "START_B": (36, 139, 41),
         "START_TX": (255, 255, 255),
         "START_W": 64,
-        "WALL_IMAGE": "assets/wallpapers/kilix-xp-kittens-fire.png",
+        "WALL_IMAGE": "assets/wallpapers/kilix-firekitten-dusk.png",
     },
 }
 

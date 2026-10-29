@@ -6,7 +6,7 @@ from system_voice import controller
 
 class SystemVoice(wm.Window):
     def __init__(self, desk):
-        super().__init__(desk, 'Enable system voice', 510, 255,
+        super().__init__(desk, 'Enable system voice', 510, 295,
                          icon='speak', resizable=False)
         self.voice = controller(desk)
         self.add(W.Label(16, 16, 'Let Piper Kristin greet you when Kilix 95 starts.'))
@@ -14,12 +14,15 @@ class SystemVoice(wm.Window):
         self.add(W.Label(16, 58, 'Also speaks system health, power and update messages.'))
         self.add(W.Label(16, 76, 'Startup message (leave blank for a silent startup):'))
         self.message = self.add(W.TextField(16, 98, 472, self.voice.state['greeting']))
-        self.status = self.add(W.Label(16, 138, self.voice.status))
-        self.apply = self.add(W.Button(16, 177, 164, 26,
+        self.add(W.Label(16, 138, 'Announcement volume (20% maximum):'))
+        self.volume = self.add(W.Dropdown(300, 130, 150,
+            [f'{level}%' for level in range(21)], self.voice.state['volume']))
+        self.status = self.add(W.Label(16, 178, self.voice.status))
+        self.apply = self.add(W.Button(16, 217, 164, 26,
             'Save' if self.voice.state['enabled'] else 'Enable system voice', cb=self.enable))
-        self.disable_button = self.add(W.Button(190, 177, 136, 26,
+        self.disable_button = self.add(W.Button(190, 217, 136, 26,
             'Turn off' if self.voice.state['enabled'] else 'Not now', cb=self.disable))
-        self.add(W.Button(336, 177, 100, 26, 'Close', cb=self.close))
+        self.add(W.Button(336, 217, 100, 26, 'Close', cb=self.close))
         self.desk.tick_hooks.append(self.refresh)
         self.on_close = self.cleanup
         self.set_focus(self.message)
@@ -38,7 +41,7 @@ class SystemVoice(wm.Window):
 
     def enable(self):
         try:
-            self.voice.enable(self.message.text)
+            self.voice.enable(self.message.text, self.volume.index)
         except Exception as error:
             wm.msgbox(self.desk, 'System voice', str(error), icon='error')
 

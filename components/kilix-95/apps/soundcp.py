@@ -139,7 +139,7 @@ class SoundCP(wm.Window):
     def _preview(self):
         p = self._current_path()
         if p:
-            sounds.preview(p)
+            sounds.preview(p, event_id=self.cur)
 
     def _open_amp(self):
         p = self._current_path()

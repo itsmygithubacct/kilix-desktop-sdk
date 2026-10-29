@@ -93,3 +93,12 @@ entry beneath it; it does not pretend each component is a standalone Git root.
 Land entry hashes bind the actual build tested and remain build-path dependent.
 Historical conformance records do not grade this refresh. ISO, installation,
 upgrade/rollback, live desktop and physical audio/display acceptance remain.
+
+### Firekitten desktop and quiet session audio
+
+Refreshed Kilix 95 to `c55dd2636b7d5d3fe1e8c45b54d90e5175f7bcf4` with the optional focused paperclip sampler,
+pre-rendered load scenes, subtle optimizer cycle, persistent display controls,
+and separate 20% system-audio limits. The host pairing is `5652e3a664ded0e9bffd12148a34795b734f5094`.
+The seven declared local adaptations remain in place; the added main-loop and
+cleanup hooks were applied to the adapted main.py. Other changed provider files
+and artwork match the standalone revision byte for byte.

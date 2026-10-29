@@ -41,7 +41,7 @@ assert sounds.ensure("nope") is None                     # unknown name
 # ── player selection picks a plausible command (or None) ────────────────────
 p = sounds.player()
 assert p is None or os.path.basename(p) in sounds._PLAYERS
-for exe in ("/usr/bin/paplay", "/usr/bin/aplay", "/usr/bin/ffplay",
+for exe in ("/usr/bin/paplay", "/usr/bin/ffplay",
             "/usr/bin/play"):
     argv = sounds._argv(exe, "/x.wav", 80)
     assert argv[0] == exe and "/x.wav" in argv         # command + file present
@@ -222,3 +222,23 @@ assert sounds.ensure("startup"), "stale cache should regenerate"
 assert open(stamp).read().strip() == str(sounds.SYNTH_VERSION)
 
 print("ok")
+
+# Per-event caps include custom bindings and previews, never the master mixer.
+from unittest import mock
+with mock.patch.object(sounds, '_play_file', return_value=True) as play_file:
+    for event in ('startup', 'shutdown'):
+        sounds.play(event, volume=100)
+        assert play_file.call_args.args[1] == 20
+        sounds.preview('/custom/song.mp3', volume=100, event_id=event)
+        assert play_file.call_args.args[1] == 20
+        sounds.play(event, volume=7)
+        assert play_file.call_args.args[1] == 7
+    sounds.play('error', volume=45)
+    assert play_file.call_args.args[1] == 45
+assert 'aplay' not in sounds._PLAYERS
+try:
+    sounds._argv('/usr/bin/aplay', '/custom/song.wav', 20)
+except ValueError:
+    pass
+else:
+    raise AssertionError('Unattenuated fallback')

@@ -90,6 +90,33 @@ Stop sharing stay on the physical desktop.
 - With the matching host candidate, a surviving broker-backed desktop refreshes
   its authenticated route from the live attach process before launching tabs.
 
+### Firekitten desktop and quiet session audio
+
+The default wallpaper for both flavors is a dark twilight firekitten landscape.
+A small optimizer sits on the back-left hill with a slow, anchored crank cycle.
+Display Properties → Background offers the optional paperclip scene, animation
+on/off, and 1/5/10/30-minute sampling (five minutes by default). A one-second local
+CPU sample selects scenes at 0, 5, 10, 20, 30, 60, 90 and 100 percent busy time,
+normalized across logical cores. At 90–99% Kilix sits on the piles; at 100% only
+one arm emerges. Sampling and animation pause when the desktop pane is unfocused
+or its screen saver is active. Missed samples do not accumulate. Unsupported or
+unavailable counters leave the last scene in place.
+
+The optimizer glows and steams when swap occupancy reaches half of configured
+swap with at least 256 MiB in use, or current swap traffic reaches 8 MiB/s. This
+is a decorative load indicator, not a temperature measurement. The private
+`paperclips_enabled`, `paperclips_animate` and `paperclips_interval` choices live
+in the existing Kilix 95 shell state. Custom wallpapers are preserved; enabling
+the paperclip checkbox selects the bundled firekitten scene.
+
+System Voice offers a separate announcement volume from 0–20%, defaulting to 20%,
+including greetings, power/health messages and goodbye. It requires the matching
+voice runtime with `--system-volume`. Startup and shutdown songs, including custom
+bindings and their Sound Properties previews, are capped at 20% of source level.
+The master mixer is unchanged. Playback requires a backend with per-stream gain
+(`paplay`, `ffplay`, `play`, `mpv` or VLC); bare `aplay` is not used because it
+cannot honor the level.
+
 ## Release 0.2.0
 
 Prepared for the coordinated Plebian-OS 0.2.0 release.
@@ -914,7 +941,7 @@ Common requirements by feature:
 - python-xlib for XPane and clipboard bridging
 - `man`/`manpath` for System Manual
 - Google Chrome, Chromium, or Firefox for real-browser links
-- audio players such as `paplay`, `aplay`, `ffplay`, or `play` for UI sounds
+- audio players such as `paplay`, `ffplay`, or `play` for UI sounds
 - browsers/VirtualBox only when those launch paths are used
 
 Dependency failures should degrade by feature:

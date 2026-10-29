@@ -93,3 +93,24 @@ with H.desktop_dir():
     with mock.patch.object(voice,'goodbye',side_effect=lambda:order.append('goodbye')), mock.patch.object(desk.shell,'_spawn_kitty_launch',side_effect=lambda *a:order.append(a[1])):
         desk.shell._power_off()
     assert order==['goodbye','systemctl poweroff']
+
+# Announcement gain is private durable state, defaults quiet, and is bounded.
+with H.desktop_dir():
+    desk=H.make_desk(); voice=V.controller(desk)
+    assert voice.state['volume']==20
+    voice.save(enabled=True)
+    with mock.patch.object(voice,'start'):
+        voice.enable('hello',7)
+    assert V.Controller(desk).state['volume']==7
+    for invalid in (-1,21,True,'10'):
+        try: voice.enable('hello',invalid)
+        except ValueError: pass
+        else: raise AssertionError(invalid)
+    with mock.patch.object(desk.shell,'kilix_tts_target',return_value=['/fixture/kilix','tts']), mock.patch('system_voice.subprocess.Popen') as spawn:
+        spawn.return_value.poll.return_value=None
+        voice.start(silent=True)
+        assert '--system-volume=7' in spawn.call_args.args[0]
+        assert spawn.call_args.args[0][-1]=='--speak='
+        voice.close()
+    voice.save(volume=100)
+    assert V.Controller(desk).state['volume']==20

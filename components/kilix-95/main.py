@@ -300,7 +300,10 @@ class Desk:
         self.password_nag = False      # default-password tray reminder (armed in run)
         self.fd_hooks = {}            # fd -> callback (XPane video feeds etc.)
         self.tick_hooks = []          # callables(now), each loop pass
+        import paperclips
+        self.paperclips = paperclips.Controller(self.shell)
         if term is not None:
+            self.tick_hooks.append(self.paperclips.tick)
             self.tick_hooks.append(self.shell.poll_applications)
             self.shell.poll_applications()
         self.mouse_owner = None
@@ -1452,6 +1455,8 @@ class Desk:
                 voice.close()
 
     def _restore_and_cleanup(self, term):
+        if getattr(self, 'paperclips', None) is not None:
+            self.paperclips.close()
         # A dead Kitty/X connection can make restore raise.  Cleanup must not
         # depend on the terminal still being writable.
         try:

@@ -105,6 +105,8 @@ class Shell:
                       "wall_color": list(T.DESKTOP), "wall_image": None,
                       "wall_mode": "stretch", "wall_custom": False,
                       "wall_pattern": "None", "recent": [],
+                      "paperclips_enabled": True, "paperclips_animate": True,
+                      "paperclips_interval": 300,
                       "cursor_scheme": "Standard", "saver_name": "Mystify",
                       "saver_idle": 180, "saver_lock": False,
                       "full_window_drag": True, "show_quick_launch": True,
@@ -309,11 +311,15 @@ class Shell:
         if self._wall is None or self._wall.size != (sw, sh):
             self._wall = self._build_wall(sw, sh)
         fb.paste(self._wall, (0, 0))
+        if getattr(self.desk, 'paperclips', None) is not None:
+            self.desk.paperclips.draw(fb)
         self.grid.draw(d, fb)
 
     def _build_wall(self, sw, sh):
         img = Image.new("RGB", (sw, sh), tuple(self.state["wall_color"]))
         path = self.state.get("wall_image")
+        if getattr(self.desk, 'paperclips', None) is not None:
+            path = self.desk.paperclips.wallpaper() or path
         if path:
             try:
                 pic = Image.open(os.path.expanduser(path)).convert("RGB")

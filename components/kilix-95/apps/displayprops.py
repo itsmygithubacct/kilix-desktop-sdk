@@ -7,6 +7,7 @@ import secrets
 from PIL import Image
 
 import filedialog
+import paperclips
 import screensaver
 import shell as shell_mod
 import themes
@@ -174,10 +175,17 @@ class DisplayProperties(wm.Window):
         mode = self.state.get("wall_mode", "stretch")
         self.bg_mode = self._add(p, W.Dropdown(
             102, 228, 140, modes, modes.index(mode) if mode in modes else 0))
-        self._add(p, W.Label(
-            22, 276,
-            "Patterns and theme artwork are generated under Kilix 95 user data.",
-            font=T.SMALL, color=T.SHADOW))
+        self.paperclips = self._add(p, W.Checkbox(
+            22, 264, "Paperclip load scene (uses firekitten wallpaper)",
+            checked=desk_enabled(self.desk)))
+        self.paperclip_animation = self._add(p, W.Checkbox(
+            22, 292, "Animate optimizer", checked=self.state.get('paperclips_animate', True) is True))
+        self._add(p, W.Label(22, 326, "Sample every:"))
+        self.paperclip_interval = self._add(p, W.Dropdown(
+            122, 320, 120, ['1 minute', '5 minutes', '10 minutes', '30 minutes'],
+            paperclips.INTERVALS.index(paperclips.interval(self.state.get('paperclips_interval', 300)))))
+        self._add(p, W.Label(22, 354, "Pauses while the desktop pane is unfocused. Swap use heats the machine.",
+                            font=T.SMALL, color=T.SHADOW))
 
     def _build_saver(self, cw):
         p = 1
@@ -357,10 +365,20 @@ class DisplayProperties(wm.Window):
         image = self.bg_image.text.strip() or None
         if not image and pattern != "None":
             image = themes.wallpaper("Custom " + pattern, color, pattern)
+        image_changed = image != (state.get('wall_image') or None)
+        enabled = self.paperclips.checked and (not image_changed or image == str(paperclips.BASE))
+        custom = (False if enabled else
+                  True if image_changed else state.get('wall_custom', False))
+        if enabled:
+            image = str(paperclips.BASE)
+        self.paperclips.checked = enabled
         state.update({
             "wall_color": list(color), "wall_pattern": pattern,
             "wall_image": image, "wall_mode": self.bg_mode.value,
-            "wall_custom": True, "saver_name": self.saver_dd.value,
+            "wall_custom": custom, "saver_name": self.saver_dd.value,
+            "paperclips_enabled": enabled,
+            "paperclips_animate": self.paperclip_animation.checked,
+            "paperclips_interval": paperclips.INTERVALS[self.paperclip_interval.index],
             "saver_idle": TIMEOUTS[self.timeout_dd.index][1],
             "saver_lock": bool(self.lock.checked and state.get("saver_password")),
             "cursor_scheme": self.cursor.value,
@@ -373,8 +391,13 @@ class DisplayProperties(wm.Window):
         self.desk.saver_idle = float(state["saver_idle"])
         self.desk.shell._wall = None
         self.desk.shell._save_state()
+        self.bg_image.set(state.get('wall_image') or '')
         self.desk.shell.invalidate()
         self.desk.taskbar.invalidate()
         self.status.set("Display settings applied.")
         if close:
             self.close()
+
+
+def desk_enabled(desk):
+    return desk.shell.state.get('paperclips_enabled', True) is True and not desk.shell.state.get('wall_custom')

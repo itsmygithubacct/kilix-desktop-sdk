@@ -5,7 +5,7 @@ directory by flavor. A pure-Python synth remains as a fallback if a bundled asse
 is missing. A *scheme* maps each system event to a sound file (any format) or
 silence, defaulting to the active built-in flavor; the active scheme persists to
 sounds/scheme.json, named schemes to sounds/schemes/<name>.json. Playback is
-fire-and-forget through a detached CLI player (WAV via paplay/aplay, other
+fire-and-forget through a detached CLI player (WAV via paplay/ffplay/play, other
 formats via ffplay/mpv/cvlc), so it never blocks the event loop and never raises
 when no player exists.
 """
@@ -24,7 +24,7 @@ import storage
 
 RATE = 44100
 SYNTH_VERSION = 5          # bump when bundled/synth cues change so caches refresh
-_PLAYERS = ("paplay", "aplay", "ffplay", "play")     # WAV players
+_PLAYERS = ("paplay", "ffplay", "play")     # per-stream volume is required
 _MEDIA_PLAYERS = ("ffplay", "mpv", "cvlc")           # non-WAV (kilix-amp formats)
 _AUDIO_EXT = (".wav", ".mp3", ".flac", ".ogg", ".oga", ".opus", ".m4a",
               ".aac", ".aiff", ".aif", ".aifc", ".wma")
@@ -620,7 +620,7 @@ def player():
 
 
 def _player_for(path):
-    """WAV → paplay/aplay/…; any other format → ffplay/mpv/cvlc (amp formats)."""
+    """WAV → paplay/ffplay/play; any other format → ffplay/mpv/cvlc."""
     if os.path.splitext(path)[1].lower() == ".wav":
         return _which(_PLAYERS)
     return _which(_MEDIA_PLAYERS)
@@ -641,7 +641,7 @@ def _argv(exe, path, volume):
         return [exe, "--volume=%d" % int(vol * 655.36), path]
     if base == "play":                                   # sox
         return [exe, "-q", path, "vol", "%.3f" % (vol / 100.0)]
-    return [exe, path]                                   # aplay: no volume flag
+    raise ValueError('Player cannot honor a per-stream volume limit')
 
 
 def _play_file(path, volume, muted):
@@ -678,9 +678,13 @@ def _resolve(event_id):
 def play(event_id, volume=100, muted=False):
     """Play the sound bound to a system event through the active scheme,
     detached. Returns True iff a player was spawned; never raises."""
+    if event_id in ('startup', 'shutdown'):
+        volume = min(20, volume)
     return _play_file(_resolve(event_id), volume, muted)
 
 
-def preview(path, volume=100, muted=False):
+def preview(path, volume=100, muted=False, event_id=None):
     """Audition an arbitrary file the same way play() does."""
+    if event_id in ('startup', 'shutdown'):
+        volume = min(20, volume)
     return _play_file(path, volume, muted)
