@@ -65,6 +65,9 @@ coding controls and their explanations above the action buttons.
 It now follows `65b1793103e6ee126271b36b5559ed332231d975`, which offers the shared system CPU and RAM
 readout mode at the head of the Top bar tab (default always) and pairs CI
 with host `55dee61d6abcdf508825a99e3100d75b16cc70d0`.
+It now follows `48012d75f5cf7230c3fe5f7135039cb0f80037ce`, whose only change pairs the same
+CI with host `e428a22a21698361fa226a8a874f3bde191429e3`, which keeps focus with the user
+during remote commands from background panes.
 Exact integration revisions and qualification commands are recorded in the
 worker report; no shared release manifest or installed desktop is changed here.
 

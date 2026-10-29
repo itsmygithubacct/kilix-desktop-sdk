@@ -1,3 +1,15 @@
+# Focus guard CI refresh
+
+The Kilix 95 mirror now follows standalone
+`48012d75f5cf7230c3fe5f7135039cb0f80037ce`, whose only change pairs its required CI with host
+`e428a22a21698361fa226a8a874f3bde191429e3`. That host's engine keeps the user's tab and pane
+active and the window unraised during remote commands from background panes.
+The changed path is `.github/workflows/test.yml`; no runtime bytes, declared
+SDK adaptation or conformance binding changes, and all open acceptance limits
+below remain.
+
+---
+
 # System load settings refresh
 
 The Kilix 95 mirror now follows standalone
