@@ -8,6 +8,7 @@ import contextlib
 import os
 import stat
 import tempfile
+from unittest.mock import patch
 
 import harness as H
 import shell as shell_mod
@@ -172,7 +173,10 @@ with conf("font_size 12\n") as path:
     win = H.find_window(d, "SettingsWin")
 
     for key in settings.shared_settings.MANAGED_KEYS:
-        assert key in win.fields, f"Kilix 95 Settings is missing {key}"
+        if key == "KILIX_WEATHER_REQUEST":
+            assert win.weather_refresh_button.cb == win._refresh_weather
+        else:
+            assert key in win.fields, f"Kilix 95 Settings is missing {key}"
     _, volume = win.fields["KILIX_CHROME_VOLUME"]
     _, thermal = win.fields["KILIX_CHROME_TEMPERATURE"]
     _, temperature_unit = win.fields[settings.shared_settings.TEMPERATURE_UNIT_KEY]
@@ -220,6 +224,147 @@ with conf("font_size 12\n") as path:
     assert "KILIX_GAME_KILIX_LIGHTS=0" in shared_text
     assert "KILIX_GAME_SUPER_KILIX=0" in shared_text
     assert "KILIX_CHROME_NETWORK" not in read(path)
+
+
+# Weather uses the host's shared contract, including the internal refresh
+# nonce. The button refreshes the saved ZIP, not an unapplied edit.
+with conf("# preserve\nfont_size 12\n") as path:
+    d = H.make_desk(size=(640, 480))
+    import apps
+    apps.open(d, "settings", None)
+    win = H.find_window(d, "SettingsWin")
+    shared = settings.shared_settings
+    win._switch_tab(settings.FORM_PAGES.index(settings.WEATHER))
+    zip_field = win.fields["KILIX_WEATHER_ZIP"][1]
+    schedule = win.fields["KILIX_WEATHER_REFRESH"][1]
+    clock = win.fields["KILIX_WEATHER_TIME"][1]
+    assert zip_field.text == ""
+    assert schedule.value == "60" and clock.text == "07:00"
+    assert schedule.options == ["manual", "15", "30", "60", "180", "daily"]
+    assert win.fields["KILIX_CHROME_WEATHER"][1].checked
+    assert win.fields["KILIX_CHROME_SUPER_START"][1].checked
+
+    def refresh():
+        win.set_focus(win.weather_refresh_button)
+        x, y = win.client_origin()
+        button = win.weather_refresh_button
+        H.click(d, x + button.x + 8, y + button.y + 8)
+
+    zip_field.set("00501")
+    refresh()
+    assert win.status.text == "Apply a ZIP first."
+    assert shared.load(win.shared_path)["KILIX_WEATHER_REQUEST"] == "0"
+    schedule.index = schedule.options.index("daily")
+    clock.set("06:45")
+    win.fields["KILIX_CHROME_SUPER_START"][1].checked = False
+    win._apply()
+    values = shared.load(win.shared_path)
+    assert values["KILIX_WEATHER_ZIP"] == "00501"
+    assert values["KILIX_WEATHER_REFRESH"] == "daily"
+    assert values["KILIX_WEATHER_TIME"] == "06:45"
+    assert values["KILIX_CHROME_SUPER_START"] == "0"
+    with open(win.shared_path, "a", encoding="utf-8") as f:
+        f.write("# keep custom choice\nUNRELATED=retained\n")
+    zip_field.set("90210")
+    refresh()
+    values = shared.load(win.shared_path)
+    assert values["KILIX_WEATHER_ZIP"] == "00501"
+    assert values["KILIX_WEATHER_REQUEST"] != "0"
+    assert win.status.text == "Refresh requested."
+    before = read(win.shared_path)
+    config_before = read(path)
+    for field, bad, good in ((zip_field, "１２３４５", "00501"),
+                             (zip_field, "1234", "00501"),
+                             (clock, "24:00", "06:45")):
+        field.set(bad)
+        with patch.object(settings.wm, "msgbox") as error:
+            win._apply()
+        assert error.called
+        assert read(win.shared_path) == before and read(path) == config_before
+        field.set(good)
+    zip_field.set("")
+    win._apply()
+    values = shared.load(win.shared_path)
+    assert values["KILIX_WEATHER_ZIP"] == ""
+    assert values["KILIX_WEATHER_REFRESH"] == "daily"
+    assert values["KILIX_WEATHER_TIME"] == "06:45"
+    assert "# keep custom choice\nUNRELATED=retained\n" in read(win.shared_path)
+    assert stat.S_IMODE(os.stat(win.shared_path).st_mode) == 0o600
+    assert "KILIX_WEATHER" not in read(path)
+    reopened = settings.SettingsWin(d)
+    assert reopened.fields["KILIX_WEATHER_ZIP"][1].text == ""
+    assert reopened.fields["KILIX_WEATHER_REFRESH"][1].value == "daily"
+    assert not reopened.fields["KILIX_CHROME_SUPER_START"][1].checked
+
+
+# At 640x480 and the minimum dialog size, actual mouse targets and keyboard
+# traversal must reach every header and control, including scrolled ones.
+with conf("font_size 12\n"):
+    d = H.make_desk(size=(640, 480))
+    import apps
+    apps.open(d, "settings", None)
+    win = H.find_window(d, "SettingsWin")
+    for width, height in ((620, 420), (win.min_w, win.min_h)):
+        win.w, win.h = width, height
+        win.on_resize()
+        cw, ch = win.client_size()
+        assert win.x + win.w <= 640 and win.y + win.h <= 480 - T.TASKBAR_H
+        seen = set()
+        for _ in win.panels:
+            # Header arrows reveal the selected tab and retain keyboard focus.
+            win.set_focus(win.tabs)
+            H.key(d, "ArrowRight")
+            page = win.tabs.active
+            seen.add(page)
+            rect = next((x, w) for i, x, w in win.tabs.tab_rects() if i == page)
+            assert win.tabs.x <= rect[0] and rect[0] + rect[1] <= win.tabs.x + win.tabs.w
+            x, y = win.client_origin()
+            H.click(d, x + rect[0] + rect[1] // 2, y + win.tabs.y + 8)
+            assert win._cur_tab == page
+            other, hx, hw = next(r for r in win.tabs.tab_rects() if r[0] != page)
+            H.click(d, x + hx + hw // 2, y + win.tabs.y + 8)
+            assert win._cur_tab == other
+            win._switch_tab(page)
+            if page == win.raw_tab:
+                continue
+            wanted = {w for w in win.panels[page] if w.focusable and w.enabled}
+            visited = set()
+            win.set_focus(win.tabs)
+            for _ in range(len(wanted) + 1):
+                H.key(d, "Tab")
+                field = win.focus
+                assert field.visible
+                assert 0 <= field.x and field.x + field.w <= cw
+                if field in wanted:
+                    assert 32 <= field.y and field.y + field.h <= win.b_apply.y
+                    visited.add(field)
+                else:
+                    assert field.y + field.h <= ch
+            assert visited == wanted, (page, len(visited), len(wanted))
+        assert seen == set(range(len(win.panels)))
+        if win.tabs.overflow:
+            previous = win._cur_tab
+            x, y = win.client_origin()
+            H.click(d, x + win.tabs.x + win.tabs.w - 9, y + win.tabs.y + 8)
+            assert win._cur_tab == (previous + 1) % len(win.panels)
+            H.click(d, x + win.tabs.x + 9, y + win.tabs.y + 8)
+            assert win._cur_tab == previous
+        # The bottom Top bar control is reached by mouse scrolling and changes
+        # only its own preference when clicked (no invisible control intercept).
+        win._switch_tab(settings.FORM_PAGES.index(settings.TOP_BAR))
+        field = win.fields["KILIX_CHROME_SUPER_START"][1]
+        x, y = win.client_origin()
+        for _ in range(20):
+            if field.visible:
+                break
+            H.wheel(d, x + 90, y + 110, 1)
+        assert field.visible
+        old = field.checked
+        H.click(d, x + field.x + 6, y + field.y + 6)
+        assert field.checked != old
+        H.key(d, "Tab", ctrl=True)
+        assert win._cur_tab == settings.FORM_PAGES.index(settings.PANE_BUTTONS)
+        win.render()
 
 
 # ── font-size buttons: same setting as the CLI / kitty shortcut path ───────

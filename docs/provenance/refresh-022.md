@@ -69,6 +69,17 @@ It now follows `48012d75f5cf7230c3fe5f7135039cb0f80037ce`, whose only change pai
 CI with host `e428a22a21698361fa226a8a874f3bde191429e3`, which keeps focus with the user
 during remote commands from background panes.
 It now follows `0de26f5d4d3096afb84300b9bec0e23e5c7fcd5e`, which gives the embedded model setup terminal a controlling TTY and masked password input for optional converter installation. Password retry, cancellation and transcript privacy are covered by real PTY tests.
+It now follows `a04a39d95d05e9a35c4698c0f73af86a94195b47`, which exposes saved US ZIP weather,
+manual/recurring/daily refresh, a refresh request button, input validation and
+location clearing, plus the lone Super Start preference in canonical Settings.
+The existing form groups retain their order; header navigation and page scrolling
+keep every control reachable at 640x480 and the 540x320 minimum dialog size.
+Required provider CI is paired with host
+`12f3c5b1840f679058af3eda87d778174546c4f7`, which owns the shared weather
+settings contract and terminal widget implementation. The snapshot mirrors only
+that source's settings, tests and CI change; its declared protocol, persistence
+and build adaptations remain unchanged. Historical import maps and source-bound
+conformance records are not refreshed by this settings projection.
 Exact integration revisions and qualification commands are recorded in the
 worker report; no shared release manifest or installed desktop is changed here.
 

@@ -16,6 +16,7 @@ import re
 import signal
 import subprocess
 import tempfile
+import time
 
 import shell as _shell
 import theme as T
@@ -74,6 +75,7 @@ TOP_BAR = [
     # Declared by the shared SDK, so the provider has to offer it: the contract
     # test asserts every shared chrome key is reachable from this app.
     ("KILIX_CHROME_WINDOWS", "Native window taskbar (Pleb)", "bool", "1"),
+    ("KILIX_CHROME_SUPER_START", "Lone Super opens Start", "bool", "1"),
 ]
 PANE_BUTTONS = [
     (
@@ -221,9 +223,16 @@ CODING = [
     ),
 ]
 TOOLS = CODING
+WEATHER = [
+    ("KILIX_CHROME_WEATHER", "Show weather", "bool", "1"),
+    ("KILIX_WEATHER_ZIP", "US ZIP (five digits)", "text", None),
+    ("KILIX_WEATHER_REFRESH", "Refresh (minutes / daily)", "choice",
+     list(shared_settings.WEATHER_REFRESH_CHOICES)),
+    ("KILIX_WEATHER_TIME", "Daily local time (HH:MM)", "text", None),
+]
 FORM_PAGES = [
     APPEARANCE, BEHAVIOR, TOP_BAR, PANE_BUTTONS, SESSION_LOG, VOICE, GAMES,
-    TOOLS,
+    TOOLS, WEATHER,
 ]
 
 
@@ -284,11 +293,68 @@ class _Swatch(W.Widget):
                  self.y + self.h - 1, fill=col)
 
 
+class _SettingsLabel(W.Label):
+    """Keep long explanations clear of the scroll bar and dialog buttons."""
+    limit_width = None
+
+    def draw(self, d, img):
+        width = self.window.client_size()[0] - self.x - 26
+        if self.limit_width is not None:
+            width = min(width, self.limit_width)
+        d.text((self.x, self.y), T.ellipsize(self.font, self.text, max(0, width)),
+               font=self.font, fill=self.color)
+
+
+class _SettingsTabs(W.TabBar):
+    """Keep complete tab headers reachable when their labels cannot fit."""
+    first = 0
+
+    def tab_rects(self):
+        widths = self._tab_widths()
+        self.overflow = sum(widths) + 4 > self.w
+        inset = 20 if self.overflow else 2
+        available = self.w - 2 * inset
+        self.first = min(self.first, self.active) if self.overflow else 0
+        while sum(widths[self.first:self.active + 1]) > available:
+            self.first += 1
+        rects, x = [], self.x + inset
+        for i in range(self.first, len(widths)):
+            if x + widths[i] > self.x + self.w - inset:
+                break
+            rects.append((i, x, widths[i]))
+            x += widths[i]
+        return rects
+
+    def draw(self, d, img):
+        for i, x, width in self.tab_rects():
+            y = self.y + (0 if i == self.active else 2)
+            T.raised(d, x, y, x + width - 1, self.y + self.H - 1)
+            d.text((x + (width - T.text_w(T.FONT, self.tabs[i])) // 2, y + 3),
+                   self.tabs[i], font=T.FONT, fill=T.TEXT)
+            if i == self.active and self.window.focus is self:
+                T.focus_rect(d, x + 3, y + 3, x + width - 4, self.y + self.H - 4)
+        if self.overflow:
+            for x, label in ((self.x, "<"), (self.x + self.w - 18, ">")):
+                T.raised(d, x, self.y, x + 17, self.y + self.H - 1)
+                d.text((x + 5, self.y + 3), label, font=T.FONT, fill=T.TEXT)
+
+    def on_mouse(self, ev):
+        rects = self.tab_rects()
+        if ev.press and ev.btn == 1:
+            if self.overflow and (ev.x < self.x + 18 or ev.x >= self.x + self.w - 18):
+                target = (self.active + (-1 if ev.x < self.x + 18 else 1)) % len(self.tabs)
+            else:
+                target = next((i for i, x, width in rects if x <= ev.x < x + width), self.active)
+            if target != self.active:
+                self.active = target
+                self.cb(target)
+                self.invalidate()
+        return True
+
+
 class SettingsWin(wm.Window):
     def __init__(self, desk):
-        # Sized for the tab strip, which neither wraps nor scrolls: a header
-        # past the right edge is unreachable, not merely clipped. Still well
-        # inside a 640x480 desktop.
+        # Retain the existing form pages; overflow scrolls inside the dialog.
         super().__init__(desk, "kilix Settings", 620, 420, icon="settings")
         self.min_w, self.min_h = 540, 320
         self.path = config_path()
@@ -302,16 +368,16 @@ class SettingsWin(wm.Window):
         except OSError:
             defaults = os.path.join(_shell.KILIX_HOME, "config", "kitty.conf")
             self.buffer = (
-                f"# Kilix user overrides. Tracked defaults are loaded first.\n"
+                "# Kilix user overrides. Tracked defaults are loaded first.\n"
                 "include .kilix-defaults.conf\n"
                 if os.path.isfile(defaults) else ""
             )
         cw, ch = self.client_size()
         self.raw_tab = len(FORM_PAGES)
-        self.tabs = self.add(W.TabBar(6, 6, cw - 12,
+        self.tabs = self.add(_SettingsTabs(6, 6, cw - 12,
                                       ["Appearance", "Behavior", "Top bar",
                                        "Pane buttons", "Session logs", "Voice",
-                                       "Games", "Tools", "kitty.conf"],
+                                       "Games", "Tools", "Weather", "kitty.conf"],
                                       cb=self._switch_tab))
         self.fields = {}              # key -> (kind, widget)
         self.panels = [[] for _ in range(self.raw_tab + 1)]
@@ -322,7 +388,7 @@ class SettingsWin(wm.Window):
         for tab_i, spec in enumerate(FORM_PAGES):
             y = 44
             if tab_i == 0:
-                lw = self.add(W.Label(18, y + 4, "Desktop flavor:"))
+                lw = self.add(_SettingsLabel(18, y + 4, "Desktop flavor:"))
                 self.panels[tab_i].append(lw)
                 self.flavor_dd = self.add(W.Dropdown(
                     200, y, 180, self._flavor_labels,
@@ -359,7 +425,7 @@ class SettingsWin(wm.Window):
                     y = 244 + item_i * 30
                 else:
                     label_x, control_x = 18, 200
-                lw = self.add(W.Label(label_x, y + 4, label + ":"))
+                lw = self.add(_SettingsLabel(label_x, y + 4, label + ":"))
                 self.panels[tab_i].append(lw)
                 if kind == "choice":
                     wd = self.add(W.Dropdown(control_x, y, control_w, extra))
@@ -385,12 +451,12 @@ class SettingsWin(wm.Window):
                 self.panels[tab_i].append(wd)
                 if spec is not GAMES and spec is not VOICE:
                     y += 30
-        game_note = self.add(W.Label(
+        game_note = self.add(_SettingsLabel(
             18, 280, "The Games menu updates the next time Start opens.",
             font=T.SMALL, color=T.SHADOW))
         self.panels[FORM_PAGES.index(GAMES)].append(game_note)
         tools_tab = FORM_PAGES.index(TOOLS)
-        self.coding_title = self.add(W.Label(
+        self.coding_title = self.add(_SettingsLabel(
             18, 216, "Coding agents", font=T.BOLD))
         self.panels[tools_tab].append(self.coding_title)
         self.coding_notes = []
@@ -399,7 +465,7 @@ class SettingsWin(wm.Window):
             "Skip approvals applies to sessions resumed with kilix-rollout-resume.",
             "Skip approvals on lets the agent run commands without asking.",
         )):
-            note = self.add(W.Label(18, 310 + offset * 18, text,
+            note = self.add(_SettingsLabel(18, 310 + offset * 18, text,
                                     font=T.SMALL, color=T.SHADOW))
             self.panels[tools_tab].append(note)
             self.coding_notes.append(note)
@@ -409,7 +475,7 @@ class SettingsWin(wm.Window):
             "echoes it, so hidden password prompts are not recorded.",
             "'elide' replaces image data with a marker; 'keep' records it raw.",
         )):
-            note = self.add(W.Label(
+            note = self.add(_SettingsLabel(
                 18, 140 + offset * 18, text,
                 font=T.SMALL, color=T.SHADOW))
             self.panels[FORM_PAGES.index(SESSION_LOG)].append(note)
@@ -424,7 +490,7 @@ class SettingsWin(wm.Window):
             450, 280, 148, 24, "System voice…",
             cb=lambda: desk.shell.open_app("systemvoice")))
         self.panels[voice_tab].append(self.system_voice_button)
-        self.voice_model_status = self.add(W.Label(
+        self.voice_model_status = self.add(_SettingsLabel(
             170, 284, "Uses Kilix's verified lazy installer.",
             font=T.SMALL, color=T.SHADOW))
         self.panels[voice_tab].extend([
@@ -435,13 +501,13 @@ class SettingsWin(wm.Window):
             "clicking again closes it, and nothing is captured beforehand.",
             "Recognition stays on this machine, and dictation never presses Enter.",
         )):
-            note = self.add(W.Label(
+            note = self.add(_SettingsLabel(
                 18, 312 + offset * 18, text,
                 font=T.SMALL, color=T.SHADOW))
             self.panels[voice_tab].append(note)
-        tools_title = self.add(W.Label(
+        tools_title = self.add(_SettingsLabel(
             18, 48, "Tmux Manager", font=T.BOLD))
-        tools_description = self.add(W.Label(
+        tools_description = self.add(_SettingsLabel(
             18, 78,
             "The manager uses tmux-cli for sessions, panes, preview, and attach.",
             font=T.SMALL, color=T.SHADOW))
@@ -449,12 +515,12 @@ class SettingsWin(wm.Window):
         alias_text = (
             f"`tb` command available: {alias}"
             if alias else "`tb` command alias is not installed.")
-        self.tb_alias_status = self.add(W.Label(
+        self.tb_alias_status = self.add(_SettingsLabel(
             18, 112, alias_text, font=T.SMALL, color=T.SHADOW))
         self.tb_alias_button = self.add(W.Button(
             18, 142, 132, 24, "Install / repair tb",
             cb=self._install_tb_alias))
-        self.tools_note = self.add(W.Label(
+        self.tools_note = self.add(_SettingsLabel(
             18, 180,
             "Installation opens in a new tab and uses Kilix's pinned source closure.",
             font=T.SMALL, color=T.SHADOW))
@@ -466,13 +532,27 @@ class SettingsWin(wm.Window):
             18, 232, "Activate full experience",
             checked=desk.shell.full_experience_enabled()))
         self.panels[1].append(self.full_experience)
-        experience_note = self.add(W.Label(
+        experience_note = self.add(_SettingsLabel(
             38, 260,
             "Shows Briefcase, modem, classic hardware, and other extras.",
             font=T.SMALL, color=T.SHADOW))
         self.panels[1].append(experience_note)
+        weather_tab = FORM_PAGES.index(WEATHER)
+        self.weather_refresh_button = self.add(W.Button(
+            18, 172, 160, 24, "Refresh saved ZIP", cb=self._refresh_weather))
+        self.panels[weather_tab].append(self.weather_refresh_button)
+        for row, text in enumerate((
+            "Apply a ZIP before refreshing. Leave it empty to clear the location.",
+            "Manual refresh also loads once when Kilix opens.",
+            "Daily uses local system time; schedules run while Kilix is open.",
+            "Units follow Temperature units on the Top bar page.",
+            "ZIP goes to Open-Meteo's GeoNames lookup; coordinates to its weather API.",
+            "Open-Meteo: CC BY 4.0 data; free API for non-commercial use.",
+        )):
+            self.panels[weather_tab].append(self.add(_SettingsLabel(
+                18, 208 + row * 18, text, font=T.SMALL, color=T.SHADOW)))
         note_y = 44 + 30 * max(len(APPEARANCE) + 1, len(BEHAVIOR)) + 6
-        note = self.add(W.Label(
+        note = self.add(_SettingsLabel(
             18, note_y, "Applied live to this kilix — no restart needed.",
             font=T.SMALL, color=T.SHADOW))
         self.panels[0].append(note)
@@ -489,11 +569,15 @@ class SettingsWin(wm.Window):
         self.b_sounds = self.add(W.Button(
             10, ch - 33, 84, 23, "Sounds…", icon="soundcp",
             cb=lambda: self.desk.shell.open_app("soundcp")))
-        self.status = self.add(W.Label(102, ch - 28, "", font=T.SMALL,
+        self.status = self.add(_SettingsLabel(102, ch - 28, "", font=T.SMALL,
                                        color=T.SHADOW))
         self._cur_tab = 0
+        self._panel_geometry = {w: (w.x, w.y, w.w) for panel in self.panels[:-1] for w in panel}
+        self._scroll_positions = [0] * len(FORM_PAGES)
+        self.scrollbar = W.VScroll()
         self._populate()
         self._switch_tab(0)
+        self.on_resize()
 
     def on_resize(self):
         cw, ch = self.client_size()
@@ -504,15 +588,106 @@ class SettingsWin(wm.Window):
             b.x, b.y = cw - dx, ch - 33
         self.b_sounds.y = ch - 33
         self.status.y = ch - 28
+        self.status.limit_width = self.b_ok.x - self.status.x - 8
+        self._layout_panel()
+        if self.focus in self.panels[self._cur_tab] and not self.focus.visible:
+            self.set_focus(self.focus)
+
+    def _layout_panel(self):
+        if self._cur_tab == self.raw_tab:
+            return
+        cw, ch = self.client_size()
+        top, bottom = 32, ch - 44
+        panel = self.panels[self._cur_tab]
+        geometry = {}
+        spec = FORM_PAGES[self._cur_tab]
+        for w in panel:
+            x, y, width = self._panel_geometry[w]
+            # Preserve the two-column forms at ordinary width; stack their
+            # groups when a narrow dialog cannot fit readable labels/fields.
+            if cw < 600 and spec in (VOICE, GAMES):
+                column = 300 if spec is VOICE else 270
+                if y < 280 and x >= column:
+                    x, y = x - column, y + 240
+                elif y >= 280:
+                    y += 240
+            if w.focusable:
+                x = min(x, cw - 28 - width)
+            geometry[w] = (x, y, width)
+        self._laid_out_geometry = geometry
+        end = max(geometry[w][1] + w.h for w in panel)
+        sb = self.scrollbar
+        sb.place(cw - 22, top, bottom - top)
+        sb.total, sb.page = end - top + 8, bottom - top
+        sb.pos = self._scroll_positions[self._cur_tab]
+        sb.clamp()
+        self._scroll_positions[self._cur_tab] = sb.pos
+        for w in panel:
+            x, y, width = geometry[w]
+            w.x, w.y, w.w = x, y - sb.pos, width
+            w.visible = top <= w.y and w.y + w.h <= bottom
+        self.invalidate()
+
+    def _scroll_panel(self, delta):
+        if self._cur_tab != self.raw_tab:
+            self._scroll_positions[self._cur_tab] += delta
+            self._layout_panel()
+            self._capture = None
+            if self.focus in self.panels[self._cur_tab] and not self.focus.visible:
+                super().set_focus(None)
+
+    def set_focus(self, wdg):
+        if hasattr(self, '_panel_geometry') and wdg in self.panels[self._cur_tab] and self._cur_tab != self.raw_tab:
+            _, y, _ = self._laid_out_geometry[wdg]
+            top, bottom = 32, self.client_size()[1] - 44
+            offset = self._scroll_positions[self._cur_tab]
+            if y - offset < top:
+                offset = y - top
+            elif y + wdg.h - offset > bottom:
+                offset = y + wdg.h - bottom
+            self._scroll_positions[self._cur_tab] = offset
+            self._layout_panel()
+        super().set_focus(wdg)
+
+    def on_mouse(self, ev):
+        local = ev.at(*self.client_origin())
+        if self._cur_tab != self.raw_tab:
+            sb = self.scrollbar
+            if sb.hit(local.x, local.y) or sb.drag is not None:
+                if sb.on_mouse(local, line=30):
+                    self._scroll_panel(sb.pos - self._scroll_positions[self._cur_tab])
+                return True
+            if ev.wheel and 6 <= local.x < sb.x and sb.y <= local.y < sb.y + sb.h:
+                self._scroll_panel(ev.wheel * 30)
+                return True
+        return super().on_mouse(ev)
+
+    def on_key(self, ev):
+        if ev.key == 'Tab' and ev.ctrl:
+            self._switch_tab((self._cur_tab + (-1 if ev.shift else 1)) % len(self.panels))
+            return True
+        if self._cur_tab != self.raw_tab and not ev.ctrl and not ev.alt:
+            if ev.key in ('PageDown', 'PageUp'):
+                self._scroll_panel((self.scrollbar.page - 30) * (1 if ev.key == 'PageDown' else -1))
+                return True
+            if ev.key == 'Tab':
+                foci = [self.tabs, *[w for w in self.panels[self._cur_tab] if w.focusable and w.enabled],
+                        self.b_ok, self.b_cancel, self.b_apply, self.b_sounds]
+                index = foci.index(self.focus) if self.focus in foci else -1
+                self.set_focus(foci[(index + (-1 if ev.shift else 1)) % len(foci)])
+                return True
+        return super().on_key(ev)
 
     def draw_client(self, d, img):
         if self.tabs.active != self.raw_tab:
             cw, ch = self.client_size()
             T.raised(d, 6, self.tabs.y + W.TabBar.H - 2, cw - 7, ch - 44)
+            self.scrollbar.draw(d)
             # redraw widgets over the panel face happens in the widget pass;
             # the panel is drawn first because draw_client precedes widgets
 
     def _switch_tab(self, i):
+        keep_header_focus = self.focus is self.tabs
         if self._cur_tab == self.raw_tab:
             self.buffer = self.ta.text()   # keep raw edits made on the conf tab
         else:
@@ -523,11 +698,13 @@ class SettingsWin(wm.Window):
             self._form_to_buffer()
             self.ta.set_text(self.buffer)
         self._cur_tab = i
+        self.tabs.active = i
         for tab_i, panel in enumerate(self.panels):
             for wdg in panel:
                 wdg.visible = tab_i == i
+        self._layout_panel()
         vis = [w for w in self.panels[i] if w.focusable and w.visible]
-        self.set_focus(vis[0] if vis else None)
+        self.set_focus(self.tabs if keep_header_focus else vis[0] if vis else None)
         self.invalidate()
 
     # form <-> buffer -----------------------------------------------------
@@ -561,6 +738,18 @@ class SettingsWin(wm.Window):
                 "when it finishes.")
         else:
             self.tb_alias_status.set("Could not open the `tb` installer.")
+        self.invalidate()
+
+    def _refresh_weather(self):
+        try:
+            values = shared_settings.load(self.shared_path)
+            if not values.get("KILIX_WEATHER_ZIP"):
+                raise ValueError("Apply a ZIP first.")
+            shared_settings.normalize_weather("KILIX_WEATHER_ZIP", values["KILIX_WEATHER_ZIP"])
+            shared_settings.update({"KILIX_WEATHER_REQUEST": str(time.time_ns())}, self.shared_path)
+            self.status.set("Refresh requested.")
+        except (OSError, ValueError) as error:
+            self.status.set(str(error))
         self.invalidate()
 
     def _install_voice_model(self):
@@ -621,7 +810,7 @@ class SettingsWin(wm.Window):
                     continue
             else:
                 v = wd.text.strip()
-                if not v or v == (cur or ""):
+                if (not v and key != "KILIX_WEATHER_ZIP") or v == (cur or ""):
                     continue
             if is_shared:
                 self.shared_values[key] = v
@@ -657,6 +846,13 @@ class SettingsWin(wm.Window):
         else:
             self._form_to_buffer()
         shared_changed = bool(self.shared_changes)
+        try:
+            for key, value in self.shared_changes.items():
+                if key in shared_settings.WEATHER_DEFAULTS:
+                    shared_settings.normalize_weather(key, value)
+        except ValueError as error:
+            wm.msgbox(self.desk, "kilix Settings", str(error), icon="error")
+            return
         tmp = None
         try:
             directory = os.path.dirname(self.path)
@@ -683,7 +879,7 @@ class SettingsWin(wm.Window):
             try:
                 shared_settings.update(self.shared_changes, self.shared_path)
                 self.shared_changes.clear()
-            except (OSError, KeyError) as e:
+            except (OSError, KeyError, ValueError) as e:
                 wm.msgbox(self.desk, "kilix Settings",
                           f"Cannot write shared settings:\n{e}", icon="error")
                 return
