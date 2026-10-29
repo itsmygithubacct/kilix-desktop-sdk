@@ -32,13 +32,16 @@ class LicenceTerminal(wm.Window):
         self.process = None
         self.finished = False
         self.answered_at = -1
+        self.password_answered_at = -1
+        self.prompt = False
         self.log = None
         try:
             if log_path is not None:
                 fd = os.open(log_path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
                 self.log = os.fdopen(fd, 'wb')
             fcntl.ioctl(slave, termios.TIOCSWINSZ, struct.pack('HHHH', 26, 95, 0, 0))
-            self.process = OwnedJob(command, stdin=slave, stdout=slave, stderr=slave,
+            self.process = OwnedJob(command, controlling_terminal=True,
+                                    stdin=slave, stdout=slave, stderr=slave,
                                     env=dict(os.environ, TERM='dumb', NO_COLOR='1'))
             self.log_event(f'Installer started; pid={self.process.pid}')
         except BaseException:
@@ -53,6 +56,11 @@ class LicenceTerminal(wm.Window):
         self.note = self.add(W.Label(12, 385, 'Read the terms, then answer Yes or No for the named models.'))
         self.yes = self.add(W.Button(12, 415, 110, 26, 'Yes', cb=lambda: self.answer(b'y\n')))
         self.no = self.add(W.Button(136, 415, 110, 26, 'No', cb=lambda: self.answer(b'n\n')))
+        self.password = self.add(W.TextField(12, 415, 260, mask=True,
+                                           on_enter=lambda _text: self.submit_password()))
+        self.password_button = self.add(W.Button(286, 415, 100, 26, 'Submit', cb=self.submit_password))
+        self.password.visible = self.password.enabled = False
+        self.password_button.visible = self.password_button.enabled = False
         self.close_button = self.add(W.Button(535, 415, 170, 26, 'Cancel setup', cb=self.close))
         self.yes.enabled = self.no.enabled = False
         self.desk.add_fd(self.master, self.pump)
@@ -66,6 +74,9 @@ class LicenceTerminal(wm.Window):
         self.note.y = height - 58
         self.yes.y = self.no.y = self.close_button.y = height - 34
         self.close_button.x = width - 182
+        self.password.y = self.password_button.y = height - 34
+        self.password_button.x = self.close_button.x - 112
+        self.password.w = self.password_button.x - 24
         if self.process is not None and not self.finished:
             fcntl.ioctl(self.master, termios.TIOCSWINSZ, struct.pack('HHHH',
                         max(8, self.transcript.h // 15), max(40, self.transcript.w // 6), 0, 0))
@@ -103,12 +114,59 @@ class LicenceTerminal(wm.Window):
         clean = re.sub(r'[\x00-\x08\x0b-\x1f\x7f]', '', clean.replace('\r\n', '\n').replace('\r', '\n'))
         self.transcript.set_text(clean)
         self.transcript.sb.pos = max(0, len(self.transcript.lines) - self.transcript._rows())
-        prompt = bool(re.search(r'\[(?:y/N|Y/n)\]\s*$', clean))
-        self.yes.enabled = self.no.enabled = prompt and len(self.output) != self.answered_at
+        self.prompt = bool(re.search(r'\[(?:y/N|Y/n)\]\s*$', clean))
+        self.update_input()
+        self.invalidate()
+
+    def hidden_input(self):
+        if self.finished or self.master is None or self.process.poll() is not None:
+            return False
+        try:
+            return not (termios.tcgetattr(self.master)[3] & termios.ECHO)
+        except (OSError, termios.error):
+            return False
+
+    def update_input(self):
+        # The terminal's echo mode also handles translated/repeated password
+        # prompts. Never guess from an English sudo prompt or log input bytes.
+        hidden = self.hidden_input()
+        if hidden != self.password.visible:
+            self.password.set('')
+            self.password.visible = self.password_button.visible = hidden
+            self.yes.visible = self.no.visible = not hidden
+            if not self.finished:
+                self.note.set('Enter your administrator password, then choose Submit.' if hidden else
+                              'Read the terms, then answer Yes or No for the named models.')
+            self.set_focus(self.password if hidden else self.transcript)
+            self.invalidate()
+        ready = hidden and len(self.output) != self.password_answered_at
+        if ready != self.password.enabled:
+            if ready:
+                self.set_focus(self.password)
+            self.invalidate()
+        self.password.enabled = self.password_button.enabled = ready
+        self.yes.enabled = self.no.enabled = (not self.finished and not hidden and self.prompt
+                                             and len(self.output) != self.answered_at)
+
+    def submit_password(self):
+        if not self.password.enabled:
+            return
+        # Echo may have returned (or the worker exited) since the last UI tick.
+        # Discard stale input instead of sending it into an ordinary prompt.
+        if not self.hidden_input():
+            self.password.set('')
+            self.update_input()
+            return
+        data = self.password.text.encode('utf-8') + b'\n'
+        self.password.set('')
+        self.password_answered_at = len(self.output)
+        self.password.enabled = self.password_button.enabled = False
+        self.set_focus(self.transcript)
+        os.write(self.master, data)
         self.invalidate()
 
     def answer(self, data):
-        if not self.yes.enabled or self.finished: return
+        if not self.yes.enabled or self.finished or self.hidden_input(): return
         os.write(self.master, data)
         self.answered_at = len(self.output)
         self.yes.enabled = self.no.enabled = False
@@ -133,9 +191,12 @@ class LicenceTerminal(wm.Window):
                           'Setup did not finish. Your choices are saved for retry.')
             self.close_button.text = 'Close'
             self.invalidate()
+        self.update_input()
 
     def cleanup(self):
         from workflows_offer import stop
+        if getattr(self, 'password', None) is not None:
+            self.password.set('')
         try:
             if self.process is not None:
                 if not self.finished:

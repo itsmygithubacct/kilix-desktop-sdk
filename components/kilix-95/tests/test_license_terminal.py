@@ -22,11 +22,20 @@ def until(predicate, window, seconds=4):
 
 with H.desktop_dir() as temporary:
     desk = H.make_desk()
-    script = "import sys; print('TTY', sys.stdin.isatty(), sys.stdout.isatty(), flush=True); a=input('Accept Apache 2.0 for model1, model2? [y/N] '); print('ANSWER='+a, flush=True)"
+    script = """
+import os, sys
+print('TTY', sys.stdin.isatty(), sys.stdout.isatty(), flush=True)
+with open('/dev/tty', 'rb', buffering=0) as terminal:
+    assert os.tcgetpgrp(terminal.fileno()) == os.getpgrp() == os.getpid()
+print('CONTROLLING TTY', flush=True)
+a = input('Accept Apache 2.0 for model1, model2? [y/N] ')
+print('ANSWER=' + a, flush=True)
+"""
     log_path = Path(temporary) / 'transcript.log'
     window = open_window(desk, [sys.executable, '-c', script], log_path=log_path)
     until(lambda: window.yes.enabled, window)
     assert 'TTY True True' in window.output
+    assert 'CONTROLLING TTY' in window.output
     assert window in desk.wm.windows
     preview = os.environ.get('LICENSE_PREVIEW')
     if preview: window.render().save(preview)

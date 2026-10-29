@@ -68,6 +68,7 @@ with host `55dee61d6abcdf508825a99e3100d75b16cc70d0`.
 It now follows `48012d75f5cf7230c3fe5f7135039cb0f80037ce`, whose only change pairs the same
 CI with host `e428a22a21698361fa226a8a874f3bde191429e3`, which keeps focus with the user
 during remote commands from background panes.
+It now follows `0de26f5d4d3096afb84300b9bec0e23e5c7fcd5e`, which gives the embedded model setup terminal a controlling TTY and masked password input for optional converter installation. Password retry, cancellation and transcript privacy are covered by real PTY tests.
 Exact integration revisions and qualification commands are recorded in the
 worker report; no shared release manifest or installed desktop is changed here.
 
