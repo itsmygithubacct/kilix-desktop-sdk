@@ -1,3 +1,20 @@
+# System load settings refresh
+
+The Kilix 95 mirror now follows standalone
+`65b1793103e6ee126271b36b5559ed332231d975` and pairs its required CI with host
+`55dee61d6abcdf508825a99e3100d75b16cc70d0`. Settings offers the shared system CPU and RAM readout mode
+(`auto`, `always`, `off`; default `always`) at the head of the Top bar tab and
+persists the selection in the shared settings document. The changed paths are
+`apps/settings.py`, `tests/test_settings.py`, and `.github/workflows/test.yml`;
+no declared SDK adaptation changes.
+
+The provider entry, protocol and persistence adapters, and prior conformance
+bindings are unchanged. This refresh changes Settings runtime bytes and does
+not regrade historical conformance or establish native, outer-launcher, guest
+or physical acceptance. All open acceptance limits below remain.
+
+---
+
 # Session-grid settings refresh
 
 The Kilix 95 mirror now follows standalone

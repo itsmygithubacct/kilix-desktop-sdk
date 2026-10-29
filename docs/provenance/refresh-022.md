@@ -62,6 +62,9 @@ It now follows `6f9f07059d70b5fe82f5326c98b6bbf1dfb29017`, which exposes the sha
 grid preference in Settings, keeps its choices out of kitty.conf, and pairs CI
 with host `3ca4e9c73917392062f65b5ed5eb51f5aecbb060`. The Tools tab keeps both
 coding controls and their explanations above the action buttons.
+It now follows `65b1793103e6ee126271b36b5559ed332231d975`, which offers the shared system CPU and RAM
+readout mode at the head of the Top bar tab (default always) and pairs CI
+with host `55dee61d6abcdf508825a99e3100d75b16cc70d0`.
 Exact integration revisions and qualification commands are recorded in the
 worker report; no shared release manifest or installed desktop is changed here.
 

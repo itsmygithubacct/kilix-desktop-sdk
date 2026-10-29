@@ -60,6 +60,8 @@ BEHAVIOR = [
     ("cursor_blink_interval", "Cursor blink interval", "text", None),
 ]
 TOP_BAR = [
+    (shared_settings.SYSTEM_LOAD_MODE_KEY, "System CPU and RAM", "choice",
+     list(shared_settings.SYSTEM_LOAD_MODE_CHOICES)),
     ("KILIX_CHROME_TEMPERATURE", "Thermal status", "bool", "0"),
     (shared_settings.TEMPERATURE_UNIT_KEY, "Temperature units", "choice",
      list(shared_settings.TEMPERATURE_UNIT_CHOICES)),

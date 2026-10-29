@@ -176,6 +176,7 @@ with conf("font_size 12\n") as path:
     _, volume = win.fields["KILIX_CHROME_VOLUME"]
     _, thermal = win.fields["KILIX_CHROME_TEMPERATURE"]
     _, temperature_unit = win.fields[settings.shared_settings.TEMPERATURE_UNIT_KEY]
+    _, system_load = win.fields[settings.shared_settings.SYSTEM_LOAD_MODE_KEY]
     _, network = win.fields["KILIX_CHROME_NETWORK"]
     _, synchronize = win.fields["KILIX_CHROME_BUTTON_SYNCHRONIZE_INPUT"]
     _, cpu_mode = win.fields["KILIX_CHROME_PANE_CPU_MODE"]
@@ -186,6 +187,9 @@ with conf("font_size 12\n") as path:
     _, super_kilix = win.fields["KILIX_GAME_SUPER_KILIX"]
     assert not thermal.checked, "thermal widget should be disabled by default"
     assert temperature_unit.value == "fahrenheit"
+    assert system_load.value == "always", "system CPU and RAM should show by default"
+    assert system_load.options == ["auto", "always", "off"]
+    system_load.index = system_load.options.index("off")
     temperature_unit.index = temperature_unit.options.index("celsius")
     assert synchronize.checked, "synchronized-input button should default on"
     assert cpu_mode.value == "auto", "pane CPU load should default to auto"
@@ -205,6 +209,7 @@ with conf("font_size 12\n") as path:
     shared_text = read(win.shared_path)
     assert "KILIX_CHROME_TEMPERATURE=1" in shared_text
     assert "KILIX_TEMPERATURE_UNIT=celsius" in shared_text
+    assert "KILIX_CHROME_SYSTEM_LOAD_MODE=off" in shared_text
     assert "KILIX_CHROME_VOLUME=0" in shared_text
     assert "KILIX_CHROME_NETWORK=0" in shared_text
     assert "KILIX_CHROME_BUTTON_SYNCHRONIZE_INPUT=0" in shared_text
