@@ -310,4 +310,8 @@ def startup(desk):
     value = os.environ.get('KILIX_MODEL_WIZARD_OFFER')
     enabled = value == '1' if value is not None else os.path.isfile('/etc/plebian-os/build-info.env')
     if enabled:
-        open_window(desk)
+        if not desk.shell.state.get('wallpaper_offer_answered', False):
+            from apps.wallpaperoffer import open_window as offer_wallpaper
+            offer_wallpaper(desk, lambda: open_window(desk))
+        else:
+            open_window(desk)

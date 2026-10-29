@@ -400,4 +400,4 @@ class DisplayProperties(wm.Window):
 
 
 def desk_enabled(desk):
-    return desk.shell.state.get('paperclips_enabled', True) is True and not desk.shell.state.get('wall_custom')
+    return desk.shell.state.get('paperclips_enabled', False) is True and not desk.shell.state.get('wall_custom')

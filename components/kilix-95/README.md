@@ -92,8 +92,15 @@ Stop sharing stay on the physical desktop.
 
 ### Firekitten desktop and quiet session audio
 
-The default wallpaper for both flavors is a dark twilight firekitten landscape.
-A small optimizer sits on the back-left hill with a slow, anchored crank cycle.
+The startup wizard begins with the regular Plebian-OS wallpaper and offers an
+optional dark twilight firekitten scene. The choice is saved before model setup
+continues. Keeping the regular wallpaper leaves sampling and animation off;
+Later leaves the offer unanswered. Existing custom backgrounds are preserved
+until a wallpaper is explicitly chosen. The bundled regular artwork is the
+Plebian-OS desktop asset, unchanged.
+
+In the optional scene, a small optimizer sits on the back-left hill with a slow,
+anchored crank cycle.
 Display Properties → Background offers the optional paperclip scene, animation
 on/off, and 1/5/10/30-minute sampling (five minutes by default). A one-second local
 CPU sample selects scenes at 0, 5, 10, 20, 30, 60, 90 and 100 percent busy time,

@@ -45,6 +45,9 @@ with tempfile.TemporaryDirectory() as root:
 with H.desktop_dir(), mock.patch.object(P, 'ThreadPoolExecutor', Executor):
     desk = H.make_desk(size=(640, 480))
     p = desk.paperclips
+    assert not p.enabled()
+    assert desk.shell.state["wall_image"].endswith("plebian-os.png")
+    desk.shell.state["paperclips_enabled"] = True
     now = [0]
     p.clock = lambda: now[0]
     desk.frontend_focused = False

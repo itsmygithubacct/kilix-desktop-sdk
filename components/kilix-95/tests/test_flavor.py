@@ -41,7 +41,7 @@ with H.desktop_dir() as desktop:
     assert d.shell.state["wall_custom"] is False
     assert d.shell.state["wall_mode"] == "stretch"
     assert d.shell.state["wall_image"].endswith(
-        "assets/wallpapers/kilix-firekitten-dusk.png")
+        "assets/wallpapers/plebian-os.png")
     assert os.path.exists(d.shell.state["wall_image"])
     assert sounds._active_name == sounds.XP_SCHEME
     assert sounds.events(generate=False)[0][2] == \
@@ -69,7 +69,7 @@ with H.desktop_dir() as desktop:
     assert T.flavor_name() == "xp"
     d2.shell.set_flavor("95")
     assert T.flavor_name() == "95"
-    assert d2.shell.state["wall_image"].endswith('kilix-firekitten-dusk.png')
+    assert d2.shell.state["wall_image"].endswith('plebian-os.png')
     assert sounds._active_name == sounds.DEFAULT_SCHEME
     custom = "/tmp/custom-wallpaper.png"
     d2.shell.state["wall_image"] = custom

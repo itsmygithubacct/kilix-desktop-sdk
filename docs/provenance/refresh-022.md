@@ -102,3 +102,7 @@ and separate 20% system-audio limits. The host pairing is `5652e3a664ded0e9bffd1
 The seven declared local adaptations remain in place; the added main-loop and
 cleanup hooks were applied to the adapted main.py. Other changed provider files
 and artwork match the standalone revision byte for byte.
+
+The startup wallpaper step is selected at `826b76a87050e44e4ec6acbbb6e8efa3ab108715`. Fresh desktops begin with
+the unchanged Plebian-OS artwork; the paperclip scene requires an explicit choice.
+The offer precedes model setup and saves the choice through provider state.

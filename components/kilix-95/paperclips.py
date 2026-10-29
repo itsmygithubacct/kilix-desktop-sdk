@@ -10,6 +10,7 @@ from PIL import Image
 
 ASSETS = Path(__file__).parent / 'assets' / 'wallpapers'
 BASE = ASSETS / 'kilix-firekitten-dusk.png'
+REGULAR = ASSETS / 'plebian-os.png'
 LEVELS = (0, 5, 10, 20, 30, 60, 90, 100)
 INTERVALS = (60, 300, 600, 1800)
 
@@ -79,7 +80,7 @@ class Controller:
         self.settings = None
 
     def enabled(self):
-        return (self.shell.state.get('paperclips_enabled', True) is True
+        return (self.shell.state.get('paperclips_enabled', False) is True
                 and not self.shell.state.get('wall_custom', False))
 
     def focused(self):

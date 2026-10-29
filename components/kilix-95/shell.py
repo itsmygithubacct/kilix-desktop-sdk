@@ -105,7 +105,7 @@ class Shell:
                       "wall_color": list(T.DESKTOP), "wall_image": None,
                       "wall_mode": "stretch", "wall_custom": False,
                       "wall_pattern": "None", "recent": [],
-                      "paperclips_enabled": True, "paperclips_animate": True,
+                      "paperclips_enabled": False, "paperclips_animate": True,
                       "paperclips_interval": 300,
                       "cursor_scheme": "Standard", "saver_name": "Mystify",
                       "saver_idle": 180, "saver_lock": False,
@@ -171,6 +171,8 @@ class Shell:
 
     def _default_wall_image(self):
         path = getattr(T, "WALL_IMAGE", None)
+        if self.state.get('paperclips_enabled') is True:
+            path = 'assets/wallpapers/kilix-firekitten-dusk.png'
         if not path:
             return None
         if not os.path.isabs(path):
